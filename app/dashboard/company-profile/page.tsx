@@ -1,8 +1,12 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import type { StepOutput, StepOutputInsert, StepOutputUpdate, StepStatus, AssemblyUser } from '@/lib/supabase/client'
+import { captureEvent } from '@/lib/posthog'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +53,9 @@ const STEP_LABELS = [
   'Key Decision Makers',
   'Buying Center Evaluation',
 ]
+
+// Maps accordion step number → step_id value written to step_output
+const STEP_IDS: Record<number, string> = { 1: '1', 2: '2', 3: '3', 4: '3.5' }
 
 // ── Style constants ────────────────────────────────────────────────────────────
 
@@ -341,7 +348,6 @@ interface Step4FormProps {
 function Step4Form({ data, onChange, onBlur }: Step4FormProps) {
   return (
     <div className="space-y-6">
-      {/* Stakeholder count dual slider */}
       <div>
         <label style={LABEL}>
           Stakeholder count:{' '}
@@ -417,18 +423,17 @@ function Step4Form({ data, onChange, onBlur }: Step4FormProps) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CompanyProfilePage() {
+  const router = useRouter()
+
   const [currentStep, setCurrentStep] = useState(1)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
 
-  const [step1, setStep1] = useState<Step1Data>({
-    whatDoYouSell: '',
-  })
-
+  const [step1, setStep1] = useState<Step1Data>({ whatDoYouSell: '' })
   const [segments, setSegments] = useState<Segment[]>([
     makeSegment(), makeSegment(), makeSegment(),
   ])
-
   const [roles, setRoles] = useState<Record<string, BuyingRole[]>>({})
-
   const [buyingCenter, setBuyingCenter] = useState<BuyingCenterData>({
     stakeholderMin: 6,
     stakeholderMax: 10,
@@ -441,17 +446,163 @@ export default function CompanyProfilePage() {
     1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle',
   })
 
+  // Maps step_id → existing step_output row id (for updates vs inserts)
+  const recordIds = useRef<Record<string, string>>({})
   const timers = useRef<Record<number, ReturnType<typeof setTimeout> | undefined>>({})
 
+  // saveRef pattern: re-assigned each render so the debounced callback always
+  // closes over the latest state without needing deps on triggerSave.
+  const saveRef = useRef<((step: number, firePostHog: boolean) => Promise<void>) | null>(null)
+
+  saveRef.current = async (step: number, firePostHog: boolean): Promise<void> => {
+    const wsId = workspaceId
+    if (!wsId) {
+      setSaveStates(prev => ({ ...prev, [step]: 'error' }))
+      return
+    }
+
+    const stepId = STEP_IDS[step]
+    const now = new Date().toISOString()
+
+    let content: Record<string, unknown>
+    if (step === 1) content = { whatDoYouSell: step1.whatDoYouSell }
+    else if (step === 2) content = { segments }
+    else if (step === 3) content = { roles }
+    else content = { buyingCenter }
+
+    setSaveStates(prev => ({ ...prev, [step]: 'saving' }))
+
+    const existingId = recordIds.current[stepId]
+    let hadError = false
+
+    try {
+      if (existingId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content, last_saved_at: now, last_updated_at: now } satisfies StepOutputUpdate)
+          .eq('id', existingId)
+        hadError = !!error
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: 1,
+            status: 'draft' as StepStatus,
+            content,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          } satisfies StepOutputInsert)
+          .select('id')
+          .single()
+
+        hadError = !!error
+        if (!error && inserted) {
+          recordIds.current[stepId] = (inserted as { id: string }).id
+        }
+      }
+    } catch (_err) {
+      hadError = true
+    }
+
+    if (hadError) {
+      setSaveStates(prev => ({ ...prev, [step]: 'error' }))
+      return
+    }
+
+    setSaveStates(prev => ({ ...prev, [step]: 'saved' }))
+    setTimeout(() => setSaveStates(prev => ({ ...prev, [step]: 'idle' })), 3000)
+
+    if (firePostHog) {
+      captureEvent('onboarding.step_completed', {
+        workspace_id: wsId,
+        step_id: stepId,
+        timestamp: now,
+      })
+    }
+  }
+
+  // Debounced auto-save: fires 600ms after last blur on each step
   const triggerSave = useCallback((step: number) => {
     clearTimeout(timers.current[step])
     setSaveStates(prev => ({ ...prev, [step]: 'saving' }))
     timers.current[step] = setTimeout(() => {
-      // TODO: wire to Supabase step_output upsert (Sprint 1, Task 4)
-      setSaveStates(prev => ({ ...prev, [step]: 'saved' }))
-      setTimeout(() => setSaveStates(prev => ({ ...prev, [step]: 'idle' })), 3000)
+      void saveRef.current?.(step, false)
     }, 600)
   }, [])
+
+  // On mount: resolve workspace from auth session, then pre-populate any
+  // existing step_output drafts for this workspace.
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        const userData = userRow as AssemblyUser | null
+        if (!userData) return
+
+        const wsId = userData.workspace_id
+        setWorkspaceId(wsId)
+
+        const { data: rawOutputs } = await supabase
+          .from('step_output')
+          .select('*')
+          .eq('workspace_id', wsId)
+          .in('step_id', ['1', '2', '3', '3.5'])
+          .order('version', { ascending: false })
+
+        const outputs = rawOutputs as StepOutput[] | null
+        if (!outputs?.length) return
+
+        // Keep only the highest version per step_id
+        const latest: Partial<Record<string, StepOutput>> = {}
+        for (const row of outputs) {
+          if (!latest[row.step_id]) {
+            latest[row.step_id] = row
+            recordIds.current[row.step_id] = row.id
+          }
+        }
+
+        const s1 = latest['1']
+        if (s1) {
+          const c = s1.content as { whatDoYouSell?: string }
+          setStep1({ whatDoYouSell: c.whatDoYouSell ?? '' })
+        }
+
+        const s2 = latest['2']
+        if (s2) {
+          const c = s2.content as { segments?: Segment[] }
+          if (c.segments?.length) setSegments(c.segments)
+        }
+
+        const s3 = latest['3']
+        if (s3) {
+          const c = s3.content as { roles?: Record<string, BuyingRole[]> }
+          if (c.roles) setRoles(c.roles)
+        }
+
+        const s35 = latest['3.5']
+        if (s35) {
+          const c = s35.content as { buyingCenter?: BuyingCenterData }
+          if (c.buyingCenter) setBuyingCenter(c.buyingCenter)
+        }
+      } catch (_err) {
+        // Non-critical: wizard works without pre-population; saves will show error state
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    void init()
+  }, []) // supabase is a stable module-level singleton
 
   function canAdvance(): boolean {
     if (currentStep === 1) return step1.whatDoYouSell.trim().length > 0
@@ -464,11 +615,36 @@ export default function CompanyProfilePage() {
   }
 
   function handleAdvance() {
+    if (!canAdvance()) return
+
+    const now = new Date().toISOString()
+    const stepId = STEP_IDS[currentStep]
+
+    // Fire PostHog synchronously on button click (not debounced)
+    if (workspaceId) {
+      captureEvent('onboarding.step_completed', {
+        workspace_id: workspaceId,
+        step_id: stepId,
+        timestamp: now,
+      })
+      if (currentStep === 4) {
+        captureEvent('journey.ttfaj_started', {
+          workspace_id: workspaceId,
+          timestamp: now,
+        })
+      }
+    }
+
+    // Debounced Supabase write (non-blocking)
     triggerSave(currentStep)
-    if (currentStep >= 4) return // TODO: redirect to dashboard on completion
+
+    if (currentStep >= 4) {
+      router.push('/dashboard')
+      return
+    }
+
     const next = currentStep + 1
     if (next === 3) {
-      // Initialise one empty role per active segment before entering step 3
       setRoles(prev => {
         const updated = { ...prev }
         for (const seg of segments.filter(s => s.name.trim())) {
@@ -481,6 +657,20 @@ export default function CompanyProfilePage() {
   }
 
   const activeSegments = segments.filter(s => s.name.trim())
+
+  // Loading skeleton while resolving auth + existing data
+  if (isInitializing) {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1' }} className="min-h-screen">
+        <header style={{ backgroundColor: '#0A1628', paddingTop: '24px' }} className="px-8 py-6">
+          <h1 className="text-white text-2xl font-semibold">Company Profile</h1>
+        </header>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ backgroundColor: '#F8F6F1' }} className="min-h-screen">
