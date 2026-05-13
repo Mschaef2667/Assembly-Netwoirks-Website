@@ -44,7 +44,7 @@ export type StepOutputUpdate = {
 
 export interface AssemblyUser {
   id: string
-  workspace_id: string
+  org_id: string
   role: 'admin' | 'contributor' | 'approver'
   email: string
 }

@@ -78,6 +78,7 @@ Step 3.5: Buying Center Evaluation
 
 ## Supabase Tables (must exist)
 workspace, users, step_definition, step_dependency, step_output,
+Note: `users.org_id` is the workspace foreign key (not `workspace_id`).
 approval_gate, copilot_run, validation_check, upstream_change_flag,
 audit_log, step_output_conflict, rate_limit_event, workspace_usage,
 confidence_decay_log

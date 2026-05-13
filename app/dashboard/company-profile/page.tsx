@@ -559,8 +559,8 @@ export default function CompanyProfilePage() {
         console.log('[init] users table lookup =>', { userData, userLookupError })
         if (!userData) return
 
-        const wsId = userData.workspace_id
-        console.log('[init] workspace_id =>', wsId)
+        const wsId = userData.org_id
+        console.log('[init] org_id =>', wsId)
         setWorkspaceId(wsId)
 
         const { data: rawOutputs } = await supabase
