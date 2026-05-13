@@ -456,7 +456,9 @@ export default function CompanyProfilePage() {
 
   saveRef.current = async (step: number, firePostHog: boolean): Promise<void> => {
     const wsId = workspaceId
+    console.log(`[save] step=${step} wsId=${wsId}`)
     if (!wsId) {
+      console.warn('[save] aborting — workspaceId is null (auth or users-table lookup failed during init)')
       setSaveStates(prev => ({ ...prev, [step]: 'error' }))
       return
     }
@@ -477,12 +479,15 @@ export default function CompanyProfilePage() {
 
     try {
       if (existingId) {
+        console.log(`[save] UPDATE step_output id=${existingId}`)
         const { error } = await supabase
           .from('step_output')
           .update({ content, last_saved_at: now, last_updated_at: now } satisfies StepOutputUpdate)
           .eq('id', existingId)
+        console.log('[save] UPDATE result =>', { error })
         hadError = !!error
       } else {
+        console.log(`[save] INSERT step_output workspace_id=${wsId} step_id=${stepId}`)
         const { data: inserted, error } = await supabase
           .from('step_output')
           .insert({
@@ -498,12 +503,14 @@ export default function CompanyProfilePage() {
           .select('id')
           .single()
 
+        console.log('[save] INSERT result =>', { inserted, error })
         hadError = !!error
         if (!error && inserted) {
           recordIds.current[stepId] = (inserted as { id: string }).id
         }
       }
-    } catch (_err) {
+    } catch (caughtErr) {
+      console.error('[save] caught exception =>', caughtErr)
       hadError = true
     }
 
@@ -538,19 +545,22 @@ export default function CompanyProfilePage() {
   useEffect(() => {
     async function init() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        console.log('[init] auth.getUser =>', { user, authError })
         if (!user) return
 
-        const { data: userRow } = await supabase
+        const { data: userRow, error: userLookupError } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
         const userData = userRow as AssemblyUser | null
+        console.log('[init] users table lookup =>', { userData, userLookupError })
         if (!userData) return
 
         const wsId = userData.workspace_id
+        console.log('[init] workspace_id =>', wsId)
         setWorkspaceId(wsId)
 
         const { data: rawOutputs } = await supabase
@@ -595,8 +605,8 @@ export default function CompanyProfilePage() {
           const c = s35.content as { buyingCenter?: BuyingCenterData }
           if (c.buyingCenter) setBuyingCenter(c.buyingCenter)
         }
-      } catch (_err) {
-        // Non-critical: wizard works without pre-population; saves will show error state
+      } catch (initErr) {
+        console.error('[init] unexpected error =>', initErr)
       } finally {
         setIsInitializing(false)
       }
