@@ -27,8 +27,6 @@ interface BuyingRole {
 
 interface Step1Data {
   whatDoYouSell: string
-  primaryUseCase: string
-  keyIndustries: string[]
 }
 
 interface BuyingCenterData {
@@ -40,12 +38,6 @@ interface BuyingCenterData {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const INDUSTRIES = [
-  'Technology / SaaS', 'Financial Services', 'Healthcare', 'Manufacturing',
-  'Professional Services', 'Retail / E-commerce', 'Education', 'Government',
-  'Energy / Utilities', 'Media / Advertising', 'Real Estate', 'Logistics',
-]
 
 const DECISION_STYLES: DecisionStyle[] = ['Consensus', 'Champion-led', 'Committee']
 const SALES_CYCLES: SalesCycle[] = ['1-3 months', '3-6 months', '3-9 months', '6-12 months', '12+ months']
@@ -131,64 +123,16 @@ interface Step1FormProps {
 
 function Step1Form({ data, onChange, onBlur }: Step1FormProps) {
   return (
-    <div className="space-y-5">
-      <div>
-        <label style={LABEL}>What do you sell?</label>
-        <textarea
-          value={data.whatDoYouSell}
-          onChange={e => onChange({ ...data, whatDoYouSell: e.target.value })}
-          onBlur={onBlur}
-          rows={4}
-          placeholder="Describe your product or service in 3–5 sentences…"
-          style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
-        />
-      </div>
-      <div>
-        <label style={LABEL}>Primary use case or outcome</label>
-        <input
-          type="text"
-          value={data.primaryUseCase}
-          onChange={e => onChange({ ...data, primaryUseCase: e.target.value })}
-          onBlur={onBlur}
-          placeholder="e.g. Reduce customer churn by 30%"
-          style={INPUT}
-        />
-      </div>
-      <div>
-        <label style={LABEL}>Key industries served</label>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {INDUSTRIES.map(ind => {
-            const active = data.keyIndustries.includes(ind)
-            return (
-              <button
-                key={ind}
-                type="button"
-                onClick={() => {
-                  const next = active
-                    ? data.keyIndustries.filter(i => i !== ind)
-                    : [...data.keyIndustries, ind]
-                  onChange({ ...data, keyIndustries: next })
-                  onBlur()
-                }}
-                style={{
-                  minHeight: '44px',
-                  padding: '0 16px',
-                  borderRadius: '22px',
-                  fontSize: '13px',
-                  fontWeight: active ? 600 : 400,
-                  border: `1.5px solid ${active ? '#E8520A' : '#E5E7EB'}`,
-                  backgroundColor: active ? '#FEF3EE' : '#FFFFFF',
-                  color: active ? '#E8520A' : '#6B7280',
-                  cursor: 'pointer',
-                  transition: 'all 0.1s',
-                }}
-              >
-                {ind}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+    <div>
+      <label style={LABEL}>What do you sell?</label>
+      <textarea
+        value={data.whatDoYouSell}
+        onChange={e => onChange({ whatDoYouSell: e.target.value })}
+        onBlur={onBlur}
+        rows={4}
+        placeholder="Describe your product or service in 3–5 sentences…"
+        style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
+      />
     </div>
   )
 }
@@ -477,8 +421,6 @@ export default function CompanyProfilePage() {
 
   const [step1, setStep1] = useState<Step1Data>({
     whatDoYouSell: '',
-    primaryUseCase: '',
-    keyIndustries: [],
   })
 
   const [segments, setSegments] = useState<Segment[]>([
