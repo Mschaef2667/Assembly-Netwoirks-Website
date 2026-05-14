@@ -456,9 +456,7 @@ export default function CompanyProfilePage() {
 
   saveRef.current = async (step: number, firePostHog: boolean): Promise<void> => {
     const wsId = workspaceId
-    console.log(`[save] step=${step} wsId=${wsId}`)
     if (!wsId) {
-      console.warn('[save] aborting — workspaceId is null (auth or users-table lookup failed during init)')
       setSaveStates(prev => ({ ...prev, [step]: 'error' }))
       return
     }
@@ -479,15 +477,12 @@ export default function CompanyProfilePage() {
 
     try {
       if (existingId) {
-        console.log(`[save] UPDATE step_output id=${existingId}`)
         const { error } = await supabase
           .from('step_output')
           .update({ content, last_saved_at: now, last_updated_at: now } satisfies StepOutputUpdate)
           .eq('id', existingId)
-        console.log('[save] UPDATE result =>', { error })
         hadError = !!error
       } else {
-        console.log(`[save] INSERT step_output workspace_id=${wsId} step_id=${stepId}`)
         const { data: inserted, error } = await supabase
           .from('step_output')
           .insert({
@@ -503,14 +498,12 @@ export default function CompanyProfilePage() {
           .select('id')
           .single()
 
-        console.log('[save] INSERT result =>', { inserted, error })
         hadError = !!error
         if (!error && inserted) {
           recordIds.current[stepId] = (inserted as { id: string }).id
         }
       }
-    } catch (caughtErr) {
-      console.error('[save] caught exception =>', caughtErr)
+    } catch {
       hadError = true
     }
 
@@ -545,28 +538,19 @@ export default function CompanyProfilePage() {
   useEffect(() => {
     async function init() {
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        console.log('[init] auth.getUser =>', { user, authError })
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('[init] session token present =>', !!session?.access_token, '| session error =>', sessionError, '| token preview =>', session?.access_token?.slice(0, 20) ?? 'none')
-
-        console.log('[init] running query: SELECT * FROM users WHERE id =', user.id)
-        const { data: userRow, error: userLookupError } = await supabase
+        const { data: userRow } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        console.log('[init] users query raw error =>', JSON.stringify(userLookupError, null, 2))
-        console.log('[init] users query raw data =>', JSON.stringify(userRow, null, 2))
         const userData = userRow as AssemblyUser | null
-        console.log('[init] users table lookup =>', { userData, userLookupError })
         if (!userData) return
 
         const wsId = userData.org_id
-        console.log('[init] org_id =>', wsId)
         setWorkspaceId(wsId)
 
         const { data: rawOutputs } = await supabase
@@ -611,8 +595,8 @@ export default function CompanyProfilePage() {
           const c = s35.content as { buyingCenter?: BuyingCenterData }
           if (c.buyingCenter) setBuyingCenter(c.buyingCenter)
         }
-      } catch (initErr) {
-        console.error('[init] unexpected error =>', initErr)
+      } catch {
+        // init errors are non-fatal; isInitializing clears in finally
       } finally {
         setIsInitializing(false)
       }
