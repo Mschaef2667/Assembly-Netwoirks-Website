@@ -628,6 +628,10 @@ export default function CompanyProfilePage() {
         timestamp: now,
       })
       if (currentStep === 4) {
+        captureEvent('onboarding.completed', {
+          workspace_id: workspaceId,
+          timestamp: now,
+        })
         captureEvent('journey.ttfaj_started', {
           workspace_id: workspaceId,
           timestamp: now,
