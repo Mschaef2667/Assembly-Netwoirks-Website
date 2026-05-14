@@ -23,11 +23,17 @@ interface WorkspaceUser {
 interface WorkspaceSettings {
   name: string
   website: string
+  preferred_model: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ROLES: AdminRole[] = ['org_admin', 'contributor', 'approver']
+
+const MODEL_OPTIONS = [
+  { label: 'Claude Sonnet 4 (Recommended)', value: 'claude-sonnet-4-20250514' },
+  { label: 'Claude Opus 4 (Highest Quality)', value: 'claude-opus-4-20250514' },
+] as const
 
 const SECTIONS = [
   'Workspace',
@@ -126,8 +132,11 @@ function OrangeButton({ onClick, loading, children }: {
 
 export default function AdministrationPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<string>('')
   const [users, setUsers] = useState<WorkspaceUser[]>([])
-  const [settings, setSettings] = useState<WorkspaceSettings>({ name: '', website: '' })
+  const [settings, setSettings] = useState<WorkspaceSettings>({
+    name: '', website: '', preferred_model: 'claude-sonnet-4-20250514',
+  })
   const [userSave, setUserSave] = useState<SaveState>('idle')
   const [settingsSave, setSettingsSave] = useState<SaveState>('idle')
   const [loading, setLoading] = useState(true)
@@ -143,6 +152,10 @@ export default function AdministrationPage() {
           .select('*')
           .eq('id', user.id)
           .single()
+
+        // Extract role as plain string before the AssemblyUser cast (interface type is stale)
+        const rawRow = userRow as Record<string, unknown>
+        setCurrentUserRole(String(rawRow['role'] ?? ''))
 
         const me = userRow as AssemblyUser | null
         if (!me) return
@@ -168,7 +181,7 @@ export default function AdministrationPage() {
 
         const { data: ws, error: wsError } = await supabase
           .from('organizations')
-          .select('name, website')
+          .select('name, website, preferred_model')
           .eq('id', me.org_id)
           .single()
         if (wsError) console.error('[admin] init organizations fetch =>', JSON.stringify(wsError, null, 2))
@@ -178,6 +191,7 @@ export default function AdministrationPage() {
           setSettings({
             name: String(wsRow['name'] ?? ''),
             website: String(wsRow['website'] ?? ''),
+            preferred_model: String(wsRow['preferred_model'] ?? 'claude-sonnet-4-20250514'),
           })
         }
       } catch {
@@ -230,7 +244,7 @@ export default function AdministrationPage() {
     try {
       const { error } = await supabase
         .from('organizations')
-        .update({ name: settings.name, website: settings.website })
+        .update({ name: settings.name, website: settings.website, preferred_model: settings.preferred_model })
         .eq('id', workspaceId)
       if (error) {
         console.error('[admin] saveSettings error =>', JSON.stringify(error, null, 2))
@@ -360,7 +374,7 @@ export default function AdministrationPage() {
           </div>
         </section>
 
-        {/* ── Company Settings ─────────────────────────────────────────────── */}
+        {/* ── Company Settings + AI Model Settings (shared save) ───────────── */}
         <section>
           <h2 style={SECTION_HEADING}>Company Settings</h2>
           <div
@@ -388,6 +402,33 @@ export default function AdministrationPage() {
               />
             </div>
           </div>
+
+          {currentUserRole === 'org_admin' && (
+            <>
+              <h2 style={{ ...SECTION_HEADING, marginTop: '32px' }}>AI Model Settings</h2>
+              <div
+                className="rounded-xl p-6 space-y-3"
+                style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
+              >
+                <div>
+                  <label style={LABEL}>Copilot Model</label>
+                  <select
+                    value={settings.preferred_model}
+                    onChange={e => setSettings(prev => ({ ...prev, preferred_model: e.target.value }))}
+                    style={INPUT}
+                  >
+                    {MODEL_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+                  Sonnet is faster and cost-efficient. Opus produces higher quality drafts but uses more of your monthly token budget.
+                </p>
+              </div>
+            </>
+          )}
+
           <div className="flex items-center gap-4 mt-4">
             <OrangeButton onClick={saveSettings} loading={settingsSave === 'saving'}>
               Save changes

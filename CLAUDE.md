@@ -103,7 +103,10 @@ confidence_decay_log
 | created_at | timestamptz                   | NOT NULL | now()                |
 | updated_at | timestamptz                   | NOT NULL | now()                |
 
+| preferred_model | text                          | NOT NULL | 'claude-sonnet-4-20250514'   |
+
 org_status enum: trial | active | suspended | churned
+preferred_model: stores workspace's preferred Claude model string (set in Administration page, org_admin only)
 
 ### users
 | column     | type            | nullable | default      |
