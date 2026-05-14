@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Building2,
   Target,
+  Brain,
   BookOpen,
   Route,
   Layers,
@@ -19,6 +20,7 @@ import { supabase } from '@/lib/supabase/client'
 const navItems = [
   { label: 'Workspace',      href: '/dashboard',                   icon: Building2 },
   { label: 'ICP & Offers',   href: '/dashboard/icp-offers',        icon: Target    },
+  { label: 'Intelligence',   href: '/dashboard/intelligence',      icon: Brain     },
   { label: 'Playbooks',      href: '/dashboard/playbooks',         icon: BookOpen  },
   { label: 'Journeys',       href: '/dashboard/journeys',          icon: Route     },
   { label: 'Assets Studio',  href: '/dashboard/assets',            icon: Layers    },

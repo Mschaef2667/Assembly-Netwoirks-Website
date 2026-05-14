@@ -51,8 +51,12 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
-- /dashboard/company-profile → Company Profile wizard (next)
+- /dashboard/company-profile → Company Profile wizard (done)
 - /dashboard/icp-offers → ICP & Offers
+- /dashboard/intelligence → Intelligence hub (done)
+- /dashboard/intelligence/survey → Survey Builder (done)
+- /dashboard/intelligence/responses → Response Import (done)
+- /dashboard/intelligence/dcp-map → DCP Map + Gate 1 (done)
 - /dashboard/playbooks → Playbooks
 - /dashboard/journeys → Journeys
 - /dashboard/assets → Assets Studio
@@ -144,6 +148,55 @@ user_role enum: super_admin | org_admin | ceo | coo | marketing_leadership |
 
 status CHECK: 'draft' | 'pending_approval' | 'approved'
 Note: workspace_id stores organizations.id (matches users.org_id).
+
+### dcp_questions
+| column        | type        | nullable | default              |
+|---------------|-------------|----------|----------------------|
+| id            | uuid        | NOT NULL | gen_random_uuid()    |
+| stage_number  | int         | NOT NULL | —                    |
+| stage_name    | text        | NOT NULL | —                    |
+| question_text | text        | NOT NULL | —                    |
+| sub_bullets   | jsonb       | NOT NULL | '[]'                 |
+| is_starter    | boolean     | NOT NULL | false                |
+| created_at    | timestamptz | nullable | now()                |
+System-wide (no org column). RLS: authenticated user exists in users.
+
+### workspace_survey
+| column                | type        | nullable | default           |
+|-----------------------|-------------|----------|-------------------|
+| id                    | uuid        | NOT NULL | gen_random_uuid() |
+| org_id                | uuid        | NOT NULL | FK → organizations|
+| selected_question_ids | jsonb       | NOT NULL | '[]'              |
+| customized_questions  | jsonb       | NOT NULL | '[]'              |
+| created_at            | timestamptz | nullable | now()             |
+| updated_at            | timestamptz | nullable | now()             |
+Unique constraint on org_id (one per org).
+
+### survey_responses
+| column           | type        | nullable | default           |
+|------------------|-------------|----------|-------------------|
+| id               | uuid        | NOT NULL | gen_random_uuid() |
+| org_id           | uuid        | NOT NULL | —                 |
+| raw_csv          | text        | nullable | —                 |
+| parsed_responses | jsonb       | nullable | —                 |
+| response_count   | int         | nullable | —                 |
+| imported_at      | timestamptz | nullable | now()             |
+
+### dcp_maps
+| column            | type        | nullable | default           |
+|-------------------|-------------|----------|-------------------|
+| id                | uuid        | NOT NULL | gen_random_uuid() |
+| org_id            | uuid        | NOT NULL | —                 |
+| stage_summaries   | jsonb       | nullable | —                 |
+| overall_confidence| int         | nullable | —                 |
+| status            | text        | NOT NULL | 'draft'           |
+| submitted_at      | timestamptz | nullable | —                 |
+| approved_at       | timestamptz | nullable | —                 |
+| approved_by       | uuid        | nullable | —                 |
+| created_at        | timestamptz | nullable | now()             |
+| updated_at        | timestamptz | nullable | now()             |
+Unique constraint on org_id (one per org). status: draft | pending_approval | approved.
+stage_summaries jsonb array: [{ stage_number, stage_name, summary, confidence_score }]
 
 ### step_dependency
 | column               | type | nullable |
