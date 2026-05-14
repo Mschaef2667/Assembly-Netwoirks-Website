@@ -166,11 +166,12 @@ export default function AdministrationPage() {
           })))
         }
 
-        const { data: ws } = await supabase
-          .from('workspace')
+        const { data: ws, error: wsError } = await supabase
+          .from('organizations')
           .select('company_name, company_url')
           .eq('id', me.org_id)
           .single()
+        if (wsError) console.error('[admin] init organizations fetch =>', JSON.stringify(wsError, null, 2))
 
         if (ws) {
           const wsRow = ws as Record<string, unknown>
@@ -228,13 +229,17 @@ export default function AdministrationPage() {
     setSettingsSave('saving')
     try {
       const { error } = await supabase
-        .from('workspace')
+        .from('organizations')
         .update({ company_name: settings.company_name, company_url: settings.company_url })
         .eq('id', workspaceId)
-      if (error) throw error
+      if (error) {
+        console.error('[admin] saveSettings error =>', JSON.stringify(error, null, 2))
+        throw error
+      }
       setSettingsSave('saved')
       setTimeout(() => setSettingsSave('idle'), 3000)
-    } catch {
+    } catch (err) {
+      console.error('[admin] saveSettings caught =>', err)
       setSettingsSave('error')
     }
   }
