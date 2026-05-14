@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Building2,
   Target,
@@ -10,8 +10,10 @@ import {
   Layers,
   Zap,
   BarChart2,
-  Plug
+  Plug,
+  LogOut,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
   { label: 'Workspace',     href: '/dashboard',            icon: Building2  },
@@ -26,6 +28,12 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
 
   return (
     <aside
@@ -62,10 +70,31 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-white/10">
-        <p className="text-xs" style={{ color: '#6B7280' }}>
-          C3 Method OS
-        </p>
+      <div className="px-3 py-4 border-t border-white/10 space-y-1">
+        <p className="px-3 text-xs mb-2" style={{ color: '#6B7280' }}>C3 Method OS</p>
+        <button
+          onClick={handleLogout}
+          style={{
+            minHeight: '44px',
+            minWidth: '44px',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '0 12px',
+            backgroundColor: 'transparent',
+            border: 'none',
+            borderRadius: '6px',
+            color: '#6B7280',
+            fontSize: '14px',
+            fontWeight: 500,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <LogOut size={16} strokeWidth={1.8} />
+          Sign out
+        </button>
       </div>
     </aside>
   )

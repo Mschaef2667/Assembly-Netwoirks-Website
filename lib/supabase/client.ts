@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 // ── Table types ───────────────────────────────────────────────────────────────
 
@@ -63,4 +63,4 @@ if (!url || !key) {
   )
 }
 
-export const supabase = createClient(url, key)
+export const supabase = createBrowserClient(url, key)
