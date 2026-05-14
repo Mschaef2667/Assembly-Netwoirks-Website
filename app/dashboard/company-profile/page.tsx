@@ -549,12 +549,18 @@ export default function CompanyProfilePage() {
         console.log('[init] auth.getUser =>', { user, authError })
         if (!user) return
 
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('[init] session token present =>', !!session?.access_token, '| session error =>', sessionError, '| token preview =>', session?.access_token?.slice(0, 20) ?? 'none')
+
+        console.log('[init] running query: SELECT * FROM users WHERE id =', user.id)
         const { data: userRow, error: userLookupError } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
+        console.log('[init] users query raw error =>', JSON.stringify(userLookupError, null, 2))
+        console.log('[init] users query raw data =>', JSON.stringify(userRow, null, 2))
         const userData = userRow as AssemblyUser | null
         console.log('[init] users table lookup =>', { userData, userLookupError })
         if (!userData) return
