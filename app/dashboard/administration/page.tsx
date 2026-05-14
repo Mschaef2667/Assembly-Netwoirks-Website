@@ -21,8 +21,8 @@ interface WorkspaceUser {
 }
 
 interface WorkspaceSettings {
-  company_name: string
-  company_url: string
+  name: string
+  website: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ function OrangeButton({ onClick, loading, children }: {
 export default function AdministrationPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [users, setUsers] = useState<WorkspaceUser[]>([])
-  const [settings, setSettings] = useState<WorkspaceSettings>({ company_name: '', company_url: '' })
+  const [settings, setSettings] = useState<WorkspaceSettings>({ name: '', website: '' })
   const [userSave, setUserSave] = useState<SaveState>('idle')
   const [settingsSave, setSettingsSave] = useState<SaveState>('idle')
   const [loading, setLoading] = useState(true)
@@ -168,7 +168,7 @@ export default function AdministrationPage() {
 
         const { data: ws, error: wsError } = await supabase
           .from('organizations')
-          .select('company_name, company_url')
+          .select('name, website')
           .eq('id', me.org_id)
           .single()
         if (wsError) console.error('[admin] init organizations fetch =>', JSON.stringify(wsError, null, 2))
@@ -176,8 +176,8 @@ export default function AdministrationPage() {
         if (ws) {
           const wsRow = ws as Record<string, unknown>
           setSettings({
-            company_name: String(wsRow['company_name'] ?? ''),
-            company_url: String(wsRow['company_url'] ?? ''),
+            name: String(wsRow['name'] ?? ''),
+            website: String(wsRow['website'] ?? ''),
           })
         }
       } catch {
@@ -230,7 +230,7 @@ export default function AdministrationPage() {
     try {
       const { error } = await supabase
         .from('organizations')
-        .update({ company_name: settings.company_name, company_url: settings.company_url })
+        .update({ name: settings.name, website: settings.website })
         .eq('id', workspaceId)
       if (error) {
         console.error('[admin] saveSettings error =>', JSON.stringify(error, null, 2))
@@ -371,18 +371,18 @@ export default function AdministrationPage() {
               <label style={LABEL}>Company Name</label>
               <input
                 type="text"
-                value={settings.company_name}
-                onChange={e => setSettings(prev => ({ ...prev, company_name: e.target.value }))}
+                value={settings.name}
+                onChange={e => setSettings(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Acme Corp"
                 style={INPUT}
               />
             </div>
             <div>
-              <label style={LABEL}>Company URL</label>
+              <label style={LABEL}>Website</label>
               <input
                 type="url"
-                value={settings.company_url}
-                onChange={e => setSettings(prev => ({ ...prev, company_url: e.target.value }))}
+                value={settings.website}
+                onChange={e => setSettings(prev => ({ ...prev, website: e.target.value }))}
                 placeholder="https://acme.com"
                 style={INPUT}
               />
