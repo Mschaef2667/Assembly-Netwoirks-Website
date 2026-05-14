@@ -31,6 +31,8 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - All interactive elements: minimum 44x44px hit areas
 - Copilot never overwrites user content silently, always propose + diff
 - Gate actions always write to audit_log
+- All inline edit textareas and input fields must pre-populate with existing content when opened for editing. Never open an edit field blank when existing content is available.
+- All textarea and input elements must explicitly set color: '#0D0D0D' and backgroundColor: '#FFFFFF' (or equivalent Tailwind classes) to prevent inherited white-on-white or unreadable text color issues. Use controlled components (value + onChange) not defaultValue for any editable field that displays existing content.
 
 ## Sprint 1 — COMPLETE
 - [x] Persistent left-nav sidebar (components/layout/sidebar.tsx)
