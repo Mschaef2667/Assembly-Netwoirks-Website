@@ -32,16 +32,22 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - Copilot never overwrites user content silently, always propose + diff
 - Gate actions always write to audit_log
 
-## Current Sprint: Sprint 1
-Completed:
+## Sprint 1 — COMPLETE
 - [x] Persistent left-nav sidebar (components/layout/sidebar.tsx)
 - [x] Dashboard shell with 5 widgets (app/dashboard/page.tsx)
+- [x] Company profile wizard Steps 1–3.5 (app/dashboard/company-profile/page.tsx)
+- [x] Wire form to Supabase (step_output table, auto-save, save state indicator)
+- [x] PostHog telemetry (onboarding.step_completed, onboarding.completed, journey.ttfaj_started)
+- [x] Auth pages: login, signup, reset-password (app/auth/)
+- [x] Supabase middleware auth guard → /auth/login
+- [x] Administration page: users, company settings, company profile link (app/dashboard/administration/)
 
-In progress:
-- [ ] Company profile form (Steps 1-3) at app/dashboard/company-profile/page.tsx
-- [ ] Wire form to Supabase
-- [ ] Auto-save with save state indicator
-- [ ] PostHog telemetry events
+## Sprint 2 — IN PROGRESS
+- [ ] Build resolveContextPacket() in lib/context/resolveContextPacket.ts
+- [ ] Build Step 4 Copilot integration (proof-of-concept) in app/dashboard/journeys/step/[stepId]/page.tsx
+- [ ] Build Copilot output display component in components/copilot/CopilotOutput.tsx
+- [ ] Wire copilot_run Supabase writes after every Claude API call
+- [ ] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
 
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
@@ -77,17 +83,108 @@ Step 3.5: Buying Center Evaluation
 - ACV range (default $10k-$100k)
 
 ## Supabase Tables (must exist)
-workspace, users, step_definition, step_dependency, step_output,
-Note: `users.org_id` is the workspace foreign key (not `workspace_id`).
+organizations, users, step_definition, step_dependency, step_output,
 approval_gate, copilot_run, validation_check, upstream_change_flag,
 audit_log, step_output_conflict, rate_limit_event, workspace_usage,
 confidence_decay_log
 
-## Step Output Schema
-status: 'draft' | 'pending_approval' | 'approved'
-Fields: id, workspace_id, step_id, version, status, content JSON,
-original_confidence, last_reviewed_at, last_saved_at,
-copilot_assisted, last_updated_by, last_updated_at
+## Verified Schema (queried 2026-05-14)
+
+### organizations
+| column     | type                          | nullable | default              |
+|------------|-------------------------------|----------|----------------------|
+| id         | uuid                          | NOT NULL | uuid_generate_v4()   |
+| name       | text                          | NOT NULL | —                    |
+| slug       | text                          | NOT NULL | —                    |
+| industry   | text                          | nullable | —                    |
+| website    | text                          | nullable | —                    |
+| logo_url   | text                          | nullable | —                    |
+| status     | org_status enum               | NOT NULL | 'trial'              |
+| created_at | timestamptz                   | NOT NULL | now()                |
+| updated_at | timestamptz                   | NOT NULL | now()                |
+
+org_status enum: trial | active | suspended | churned
+
+### users
+| column     | type            | nullable | default      |
+|------------|-----------------|----------|--------------|
+| id         | uuid            | NOT NULL | — (= auth.users.id) |
+| org_id     | uuid            | NOT NULL | — (FK → organizations.id) |
+| role       | user_role enum  | NOT NULL | 'sales_rep'  |
+| first_name | text            | nullable | —            |
+| last_name  | text            | nullable | —            |
+| email      | text            | NOT NULL | —            |
+| avatar_url | text            | nullable | —            |
+| is_active  | boolean         | NOT NULL | true         |
+| created_at | timestamptz     | NOT NULL | now()        |
+| updated_at | timestamptz     | NOT NULL | now()        |
+
+user_role enum: super_admin | org_admin | ceo | coo | marketing_leadership |
+               sales_leadership | cs_leadership | product_leadership | sales_rep | surveyor
+
+### step_output
+| column              | type        | nullable | default               |
+|---------------------|-------------|----------|-----------------------|
+| id                  | uuid        | NOT NULL | gen_random_uuid()     |
+| workspace_id        | uuid        | NOT NULL | — (FK → organizations.id, despite name) |
+| step_id             | text        | NOT NULL | —                     |
+| version             | integer     | NOT NULL | 1                     |
+| status              | text        | NOT NULL | 'draft'               |
+| content             | jsonb       | NOT NULL | '{}'                  |
+| copilot_assisted    | boolean     | NOT NULL | false                 |
+| last_saved_at       | timestamptz | nullable | —                     |
+| last_updated_at     | timestamptz | nullable | —                     |
+| last_updated_by     | uuid        | nullable | —                     |
+| original_confidence | integer     | nullable | —                     |
+| last_reviewed_at    | timestamptz | nullable | —                     |
+| created_at          | timestamptz | NOT NULL | now()                 |
+
+status CHECK: 'draft' | 'pending_approval' | 'approved'
+Note: workspace_id stores organizations.id (matches users.org_id).
+
+### step_dependency
+| column               | type | nullable |
+|----------------------|------|----------|
+| step_id              | text | NOT NULL |
+| prerequisite_step_id | text | NOT NULL |
+PK: (step_id, prerequisite_step_id)
+
+## RLS Policy Pattern
+All Assembly AI RLS policies follow one join chain:
+`auth.uid()` → `users.id` → `users.org_id` → target table's org column.
+
+For `step_output` the org column is `workspace_id`.
+For `users` the org column is `org_id`.
+For `organizations` the org column is `id`.
+
+Copy-paste SQL template (replace `<table>` and `<org_col>`):
+
+```sql
+alter table <table> enable row level security;
+
+-- SELECT
+drop policy if exists "<table>_select_own_org" on <table>;
+create policy "<table>_select_own_org"
+  on <table> for select
+  using (
+    <org_col> in (select org_id from users where id = auth.uid())
+  );
+
+-- INSERT
+drop policy if exists "<table>_insert_own_org" on <table>;
+create policy "<table>_insert_own_org"
+  on <table> for insert
+  with check (
+    <org_col> in (select org_id from users where id = auth.uid())
+  );
+
+-- UPDATE
+drop policy if exists "<table>_update_own_org" on <table>;
+create policy "<table>_update_own_org"
+  on <table> for update
+  using  (<org_col> in (select org_id from users where id = auth.uid()))
+  with check (<org_col> in (select org_id from users where id = auth.uid()));
+```
 
 ## PostHog Events to Fire
 - workspace.created
