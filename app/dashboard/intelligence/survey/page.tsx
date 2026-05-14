@@ -76,6 +76,7 @@ export default function SurveyBuilderPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [customized, setCustomized] = useState<Map<string, string>>(new Map())
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
   const [openStages, setOpenStages] = useState<Set<number>>(new Set([1]))
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -287,12 +288,13 @@ export default function SurveyBuilderPage() {
                             <div style={{ flex: 1 }}>
                               {isEditing ? (
                                 <textarea
-                                  defaultValue={customText ?? q.question_text}
-                                  onBlur={e => {
-                                    const val = e.target.value.trim()
+                                  value={editText}
+                                  onChange={e => setEditText(e.target.value)}
+                                  onBlur={() => {
+                                    const val = editText.trim()
                                     if (val && val !== q.question_text) {
                                       setCustomized(prev => new Map(prev).set(q.id, val))
-                                    } else if (!val || val === q.question_text) {
+                                    } else {
                                       setCustomized(prev => { const n = new Map(prev); n.delete(q.id); return n })
                                     }
                                     setEditingId(null)
@@ -300,9 +302,11 @@ export default function SurveyBuilderPage() {
                                   autoFocus
                                   style={{
                                     width: '100%', padding: '8px', fontSize: '14px',
+                                    color: '#0D0D0D',
                                     border: '1px solid #E8520A', borderRadius: '6px',
                                     resize: 'vertical', minHeight: '70px', fontFamily: 'inherit',
                                     outline: 'none', boxSizing: 'border-box',
+                                    backgroundColor: '#FFFFFF',
                                   }}
                                 />
                               ) : (
@@ -327,7 +331,10 @@ export default function SurveyBuilderPage() {
 
                             {!isEditing && (
                               <button
-                                onClick={() => setEditingId(q.id)}
+                                onClick={() => {
+                                  setEditText(customized.get(q.id) ?? q.question_text)
+                                  setEditingId(q.id)
+                                }}
                                 style={{
                                   minHeight: '32px', padding: '0 10px', fontSize: '12px', fontWeight: 600,
                                   border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
