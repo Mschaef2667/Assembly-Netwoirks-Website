@@ -11,19 +11,21 @@ import {
   Zap,
   BarChart2,
   Plug,
+  Settings,
   LogOut,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
-  { label: 'Workspace',     href: '/dashboard',            icon: Building2  },
-  { label: 'ICP & Offers',  href: '/dashboard/icp-offers', icon: Target     },
-  { label: 'Playbooks',     href: '/dashboard/playbooks',  icon: BookOpen   },
-  { label: 'Journeys',      href: '/dashboard/journeys',   icon: Route      },
-  { label: 'Assets Studio', href: '/dashboard/assets',     icon: Layers     },
-  { label: 'Activation',    href: '/dashboard/activation', icon: Zap        },
-  { label: 'Performance',   href: '/dashboard/performance',icon: BarChart2  },
-  { label: 'Integrations',  href: '/dashboard/integrations',icon: Plug      },
+  { label: 'Workspace',      href: '/dashboard',                   icon: Building2 },
+  { label: 'ICP & Offers',   href: '/dashboard/icp-offers',        icon: Target    },
+  { label: 'Playbooks',      href: '/dashboard/playbooks',         icon: BookOpen  },
+  { label: 'Journeys',       href: '/dashboard/journeys',          icon: Route     },
+  { label: 'Assets Studio',  href: '/dashboard/assets',            icon: Layers    },
+  { label: 'Activation',     href: '/dashboard/activation',        icon: Zap       },
+  { label: 'Performance',    href: '/dashboard/performance',       icon: BarChart2 },
+  { label: 'Integrations',   href: '/dashboard/integrations',      icon: Plug      },
+  { label: 'Administration', href: '/dashboard/administration',    icon: Settings  },
 ]
 
 export default function Sidebar() {

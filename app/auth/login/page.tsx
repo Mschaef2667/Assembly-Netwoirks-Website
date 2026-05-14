@@ -91,7 +91,12 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label style={LABEL}>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+                <label style={{ ...LABEL, marginBottom: 0 }}>Password</label>
+                <Link href="/auth/reset-password" style={{ fontSize: '12px', color: '#E8520A', textDecoration: 'none' }}>
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
@@ -135,6 +140,13 @@ export default function LoginPage() {
             <Link href="/auth/signup" style={{ color: '#E8520A', fontWeight: 600, textDecoration: 'none' }}>
               Sign up
             </Link>
+          </p>
+
+          <p style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: '#9CA3AF' }}>
+            Need help?{' '}
+            <a href="mailto:support@assemblynetworks.com" style={{ color: '#6B7280' }}>
+              Contact support@assemblynetworks.com
+            </a>
           </p>
         </div>
       </div>

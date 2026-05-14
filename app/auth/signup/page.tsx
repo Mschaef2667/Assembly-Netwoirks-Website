@@ -147,6 +147,13 @@ export default function SignupPage() {
               Sign in
             </Link>
           </p>
+
+          <p style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: '#9CA3AF' }}>
+            Need help?{' '}
+            <a href="mailto:support@assemblynetworks.com" style={{ color: '#6B7280' }}>
+              Contact support@assemblynetworks.com
+            </a>
+          </p>
         </div>
       </div>
     </div>

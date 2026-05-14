@@ -30,7 +30,9 @@ interface BuyingRole {
 }
 
 interface Step1Data {
+  smartGoals: string
   whatDoYouSell: string
+  productUrl: string
 }
 
 interface BuyingCenterData {
@@ -130,16 +132,40 @@ interface Step1FormProps {
 
 function Step1Form({ data, onChange, onBlur }: Step1FormProps) {
   return (
-    <div>
-      <label style={LABEL}>What do you sell?</label>
-      <textarea
-        value={data.whatDoYouSell}
-        onChange={e => onChange({ whatDoYouSell: e.target.value })}
-        onBlur={onBlur}
-        rows={4}
-        placeholder="Describe your product or service in 3–5 sentences…"
-        style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
-      />
+    <div className="space-y-4">
+      <div>
+        <label style={LABEL}>SMART Goals</label>
+        <textarea
+          value={data.smartGoals}
+          onChange={e => onChange({ ...data, smartGoals: e.target.value })}
+          onBlur={onBlur}
+          rows={4}
+          placeholder="Enter your Specific, Measurable, Achievable, Relevant, and Time-bound goals for the Product/Service"
+          style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
+        />
+      </div>
+      <div>
+        <label style={LABEL}>What do you sell?</label>
+        <textarea
+          value={data.whatDoYouSell}
+          onChange={e => onChange({ ...data, whatDoYouSell: e.target.value })}
+          onBlur={onBlur}
+          rows={4}
+          placeholder="Describe your product or service in 3–5 sentences…"
+          style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
+        />
+      </div>
+      <div>
+        <label style={LABEL}>Product/Service URL</label>
+        <input
+          type="url"
+          value={data.productUrl}
+          onChange={e => onChange({ ...data, productUrl: e.target.value })}
+          onBlur={onBlur}
+          placeholder="https://…"
+          style={INPUT}
+        />
+      </div>
     </div>
   )
 }
@@ -160,7 +186,7 @@ function Step2Form({ segments, onChange, onBlur }: Step2FormProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm" style={{ color: '#6B7280' }}>
-        Add up to 5 segments. At least 1 required to continue.
+        Market segments are a specific subgroup of customers within a broader target market who share similar characteristics, needs, preferences, or behaviors. Individuals within a segment react similarly to marketing messages and have comparable purchasing habits. Add up to 3 segments. At least one is required.
       </p>
       {segments.map((seg, i) => (
         <div key={seg.id} className="rounded-lg p-4 space-y-3" style={{ border: '1px solid #E5E7EB' }}>
@@ -204,7 +230,7 @@ function Step2Form({ segments, onChange, onBlur }: Step2FormProps) {
           </div>
         </div>
       ))}
-      {segments.length < 5 && (
+      {segments.length < 3 && (
         <button
           onClick={() => onChange([...segments, makeSegment()])}
           style={{
@@ -246,6 +272,9 @@ function Step3Form({ activeSegments, roles, onChange, onBlur }: Step3FormProps) 
 
   return (
     <div className="space-y-6">
+      <p className="text-sm" style={{ color: '#6B7280' }}>
+        A Key Decision Maker (KDM) is an individual or group with the ultimate authority to approve budgets, sign contracts, and authorize strategic choices within an organization. They drive business outcomes by analyzing information, weighing risks, and committing the resources necessary to implement new initiatives.
+      </p>
       {activeSegments.map(seg => {
         const segRoles = roles[seg.id] ?? []
         return (
@@ -407,7 +436,7 @@ function Step4Form({ data, onChange, onBlur }: Step4FormProps) {
       </div>
 
       <div>
-        <label style={LABEL}>ACV range</label>
+        <label style={LABEL}>Average Contract Value</label>
         <select
           value={data.acvRange}
           onChange={e => { onChange({ ...data, acvRange: e.target.value as ACVRange }); onBlur() }}
@@ -429,7 +458,7 @@ export default function CompanyProfilePage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
 
-  const [step1, setStep1] = useState<Step1Data>({ whatDoYouSell: '' })
+  const [step1, setStep1] = useState<Step1Data>({ smartGoals: '', whatDoYouSell: '', productUrl: '' })
   const [segments, setSegments] = useState<Segment[]>([
     makeSegment(), makeSegment(), makeSegment(),
   ])
@@ -465,7 +494,7 @@ export default function CompanyProfilePage() {
     const now = new Date().toISOString()
 
     let content: Record<string, unknown>
-    if (step === 1) content = { whatDoYouSell: step1.whatDoYouSell }
+    if (step === 1) content = { smartGoals: step1.smartGoals, whatDoYouSell: step1.whatDoYouSell, productUrl: step1.productUrl }
     else if (step === 2) content = { segments }
     else if (step === 3) content = { roles }
     else content = { buyingCenter }
@@ -574,8 +603,8 @@ export default function CompanyProfilePage() {
 
         const s1 = latest['1']
         if (s1) {
-          const c = s1.content as { whatDoYouSell?: string }
-          setStep1({ whatDoYouSell: c.whatDoYouSell ?? '' })
+          const c = s1.content as { smartGoals?: string; whatDoYouSell?: string; productUrl?: string }
+          setStep1({ smartGoals: c.smartGoals ?? '', whatDoYouSell: c.whatDoYouSell ?? '', productUrl: c.productUrl ?? '' })
         }
 
         const s2 = latest['2']

@@ -24,3 +24,10 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Darken form field borders so they read on Paper White (#F8F6F1) backgrounds */
+input:not([type="range"]),
+textarea,
+select {
+  border-color: #9CA3AF !important;
+}
