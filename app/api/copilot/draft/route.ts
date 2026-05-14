@@ -18,6 +18,18 @@ interface DraftRequestBody {
 // ── POST /api/copilot/draft ───────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<Response> {
+  try {
+    return await handleDraft(req)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[copilot/draft] unhandled error:', message)
+    if (stack) console.error('[copilot/draft] stack:', stack)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+async function handleDraft(req: NextRequest): Promise<Response> {
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -144,18 +156,13 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
           await supabase.from('copilot_run').insert({
             workspace_id: workspaceId,
             step_id: stepId,
-            action: 'draft',
             model,
-            prompt_tokens: null,
-            completion_tokens: null,
             status: streamError ? 'error' : 'success',
-            error_message: streamError,
-            context_packet: contextPacket as unknown as Record<string, unknown>,
-            raw_response: fullText,
-            created_by: user.id,
+            error_code: streamError ?? null,
           })
-        } catch {
-          // copilot_run write failure is non-fatal
+        } catch (insertErr) {
+          const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)
+          console.error('[copilot/draft] copilot_run insert failed:', msg)
         }
 
         controller.close()
