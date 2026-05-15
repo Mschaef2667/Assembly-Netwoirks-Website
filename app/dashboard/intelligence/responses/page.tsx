@@ -224,6 +224,7 @@ export default function ResponseImportPage() {
                 placeholder="https://docs.google.com/spreadsheets/d/..."
                 style={{
                   width: '100%', padding: '10px 12px', fontSize: '13px',
+                  color: '#0D0D0D', backgroundColor: '#FFFFFF',
                   border: '1px solid #9CA3AF', borderRadius: '8px',
                   outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
                 }}
