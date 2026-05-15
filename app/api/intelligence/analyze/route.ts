@@ -86,8 +86,8 @@ async function handleAnalyze(req: NextRequest): Promise<Response> {
   const { data: orgRow } = await supabase
     .from('organizations').select('preferred_model').eq('id', orgId).single()
   const model = orgRow
-    ? String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-20250514')
-    : 'claude-sonnet-4-20250514'
+    ? String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5')
+    : 'claude-sonnet-4-5'
 
   // Load latest survey responses
   const { data: responseRow } = await supabase

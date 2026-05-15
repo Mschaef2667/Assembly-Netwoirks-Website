@@ -109,7 +109,7 @@ confidence_decay_log
 | created_at | timestamptz                   | NOT NULL | now()                |
 | updated_at | timestamptz                   | NOT NULL | now()                |
 
-| preferred_model | text                          | NOT NULL | 'claude-sonnet-4-20250514'   |
+| preferred_model | text                          | NOT NULL | 'claude-sonnet-4-5'   |
 
 org_status enum: trial | active | suspended | churned
 preferred_model: stores workspace's preferred Claude model string (set in Administration page, org_admin only)
@@ -260,7 +260,7 @@ create policy "<table>_update_own_org"
 - Plan: Starter (50 runs/day, 500k tokens/month)
 
 ## Claude API
-Model: claude-sonnet-4-20250514
+Model: claude-sonnet-4-5
 Max tokens: 1000
 Never hardcode API key
 Always write to copilot_run after every call

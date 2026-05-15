@@ -137,7 +137,7 @@ export default function StepPage() {
   const { stepId } = useParams<{ stepId: string }>()
 
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
-  const [preferredModel, setPreferredModel] = useState('claude-sonnet-4-20250514')
+  const [preferredModel, setPreferredModel] = useState('claude-sonnet-4-5')
   const [stepDef, setStepDef] = useState<StepDef | null>(null)
   const [content, setContent] = useState('')
   const [outputId, setOutputId] = useState<string | null>(null)
@@ -183,7 +183,7 @@ export default function StepPage() {
           .single()
         if (org) {
           const orgRow = org as Record<string, unknown>
-          setPreferredModel(String(orgRow['preferred_model'] ?? 'claude-sonnet-4-20250514'))
+          setPreferredModel(String(orgRow['preferred_model'] ?? 'claude-sonnet-4-5'))
         }
 
         // Load step definition — may not exist yet

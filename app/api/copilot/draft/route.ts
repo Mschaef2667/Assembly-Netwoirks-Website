@@ -64,7 +64,7 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'stepId and workspaceId are required' }, { status: 400 })
   }
 
-  const model = preferredModel ?? 'claude-sonnet-4-20250514'
+  const model = preferredModel ?? 'claude-sonnet-4-5'
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })

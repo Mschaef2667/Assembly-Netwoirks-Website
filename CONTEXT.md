@@ -25,7 +25,7 @@
 | Background Jobs | Temporal or Inngest (TBD) |
 | Error Tracking | Sentry |
 | Analytics | PostHog |
-| AI | Claude API (claude-sonnet-4-20250514) |
+| AI | Claude API (claude-sonnet-4-5) |
 | Notifications | Zapier (Gmail + Slack webhooks) |
 
 ---
@@ -376,7 +376,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
     // API key injected by environment, never hardcoded
   },
   body: JSON.stringify({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-5",
     max_tokens: 1000,
     system: SYSTEM_PROMPT, // max 500 tokens, version-controlled
     messages: [

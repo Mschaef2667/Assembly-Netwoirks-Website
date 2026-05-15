@@ -31,8 +31,8 @@ interface WorkspaceSettings {
 const ROLES: AdminRole[] = ['org_admin', 'contributor', 'approver']
 
 const MODEL_OPTIONS = [
-  { label: 'Claude Sonnet 4 (Recommended)', value: 'claude-sonnet-4-20250514' },
-  { label: 'Claude Opus 4 (Highest Quality)', value: 'claude-opus-4-20250514' },
+  { label: 'Claude Sonnet 4 (Recommended)', value: 'claude-sonnet-4-5' },
+  { label: 'Claude Opus 4 (Highest Quality)', value: 'claude-opus-4-5' },
 ] as const
 
 const SECTIONS = [
@@ -135,7 +135,7 @@ export default function AdministrationPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>('')
   const [users, setUsers] = useState<WorkspaceUser[]>([])
   const [settings, setSettings] = useState<WorkspaceSettings>({
-    name: '', website: '', preferred_model: 'claude-sonnet-4-20250514',
+    name: '', website: '', preferred_model: 'claude-sonnet-4-5',
   })
   const [userSave, setUserSave] = useState<SaveState>('idle')
   const [settingsSave, setSettingsSave] = useState<SaveState>('idle')
@@ -191,7 +191,7 @@ export default function AdministrationPage() {
           setSettings({
             name: String(wsRow['name'] ?? ''),
             website: String(wsRow['website'] ?? ''),
-            preferred_model: String(wsRow['preferred_model'] ?? 'claude-sonnet-4-20250514'),
+            preferred_model: String(wsRow['preferred_model'] ?? 'claude-sonnet-4-5'),
           })
         }
       } catch {
