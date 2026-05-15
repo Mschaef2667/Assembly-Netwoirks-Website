@@ -91,7 +91,7 @@ async function handleAnalyze(req: NextRequest): Promise<Response> {
 
   // Load latest survey responses
   const { data: responseRow } = await supabase
-    .from('survey_responses')
+    .from('dcp_imports')
     .select('parsed_responses, response_count')
     .eq('org_id', orgId)
     .order('imported_at', { ascending: false })
@@ -196,19 +196,19 @@ Be specific and actionable. Identify patterns, common themes, and notable outlie
   let dcpMapId = ''
 
   const { data: existing } = await supabase
-    .from('dcp_maps').select('id').eq('org_id', orgId).maybeSingle()
+    .from('dcp_analysis').select('id').eq('org_id', orgId).maybeSingle()
 
   if (existing) {
     const exRow = existing as Record<string, unknown>
     dcpMapId = String(exRow['id'] ?? '')
-    await supabase.from('dcp_maps').update({
+    await supabase.from('dcp_analysis').update({
       stage_summaries,
       overall_confidence,
       status: 'draft',
       updated_at: now,
     }).eq('id', dcpMapId)
   } else {
-    const { data: inserted } = await supabase.from('dcp_maps').insert({
+    const { data: inserted } = await supabase.from('dcp_analysis').insert({
       org_id: orgId,
       stage_summaries,
       overall_confidence,

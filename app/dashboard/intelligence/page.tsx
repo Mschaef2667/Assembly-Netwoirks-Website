@@ -97,8 +97,8 @@ export default function IntelligencePage() {
 
         const [surveyRes, responsesRes, dcpRes] = await Promise.all([
           supabase.from('workspace_survey').select('id').eq('org_id', orgId).maybeSingle(),
-          supabase.from('survey_responses').select('id').eq('org_id', orgId).limit(1),
-          supabase.from('dcp_maps').select('status').eq('org_id', orgId).maybeSingle(),
+          supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
+          supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
         ])
 
         const dcpRow = dcpRes.data as Record<string, unknown> | null

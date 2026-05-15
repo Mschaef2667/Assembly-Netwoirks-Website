@@ -174,7 +174,7 @@ System-wide (no org column). RLS: authenticated user exists in users.
 | updated_at            | timestamptz | nullable | now()             |
 Unique constraint on org_id (one per org).
 
-### survey_responses
+### dcp_imports
 | column           | type        | nullable | default           |
 |------------------|-------------|----------|-------------------|
 | id               | uuid        | NOT NULL | gen_random_uuid() |
@@ -182,9 +182,10 @@ Unique constraint on org_id (one per org).
 | raw_csv          | text        | nullable | —                 |
 | parsed_responses | jsonb       | nullable | —                 |
 | response_count   | int         | nullable | —                 |
-| imported_at      | timestamptz | nullable | now()             |
+| imported_at      | timestamptz | NOT NULL | now()             |
+NOTE: survey_responses already exists in this project with a different schema. Use dcp_imports for all DCP CSV import storage.
 
-### dcp_maps
+### dcp_analysis
 | column            | type        | nullable | default           |
 |-------------------|-------------|----------|-------------------|
 | id                | uuid        | NOT NULL | gen_random_uuid() |
@@ -195,10 +196,11 @@ Unique constraint on org_id (one per org).
 | submitted_at      | timestamptz | nullable | —                 |
 | approved_at       | timestamptz | nullable | —                 |
 | approved_by       | uuid        | nullable | —                 |
-| created_at        | timestamptz | nullable | now()             |
-| updated_at        | timestamptz | nullable | now()             |
+| created_at        | timestamptz | NOT NULL | now()             |
+| updated_at        | timestamptz | NOT NULL | now()             |
 Unique constraint on org_id (one per org). status: draft | pending_approval | approved.
 stage_summaries jsonb array: [{ stage_number, stage_name, summary, confidence_score }]
+NOTE: dcp_maps already exists in this project with a different schema. Use dcp_analysis for all DCP Copilot output storage.
 
 ### step_dependency
 | column               | type | nullable |

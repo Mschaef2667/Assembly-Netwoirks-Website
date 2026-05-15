@@ -83,7 +83,7 @@ export default function ResponseImportPage() {
         setOrgId(oid)
 
         const { data: existing } = await supabase
-          .from('survey_responses')
+          .from('dcp_imports')
           .select('raw_csv, parsed_responses, response_count')
           .eq('org_id', oid)
           .order('imported_at', { ascending: false })
@@ -165,7 +165,7 @@ export default function ResponseImportPage() {
     setSaving(true)
     setSaveError(null)
     try {
-      const { error } = await supabase.from('survey_responses').insert({
+      const { error } = await supabase.from('dcp_imports').insert({
         org_id: orgId,
         raw_csv: rawCsv,
         parsed_responses: rows,

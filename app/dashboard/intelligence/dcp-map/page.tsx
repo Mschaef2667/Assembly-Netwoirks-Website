@@ -85,8 +85,8 @@ export default function DcpMapPage() {
         setUserRole(String(r['role'] ?? ''))
 
         const [responsesRes, dcpRes] = await Promise.all([
-          supabase.from('survey_responses').select('response_count').eq('org_id', oid).order('imported_at', { ascending: false }).limit(1).maybeSingle(),
-          supabase.from('dcp_maps').select('*').eq('org_id', oid).maybeSingle(),
+          supabase.from('dcp_imports').select('response_count').eq('org_id', oid).order('imported_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('dcp_analysis').select('*').eq('org_id', oid).maybeSingle(),
         ])
 
         const rcRow = responsesRes.data as Record<string, unknown> | null
@@ -176,7 +176,7 @@ export default function DcpMapPage() {
       s.stage_number === stageNumber ? { ...s, summary: text } : s
     )
     try {
-      await supabase.from('dcp_maps').update({ stage_summaries: updated, updated_at: new Date().toISOString() }).eq('id', dcpMap.id)
+      await supabase.from('dcp_analysis').update({ stage_summaries: updated, updated_at: new Date().toISOString() }).eq('id', dcpMap.id)
       setSummaries(prev => {
         const next = new Map(prev)
         const s = next.get(stageNumber)
@@ -195,7 +195,7 @@ export default function DcpMapPage() {
     if (!dcpMap?.id || !orgId) return
     setSubmitting(true)
     try {
-      const { error } = await supabase.from('dcp_maps')
+      const { error } = await supabase.from('dcp_analysis')
         .update({ status: 'pending_approval', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', dcpMap.id)
       if (error) throw error
@@ -214,7 +214,7 @@ export default function DcpMapPage() {
     setApproving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const { error } = await supabase.from('dcp_maps')
+      const { error } = await supabase.from('dcp_analysis')
         .update({ status: 'approved', approved_at: new Date().toISOString(), approved_by: user?.id ?? null, updated_at: new Date().toISOString() })
         .eq('id', dcpMap.id)
       if (error) throw error
