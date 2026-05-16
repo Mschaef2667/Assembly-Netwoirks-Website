@@ -45,10 +45,19 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [x] Administration page: users, company settings, company profile link (app/dashboard/administration/)
 
 ## Sprint 2 — IN PROGRESS
-- [ ] Build resolveContextPacket() in lib/context/resolveContextPacket.ts
-- [ ] Build Step 4 Copilot integration (proof-of-concept) in app/dashboard/journeys/step/[stepId]/page.tsx
+- [x] Build resolveContextPacket() in lib/context/resolveContextPacket.ts
+- [x] Intelligence section: survey builder, response import, DCP map + Gate 1 (app/dashboard/intelligence/)
+- [x] AI model selector in Administration page (org_admin only, stored in organizations.preferred_model)
+- [x] Stage label export: survey CSV prefixes questions with [Stage X - Stage Name] for auto-mapping
+- [x] Stage auto-mapping on import: extractStageMappings() detects prefix in response column headers
+- [x] Cumulative response imports: dcp_imports.batches jsonb array, append-on-save, import history UI
+- [x] DCP re-analysis versioning: dcp_analysis.analysis_version increments on each re-run
+- [x] Step 4 Copilot prompt rewrite: drafts directly from DCP Stage 1 + company profile, no qualifying questions
+- [x] Wire copilot_run Supabase writes after every Claude API call
+- [x] Build Step 4 Copilot integration in app/dashboard/journeys/step/[stepId]/page.tsx
+- [ ] Journeys index page (app/dashboard/journeys/page.tsx) — lists all 38 steps by section
+- [ ] Step page navigation: previous / next step links on step/[stepId] page
 - [ ] Build Copilot output display component in components/copilot/CopilotOutput.tsx
-- [ ] Wire copilot_run Supabase writes after every Claude API call
 - [ ] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
 
 ## Phase 3 Deliverables
