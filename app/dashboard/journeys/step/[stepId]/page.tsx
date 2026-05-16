@@ -136,6 +136,18 @@ function ActionButton({
   )
 }
 
+// ── Copilot error message helper ──────────────────────────────────────────────
+
+function copilotErrorMessage(code: number | string): string {
+  const n = typeof code === 'string' ? parseInt(code, 10) : code
+  if (n === 500 || n === 502 || n === 503)
+    return "Anthropic's AI service is temporarily unavailable. Please wait a moment and try again. If it persists, check status.anthropic.com"
+  if (n === 429) return "You've hit the rate limit. Please wait a minute before trying again."
+  if (n === 408) return "The request took too long to complete. Try again or shorten your content."
+  if (n > 0) return `Copilot encountered an unexpected error (code: ${n}). Please try again.`
+  return 'Copilot encountered an unexpected error. Please try again.'
+}
+
 // ── Save indicator ────────────────────────────────────────────────────────────
 
 function SaveIndicator({ state }: { state: SaveState }) {
@@ -592,7 +604,7 @@ export default function StepPage() {
       })
 
       if (!res.ok || !res.body) {
-        setCopilotError(`Request failed: ${res.status}`)
+        setCopilotError(copilotErrorMessage(res.status))
         return
       }
 
@@ -613,7 +625,8 @@ export default function StepPage() {
       }
 
       if (accumulated.includes('__STREAM_ERROR__')) {
-        setCopilotError('Copilot encountered an error. Please try again.')
+        const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
+        setCopilotError(copilotErrorMessage(match ? match[1] : 0))
         return
       }
 
@@ -633,7 +646,13 @@ export default function StepPage() {
         setStreamBuffer('')
       }
     } catch (err) {
-      setCopilotError(err instanceof Error ? err.message : 'Unknown error')
+      const msg = err instanceof Error ? err.message.toLowerCase() : ''
+      const isTimeout = msg.includes('timeout') || msg.includes('aborted')
+      setCopilotError(
+        isTimeout
+          ? 'The request took too long to complete. Try again or shorten your content.'
+          : copilotErrorMessage(0),
+      )
     } finally {
       setCopilotStreaming(false)
     }
@@ -826,7 +845,15 @@ export default function StepPage() {
 
           {copilotError && (
             <div style={{ ...PANEL_CARD, border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2' }}>
-              <p style={{ fontSize: '13px', color: '#991B1B', margin: 0 }}>{copilotError}</p>
+              <p style={{ fontSize: '13px', color: '#991B1B', margin: '0 0 8px' }}>{copilotError}</p>
+              <a
+                href="https://status.anthropic.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '12px', color: '#991B1B', textDecoration: 'underline' }}
+              >
+                Check AI Status ↗
+              </a>
             </div>
           )}
 

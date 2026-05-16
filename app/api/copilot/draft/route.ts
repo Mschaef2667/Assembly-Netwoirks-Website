@@ -15,6 +15,10 @@ interface DraftRequestBody {
   preferredModel?: string
 }
 
+// ── Route config ─────────────────────────────────────────────────────────────
+
+export const maxDuration = 30
+
 // ── POST /api/copilot/draft ───────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -232,49 +236,72 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   let fullText = ''
   let streamError: string | null = null
+  let streamErrorCode = 'unknown'
+  const maxAttempts = 3
 
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
 
-      try {
-        const claudeStream = anthropic.messages.stream({
-          model,
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: 'Generate the draft now.' }],
-          system: systemPrompt,
-        })
-
-        for await (const chunk of claudeStream) {
-          if (
-            chunk.type === 'content_block_delta' &&
-            chunk.delta.type === 'text_delta'
-          ) {
-            const text = chunk.delta.text
-            fullText += text
-            controller.enqueue(encoder.encode(text))
-          }
-        }
-      } catch (err) {
-        streamError = err instanceof Error ? err.message : String(err)
-        controller.enqueue(encoder.encode('\n__STREAM_ERROR__'))
-      } finally {
-        // Write to copilot_run — non-fatal
+      outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          await supabase.from('copilot_run').insert({
-            workspace_id: workspaceId,
-            step_id: stepId,
+          const claudeStream = anthropic.messages.stream({
             model,
-            status: streamError ? 'error' : 'success',
-            error_code: streamError ?? null,
+            max_tokens: 1500,
+            messages: [{ role: 'user', content: 'Generate the draft now.' }],
+            system: systemPrompt,
           })
-        } catch (insertErr) {
-          const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)
-          console.error('[copilot/draft] copilot_run insert failed:', msg)
-        }
 
-        controller.close()
+          for await (const chunk of claudeStream) {
+            if (
+              chunk.type === 'content_block_delta' &&
+              chunk.delta.type === 'text_delta'
+            ) {
+              const text = chunk.delta.text
+              fullText += text
+              controller.enqueue(encoder.encode(text))
+            }
+          }
+          break outer // success
+        } catch (err) {
+          const status =
+            typeof err === 'object' && err !== null && 'status' in err
+              ? Number((err as { status: unknown }).status) || 0
+              : 0
+
+          streamError = err instanceof Error ? err.message : String(err)
+          console.error(
+            `[copilot/draft] Claude error on attempt ${attempt}/${maxAttempts} (HTTP ${status}):`,
+            streamError,
+          )
+
+          // Retry on 5xx only if no content has been sent yet
+          if (status >= 500 && status < 600 && fullText.length === 0 && attempt < maxAttempts) {
+            await new Promise<void>(resolve => setTimeout(resolve, 1000))
+            continue outer
+          }
+
+          streamErrorCode = status > 0 ? String(status) : 'unknown'
+          controller.enqueue(encoder.encode(`\n__STREAM_ERROR__:${streamErrorCode}`))
+          break outer
+        }
       }
+
+      // Write to copilot_run — non-fatal
+      try {
+        await supabase.from('copilot_run').insert({
+          workspace_id: workspaceId,
+          step_id: stepId,
+          model,
+          status: streamError ? 'error' : 'success',
+          error_code: streamError ?? null,
+        })
+      } catch (insertErr) {
+        const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)
+        console.error('[copilot/draft] copilot_run insert failed:', msg)
+      }
+
+      controller.close()
     },
   })
 
