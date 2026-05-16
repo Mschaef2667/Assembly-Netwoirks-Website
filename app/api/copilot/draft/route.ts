@@ -13,6 +13,7 @@ interface DraftRequestBody {
   stepDescription: string
   currentContent: string
   preferredModel?: string
+  extraContext?: string
 }
 
 // ── Route config ─────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { stepId, workspaceId, stepTitle, stepDescription, currentContent, preferredModel } = body
+  const { stepId, workspaceId, stepTitle, stepDescription, currentContent, preferredModel, extraContext } = body
   if (!stepId || !workspaceId) {
     return NextResponse.json({ error: 'stepId and workspaceId are required' }, { status: 400 })
   }
@@ -228,7 +229,7 @@ Confidence scoring:
 - 41-70: some prerequisites missing or unapproved, draft involves assumptions
 - 0-40: major prerequisites missing, draft is highly speculative
 
-Be specific, actionable, and grounded in the prerequisite data. Do not hallucinate facts not present in the context. Draft directly — do not ask the user for more information.`
+Be specific, actionable, and grounded in the prerequisite data. Do not hallucinate facts not present in the context. Draft directly — do not ask the user for more information.${extraContext ? `\n\n${extraContext}` : ''}`
   }
 
   // Stream the response to the client

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ interface Step4Content {
 
 const AUTOSAVE_DELAY_MS = 1200
 const STEP4_AUTOSAVE_DELAY_MS = 800
+
+const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18'])
 
 const DEFAULT_PAIN_POINTS: PainPoint[] = [
   { index: 1, title: '', description: '' },
@@ -692,23 +695,43 @@ export default function StepPage() {
   const stepTitle = stepDef?.title ?? `Step ${stepId}`
   const stepDesc = stepDef?.description ?? ''
   const isStep4 = stepId === '4'
+  const isPainPointStep = PAIN_POINT_STEPS.has(stepId)
+
+  const header = (
+    <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
+      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {stepDef?.section ?? 'Journeys'}
+      </p>
+      <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
+      {stepDesc && (
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
+          {stepDesc}
+        </p>
+      )}
+    </header>
+  )
+
+  if (isPainPointStep && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
+          <PainPointStepEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
-      {/* Header */}
-      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {stepDef?.section ?? 'Journeys'}
-        </p>
-        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
-        {stepDesc && (
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '6px', margin: '6px 0 0' }}>
-            {stepDesc}
-          </p>
-        )}
-      </header>
+      {header}
 
-      {/* Two-column layout */}
+      {/* Two-column layout (generic + Step 4 steps) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', padding: '28px 32px', maxWidth: '1200px' }}>
 
         {/* ── Left: Editor ─────────────────────────────────────────────────── */}
