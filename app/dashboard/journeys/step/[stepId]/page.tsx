@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
@@ -53,6 +54,11 @@ interface Step9State {
   gateApproved: boolean
   stage: DcpStageSummary | null
   updatedAt: string
+}
+
+interface AllStep {
+  id: string
+  phase: number
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -413,6 +419,77 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
   )
 }
 
+// ── Step nav bar ──────────────────────────────────────────────────────────────
+
+function StepNavBar({ stepIndex, total, prevId, nextId }: {
+  stepIndex: number
+  total: number
+  prevId: string | null
+  nextId: string | null
+}) {
+  if (total === 0) return null
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 32px',
+      borderTop: '1px solid #E5E7EB',
+      backgroundColor: '#FFFFFF',
+      height: '64px',
+      flexShrink: 0,
+    }}>
+      <div style={{ minWidth: '140px' }}>
+        {prevId ? (
+          <Link
+            href={`/dashboard/journeys/step/${prevId}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              minHeight: '44px',
+              padding: '0 16px',
+              backgroundColor: '#F3F4F6',
+              color: '#0D0D0D',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            ← Previous
+          </Link>
+        ) : <span />}
+      </div>
+      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>
+        {stepIndex >= 0 ? `Step ${stepIndex + 1} of ${total}` : `${total} steps`}
+      </span>
+      <div style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
+        {nextId ? (
+          <Link
+            href={`/dashboard/journeys/step/${nextId}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              minHeight: '44px',
+              padding: '0 16px',
+              backgroundColor: '#E8520A',
+              color: '#FFFFFF',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Next →
+          </Link>
+        ) : <span />}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StepPage() {
@@ -429,6 +506,8 @@ export default function StepPage() {
 
   // Step 9 state
   const [step9Data, setStep9Data] = useState<Step9State | null>(null)
+
+  const [allSteps, setAllSteps] = useState<AllStep[]>([])
 
   // Step 4 state
   const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
@@ -560,6 +639,20 @@ export default function StepPage() {
             }
             setStep9Data({ gateApproved: true, stage, updatedAt: String(r['updated_at'] ?? '') })
           }
+        }
+
+        // Load all steps for prev/next navigation
+        const { data: allStepRows } = await supabase
+          .from('step_definition')
+          .select('id, phase')
+          .order('phase', { ascending: true })
+        if (allStepRows) {
+          const steps = (allStepRows as Array<Record<string, unknown>>).map(r => ({
+            id: String(r['id'] ?? ''),
+            phase: Number(r['phase'] ?? 0),
+          }))
+          steps.sort((a, b) => a.phase - b.phase || parseFloat(a.id) - parseFloat(b.id))
+          setAllSteps(steps)
         }
       } catch {
         // non-fatal
@@ -838,12 +931,21 @@ export default function StepPage() {
   const stepDesc = stepDef?.description ?? ''
   const isStep4 = stepId === '4'
   const isPainPointStep = PAIN_POINT_STEPS.has(stepId)
+  const stepIndex = allSteps.findIndex(s => s.id === stepId)
+  const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
+  const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
 
   const header = (
-    <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
-      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {stepDef?.section ?? 'Journeys'}
-      </p>
+    <header style={{ backgroundColor: '#0A1628', padding: '14px 32px 24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '12px' }}>
+        <Link href="/dashboard/journeys" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>
+          Journeys
+        </Link>
+        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
+        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{stepDef?.section ?? ''}</span>
+        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
+        <span style={{ color: 'rgba(255,255,255,0.8)' }}>Step {stepId}</span>
+      </div>
       <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
       {stepDesc && (
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
@@ -855,9 +957,9 @@ export default function StepPage() {
 
   if (stepId === '9') {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '900px' }}>
+        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
           {step9Data
             ? <Step9Display {...step9Data} />
             : <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
@@ -865,26 +967,28 @@ export default function StepPage() {
               </div>
           }
         </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
     )
   }
 
   if (stepId === '14' && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
+        <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
         </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
     )
   }
 
   if (isPainPointStep && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
+        <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <PainPointStepEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -892,12 +996,13 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
     )
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {header}
 
       {/* Two-column layout (generic + Step 4 steps) */}
@@ -1156,6 +1261,7 @@ export default function StepPage() {
           )}
         </div>
       </div>
+      <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
     </div>
   )
 }
