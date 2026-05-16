@@ -103,22 +103,99 @@ async function handleDraft(req: NextRequest): Promise<Response> {
 
   const contextPacket = await resolveContextPacket(stepId, workspaceId, serverFetcher)
 
-  // Build system prompt
-  const prerequisiteBlock = contextPacket.prerequisites.length > 0
-    ? contextPacket.prerequisites.map(p =>
-        `### Step ${p.step_id} (hop ${p.hop_distance}, status: ${p.status})\n${JSON.stringify(p.content, null, 2)}`
-      ).join('\n\n')
-    : 'No prerequisites available.'
+  // ── Step 4: fetch DCP Stage 1 summary (not in step_output — lives in dcp_analysis) ──
+  let dcpStage1Summary = ''
+  if (stepId === '4') {
+    try {
+      const { data: dcpRow } = await supabase
+        .from('dcp_analysis')
+        .select('stage_summaries')
+        .eq('org_id', workspaceId)
+        .maybeSingle()
+      if (dcpRow) {
+        const summaries = (dcpRow as Record<string, unknown>)['stage_summaries'] as
+          Array<{ stage_number: number; summary: string }> | null
+        const stage1 = summaries?.find(s => s.stage_number === 1)
+        if (stage1) dcpStage1Summary = stage1.summary
+      }
+    } catch { /* non-fatal — proceed with lower confidence */ }
+  }
 
-  const missingBlock = contextPacket.missing_prerequisites.length > 0
-    ? `Missing prerequisite steps: ${contextPacket.missing_prerequisites.join(', ')}`
-    : ''
+  // ── Build system prompt ───────────────────────────────────────────────────────
 
-  const provisionalNote = contextPacket.is_provisional
-    ? 'NOTE: Some prerequisite data is not yet approved — treat this draft as provisional.'
-    : ''
+  let systemPrompt: string
 
-  const systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist.
+  if (stepId === '4') {
+    // Extract Step 1 and Step 3 content from prerequisites
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step3 = contextPacket.prerequisites.find(p => p.step_id === '3')
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step3Text = step3 ? JSON.stringify(step3.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write Step 4 — The Problem — for this workspace.
+
+The Problem is the endemic problem buyers experience in their market, independent of any vendor. It is a structural condition that exists whether or not the company's product exists. State it from the buyer's perspective.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<2-4 sentence endemic problem statement>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": [],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+RULES FOR THE DRAFT:
+- Write 2-4 sentences, no more. Plain prose, no bullets, no questions, no placeholders.
+- Write from the buyer's perspective — do not mention the company's product or solution.
+- Draft directly from the available context below. Do not ask for more information.
+- Be specific to the industry and buyer roles shown. Avoid generic statements.
+
+CONFIDENCE SCORING:
+- 71-100: DCP Stage 1 summary is present and specific; company profile is complete
+- 41-70: DCP Stage 1 present but thin, or company profile is partially complete
+- 0-40: No DCP data available; draft is speculative from company profile alone
+
+PRIMARY SOURCE — DCP Map, Stage 1 (Need Recognition):
+${dcpStage1Summary || 'Not yet available — draft from company profile with low confidence.'}
+
+SUPPORTING CONTEXT — Step 1 (What the company sells):
+${step1Text}
+
+SUPPORTING CONTEXT — Step 3 (Key decision makers):
+${step3Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}
+
+In the "assumptions" array always include these four entries in addition to any data assumptions:
+- "Step 5 (Root Cause) will refine the specific triggers and conditions that create this problem"
+- "Step 6 (Effect) will surface the downstream business consequences if the problem goes unsolved"
+- "Step 7 (Realization) will define the moment buyers recognise they have this problem"
+- "Step 8 (Solution Criteria) will establish what an ideal resolution looks like to the buyer"`
+  } else {
+    // Generic prompt for all other steps
+    const prerequisiteBlock = contextPacket.prerequisites.length > 0
+      ? contextPacket.prerequisites.map(p =>
+          `### Step ${p.step_id} (hop ${p.hop_distance}, status: ${p.status})\n${JSON.stringify(p.content, null, 2)}`
+        ).join('\n\n')
+      : 'No prerequisites available.'
+
+    const missingBlock = contextPacket.missing_prerequisites.length > 0
+      ? `Missing prerequisite steps: ${contextPacket.missing_prerequisites.join(', ')}`
+      : ''
+
+    const provisionalNote = contextPacket.is_provisional
+      ? 'NOTE: Some prerequisite data is not yet approved — treat this draft as provisional.'
+      : ''
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist.
 
 You are helping complete Step: "${stepTitle}"
 Description: ${stepDescription || 'No description provided.'}
@@ -147,7 +224,8 @@ Confidence scoring:
 - 41-70: some prerequisites missing or unapproved, draft involves assumptions
 - 0-40: major prerequisites missing, draft is highly speculative
 
-Be specific, actionable, and grounded in the prerequisite data. Do not hallucinate facts not present in the context.`
+Be specific, actionable, and grounded in the prerequisite data. Do not hallucinate facts not present in the context. Draft directly — do not ask the user for more information.`
+  }
 
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
