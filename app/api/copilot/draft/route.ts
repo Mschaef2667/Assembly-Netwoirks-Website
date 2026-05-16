@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import Anthropic from '@anthropic-ai/sdk'
-import { resolveContextPacket } from '@/lib/context/resolveContextPacket'
+import { resolveContextPacket, type ContextFetcher } from '@/lib/context/resolveContextPacket'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,8 +70,38 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
   }
 
-  // Resolve context packet (prerequisites)
-  const contextPacket = await resolveContextPacket(stepId, workspaceId)
+  // Resolve context packet using the authenticated server-side supabase client.
+  // The default fetcher in resolveContextPacket uses the browser client, which has
+  // no auth context in a server route and would fail RLS checks.
+  const serverFetcher: ContextFetcher = {
+    async fetchDirectDeps(sid) {
+      const { data } = await supabase
+        .from('step_dependency')
+        .select('prerequisite_step_id')
+        .eq('step_id', sid)
+      return (data ?? []) as { prerequisite_step_id: string }[]
+    },
+    async fetchIndirectDeps(stepIds) {
+      if (stepIds.length === 0) return []
+      const { data } = await supabase
+        .from('step_dependency')
+        .select('prerequisite_step_id')
+        .in('step_id', stepIds)
+      return (data ?? []) as { prerequisite_step_id: string }[]
+    },
+    async fetchOutputs(depIds, workspaceId: string) {
+      if (depIds.length === 0) return []
+      const { data } = await supabase
+        .from('step_output')
+        .select('step_id, content, status, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', depIds)
+        .order('version', { ascending: false })
+      return (data ?? []) as { step_id: string; content: Record<string, unknown>; status: string; version: number }[]
+    },
+  }
+
+  const contextPacket = await resolveContextPacket(stepId, workspaceId, serverFetcher)
 
   // Build system prompt
   const prerequisiteBlock = contextPacket.prerequisites.length > 0
