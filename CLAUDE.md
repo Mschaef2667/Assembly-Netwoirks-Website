@@ -51,6 +51,9 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [ ] Wire copilot_run Supabase writes after every Claude API call
 - [ ] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
 
+## Phase 3 Deliverables
+- [ ] DCP Infographic generator: After Gate 1 approval, generate a visual horizontal flow diagram of the 7 DCP stages as a React/SVG component. Each stage shows stage name, 2-3 key insights from the Copilot summary, confidence score badge, and which C3 steps it feeds into. Styled in Assembly Navy and Signal Orange. Exportable as PNG via canvas API. Route: /dashboard/intelligence/dcp-map/infographic
+
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
 - /dashboard/company-profile → Company Profile wizard (done)
