@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
+import Step14Editor from '@/components/journeys/Step14Editor'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -863,6 +864,17 @@ export default function StepPage() {
                 <Loader2 size={28} className="animate-spin" style={{ color: '#6B7280' }} />
               </div>
           }
+        </div>
+      </div>
+    )
+  }
+
+  if (stepId === '14' && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
+          <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
         </div>
       </div>
     )
