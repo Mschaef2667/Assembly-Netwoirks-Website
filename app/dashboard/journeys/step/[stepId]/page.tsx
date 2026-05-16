@@ -40,6 +40,20 @@ interface Step4Content {
   active_count: number
 }
 
+// Step 9 types
+interface DcpStageSummary {
+  stage_number: number
+  stage_name: string
+  summary: string
+  confidence_score: number
+}
+
+interface Step9State {
+  gateApproved: boolean
+  stage: DcpStageSummary | null
+  updatedAt: string
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTOSAVE_DELAY_MS = 1200
@@ -306,6 +320,98 @@ function Step4Editor({
   )
 }
 
+// ── Step 9 display ────────────────────────────────────────────────────────────
+
+function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
+  if (!gateApproved) {
+    return (
+      <div style={{
+        padding: '16px 20px',
+        backgroundColor: '#FEF3C7',
+        border: '1px solid #FCD34D',
+        borderRadius: '10px',
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'flex-start',
+      }}>
+        <AlertTriangle size={18} style={{ color: '#D97706', flexShrink: 0, marginTop: '1px' }} />
+        <div>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', margin: '0 0 2px' }}>
+            Gate 1 has not been approved yet
+          </p>
+          <p style={{ fontSize: '12px', color: '#78350F', margin: 0 }}>
+            Complete the Intelligence section first to unlock this step.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!stage) {
+    return (
+      <div style={{
+        ...PANEL_CARD,
+        color: '#6B7280',
+        fontSize: '14px',
+      }}>
+        No Stage 3 data found in your DCP analysis.
+      </div>
+    )
+  }
+
+  const score = stage.confidence_score
+  const badgeColor = score >= 70 ? '#15803D' : score >= 40 ? '#92400E' : '#991B1B'
+  const badgeBg   = score >= 70 ? '#DCFCE7' : score >= 40 ? '#FEF3C7' : '#FEE2E2'
+  const badgeLabel = score >= 70 ? 'High' : score >= 40 ? 'Medium' : 'Low'
+
+  const formattedDate = updatedAt
+    ? new Date(updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '760px' }}>
+      {/* Stage header card */}
+      <div style={PANEL_CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+            Stage {stage.stage_number} — {stage.stage_name}
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              padding: '3px 10px', borderRadius: '999px',
+              backgroundColor: badgeBg, color: badgeColor,
+              fontSize: '12px', fontWeight: 700,
+            }}>
+              {badgeLabel} confidence — {score}/100
+            </span>
+            {formattedDate && (
+              <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                Updated {formattedDate}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <p style={{
+          fontSize: '14px',
+          lineHeight: '1.7',
+          color: '#0D0D0D',
+          margin: 0,
+          whiteSpace: 'pre-wrap',
+        }}>
+          {stage.summary}
+        </p>
+      </div>
+
+      {/* Read-only notice */}
+      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>
+        This data is pulled from your approved DCP analysis. To update it, re-run the analysis in the Intelligence section.
+      </p>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StepPage() {
@@ -319,6 +425,9 @@ export default function StepPage() {
   const [outputVersion, setOutputVersion] = useState(1)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [loading, setLoading] = useState(true)
+
+  // Step 9 state
+  const [step9Data, setStep9Data] = useState<Step9State | null>(null)
 
   // Step 4 state
   const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
@@ -417,6 +526,38 @@ export default function StepPage() {
             }
           } else {
             setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
+          }
+        }
+
+        // Step 9 — load approved DCP analysis, Stage 3
+        if (stepId === '9') {
+          const { data: dcpRow } = await supabase
+            .from('dcp_analysis')
+            .select('stage_summaries, updated_at')
+            .eq('org_id', wsId)
+            .eq('status', 'approved')
+            .maybeSingle()
+
+          if (!dcpRow) {
+            setStep9Data({ gateApproved: false, stage: null, updatedAt: '' })
+          } else {
+            const r = dcpRow as Record<string, unknown>
+            const summaries = r['stage_summaries']
+            let stage: DcpStageSummary | null = null
+            if (Array.isArray(summaries)) {
+              const raw = (summaries as Array<Record<string, unknown>>).find(
+                s => Number(s['stage_number']) === 3,
+              )
+              if (raw) {
+                stage = {
+                  stage_number: 3,
+                  stage_name: String(raw['stage_name'] ?? ''),
+                  summary: String(raw['summary'] ?? ''),
+                  confidence_score: Number(raw['confidence_score'] ?? 0),
+                }
+              }
+            }
+            setStep9Data({ gateApproved: true, stage, updatedAt: String(r['updated_at'] ?? '') })
           }
         }
       } catch {
@@ -710,6 +851,22 @@ export default function StepPage() {
       )}
     </header>
   )
+
+  if (stepId === '9') {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '900px' }}>
+          {step9Data
+            ? <Step9Display {...step9Data} />
+            : <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: '#6B7280' }} />
+              </div>
+          }
+        </div>
+      </div>
+    )
+  }
 
   if (isPainPointStep && workspaceId) {
     return (
