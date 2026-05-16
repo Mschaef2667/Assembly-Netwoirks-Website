@@ -273,6 +273,6 @@ create policy "<table>_update_own_org"
 
 ## Claude API
 Model: claude-sonnet-4-5
-Max tokens: 1000
+Max tokens: 1500
 Never hardcode API key
 Always write to copilot_run after every call
