@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
 import {
   Building2,
   Target,
@@ -33,6 +35,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [logoError, setLogoError] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -46,9 +49,20 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="px-6 py-8 border-b border-white/10">
-        <span className="text-white font-serif text-xl font-semibold tracking-tight">
-          Assembly AI
-        </span>
+        <Link href="/dashboard">
+          {logoError ? (
+            <span style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '16px' }}>Assembly AI</span>
+          ) : (
+            <Image
+              src="/images/logo.png"
+              alt="Assembly AI"
+              width={160}
+              height={40}
+              style={{ maxHeight: '40px', width: 'auto' }}
+              onError={() => setLogoError(true)}
+            />
+          )}
+        </Link>
       </div>
 
       {/* Nav */}
