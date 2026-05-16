@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
+import ConfidenceBar from '@/components/copilot/ConfidenceBar'
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
 import Step14Editor from '@/components/journeys/Step14Editor'
 
@@ -508,6 +510,7 @@ export default function StepPage() {
   const [step9Data, setStep9Data] = useState<Step9State | null>(null)
 
   const [allSteps, setAllSteps] = useState<AllStep[]>([])
+  const [decayedConfidence, setDecayedConfidence] = useState<number | null>(null)
 
   // Step 4 state
   const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
@@ -576,7 +579,7 @@ export default function StepPage() {
         // Load latest step_output for this step + workspace
         const { data: outputRows } = await supabase
           .from('step_output')
-          .select('id, content, version')
+          .select('id, content, version, status, original_confidence, last_reviewed_at, created_at')
           .eq('workspace_id', wsId)
           .eq('step_id', stepId)
           .order('version', { ascending: false })
@@ -606,6 +609,34 @@ export default function StepPage() {
             }
           } else {
             setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
+          }
+
+          // Compute confidence decay
+          const decayInput = {
+            status: String(row['status'] ?? 'draft'),
+            original_confidence: typeof row['original_confidence'] === 'number' ? row['original_confidence'] : null,
+            last_reviewed_at: typeof row['last_reviewed_at'] === 'string' ? row['last_reviewed_at'] : null,
+            created_at: String(row['created_at'] ?? new Date().toISOString()),
+          }
+          const decayed = calculateDecayedConfidence(decayInput)
+          setDecayedConfidence(decayed)
+
+          // Log to confidence_decay_log only when decay was applied
+          if (decayed !== null && decayed !== decayInput.original_confidence) {
+            const refDate = decayInput.last_reviewed_at ?? decayInput.created_at
+            const decayDays = Math.max(0, Math.floor(
+              (Date.now() - Date.parse(refDate)) / (1000 * 60 * 60 * 24),
+            ))
+            try {
+              await supabase.from('confidence_decay_log').insert({
+                workspace_id: wsId,
+                step_id: stepId,
+                original_confidence: decayInput.original_confidence,
+                decayed_confidence: decayed,
+                decay_days: decayDays,
+                logged_at: new Date().toISOString(),
+              })
+            } catch { /* non-fatal — logging must never break the UI */ }
           }
         }
 
@@ -951,6 +982,11 @@ export default function StepPage() {
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
           {stepDesc}
         </p>
+      )}
+      {decayedConfidence !== null && (
+        <div style={{ marginTop: '14px', maxWidth: '300px' }}>
+          <ConfidenceBar score={decayedConfidence} dark />
+        </div>
       )}
     </header>
   )
