@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle } from 'lucide-react'
+import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,9 +27,29 @@ interface CopilotOutput {
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
+// Step 4 types
+interface PainPoint {
+  index: number
+  title: string
+  description: string
+}
+
+interface Step4Content {
+  pain_points: PainPoint[]
+  active_count: number
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTOSAVE_DELAY_MS = 1200
+const STEP4_AUTOSAVE_DELAY_MS = 800
+
+const DEFAULT_PAIN_POINTS: PainPoint[] = [
+  { index: 1, title: '', description: '' },
+  { index: 2, title: '', description: '' },
+  { index: 3, title: '', description: '' },
+  { index: 4, title: '', description: '' },
+]
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +151,146 @@ function SaveIndicator({ state }: { state: SaveState }) {
   return <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>
 }
 
+// ── Step 4 Editor ─────────────────────────────────────────────────────────────
+
+interface Step4EditorProps {
+  painPoints: PainPoint[]
+  activeCount: number
+  activeTab: number
+  saveState: SaveState
+  onTabChange: (tab: number) => void
+  onTitleChange: (tab: number, title: string) => void
+  onDescriptionChange: (tab: number, description: string) => void
+  onAddPainPoint: () => void
+  onRemovePainPoint: () => void
+  onBlur: () => void
+}
+
+function Step4Editor({
+  painPoints, activeCount, activeTab, saveState,
+  onTabChange, onTitleChange, onDescriptionChange,
+  onAddPainPoint, onRemovePainPoint, onBlur,
+}: Step4EditorProps) {
+  const activePP = painPoints.find(pp => pp.index === activeTab) ?? painPoints[0]
+  const visibleTabs = painPoints.slice(0, activeCount)
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <label style={LABEL_STYLE}>Pain Points</label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <SaveIndicator state={saveState} />
+          {activeCount < 4 && (
+            <button
+              onClick={onAddPainPoint}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: '4px 12px', minHeight: '32px',
+                backgroundColor: '#0A1628', color: '#FFFFFF',
+                border: 'none', borderRadius: '6px',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              <Plus size={13} />
+              Add Pain Point
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {visibleTabs.map(pp => (
+          <button
+            key={pp.index}
+            onClick={() => onTabChange(pp.index)}
+            style={{
+              padding: '6px 16px', minHeight: '36px',
+              backgroundColor: activeTab === pp.index ? '#E8520A' : '#FFFFFF',
+              color: activeTab === pp.index ? '#FFFFFF' : '#0D0D0D',
+              border: `1px solid ${activeTab === pp.index ? '#E8520A' : '#E5E7EB'}`,
+              borderRadius: '6px',
+              fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            Pain Point {pp.index}
+          </button>
+        ))}
+      </div>
+
+      {/* Title input */}
+      <div style={{ marginBottom: '14px' }}>
+        <label style={{ ...LABEL_STYLE, display: 'block' }}>Title</label>
+        <input
+          type="text"
+          value={activePP?.title ?? ''}
+          onChange={e => onTitleChange(activeTab, e.target.value)}
+          onBlur={onBlur}
+          placeholder="e.g. Poor pipeline visibility"
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            border: '1px solid #9CA3AF',
+            borderRadius: '8px',
+            fontSize: '14px',
+            color: '#0D0D0D',
+            backgroundColor: '#FFFFFF',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {/* Description textarea */}
+      <div style={{ marginBottom: '14px' }}>
+        <label style={{ ...LABEL_STYLE, display: 'block' }}>Description</label>
+        <textarea
+          value={activePP?.description ?? ''}
+          onChange={e => onDescriptionChange(activeTab, e.target.value)}
+          onBlur={onBlur}
+          placeholder="Describe the pain point in 2–4 sentences. What does the buyer experience? What are the consequences?"
+          rows={5}
+          style={{
+            width: '100%',
+            padding: '12px 14px',
+            border: '1px solid #9CA3AF',
+            borderRadius: '8px',
+            fontSize: '14px',
+            lineHeight: '1.65',
+            color: '#0D0D0D',
+            backgroundColor: '#FFFFFF',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {/* Remove button — only shown on the highest tab when more than 1 pain point */}
+      {activeCount > 1 && activeTab === activeCount && (
+        <button
+          onClick={onRemovePainPoint}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '4px 12px', minHeight: '32px',
+            backgroundColor: 'transparent', color: '#DC2626',
+            border: '1px solid #FCA5A5', borderRadius: '6px',
+            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          <X size={12} />
+          Remove Pain Point {activeTab}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StepPage() {
@@ -145,6 +305,11 @@ export default function StepPage() {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [loading, setLoading] = useState(true)
 
+  // Step 4 state
+  const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
+  const [activeCount, setActiveCount] = useState(1)
+  const [activeTab, setActiveTab] = useState(1)
+
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [activeAction, setActiveAction] = useState<CopilotAction | null>(null)
   const [streamBuffer, setStreamBuffer] = useState('')
@@ -156,6 +321,8 @@ export default function StepPage() {
   // saveRef always closes over latest state so the debounced save is current
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const step4SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const step4SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Data load ───────────────────────────────────────────────────────────────
 
@@ -216,7 +383,26 @@ export default function StepPage() {
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
-          setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
+
+          if (stepId === '4') {
+            // Parse Step 4 pain point content
+            const pts = c?.['pain_points']
+            if (Array.isArray(pts)) {
+              const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map(pp => ({
+                index: Number(pp['index'] ?? 0),
+                title: String(pp['title'] ?? ''),
+                description: String(pp['description'] ?? ''),
+              }))
+              const merged: PainPoint[] = DEFAULT_PAIN_POINTS.map(def => {
+                const saved = parsed.find(p => p.index === def.index)
+                return saved ?? def
+              })
+              setPainPoints(merged)
+              setActiveCount(Math.max(1, Math.min(4, Number(c?.['active_count'] ?? parsed.length))))
+            }
+          } else {
+            setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
+          }
         }
       } catch {
         // non-fatal
@@ -227,7 +413,7 @@ export default function StepPage() {
     void load()
   }, [stepId])
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
+  // ── Auto-save (generic steps) ───────────────────────────────────────────────
 
   const persistContent = useCallback(async (text: string, wsId: string) => {
     setSaveState('saving')
@@ -286,6 +472,86 @@ export default function StepPage() {
     void saveRef.current()
   }
 
+  // ── Auto-save (Step 4) ──────────────────────────────────────────────────────
+
+  const persistStep4Content = useCallback(async (points: PainPoint[], count: number, wsId: string) => {
+    setSaveState('saving')
+    try {
+      const contentPayload: Step4Content = { pain_points: points, active_count: count }
+      const now = new Date().toISOString()
+
+      if (outputId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content: contentPayload, last_saved_at: now, last_updated_at: now })
+          .eq('id', outputId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: outputVersion,
+            status: 'draft',
+            content: contentPayload,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
+      }
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2500)
+    } catch {
+      setSaveState('error')
+    }
+  }, [outputId, outputVersion, stepId])
+
+  // Keep step4SaveRef current each render
+  step4SaveRef.current = async () => {
+    if (workspaceId) await persistStep4Content(painPoints, activeCount, workspaceId)
+  }
+
+  function scheduleStep4Save() {
+    if (step4SaveTimer.current) clearTimeout(step4SaveTimer.current)
+    step4SaveTimer.current = setTimeout(() => { void step4SaveRef.current() }, STEP4_AUTOSAVE_DELAY_MS)
+  }
+
+  function handleStep4TitleChange(tab: number, title: string) {
+    setPainPoints(prev => prev.map(pp => pp.index === tab ? { ...pp, title } : pp))
+    scheduleStep4Save()
+  }
+
+  function handleStep4DescriptionChange(tab: number, description: string) {
+    setPainPoints(prev => prev.map(pp => pp.index === tab ? { ...pp, description } : pp))
+    scheduleStep4Save()
+  }
+
+  function handleAddPainPoint() {
+    const newCount = Math.min(activeCount + 1, 4)
+    setActiveCount(newCount)
+    setActiveTab(newCount)
+    scheduleStep4Save()
+  }
+
+  function handleRemovePainPoint() {
+    if (activeCount <= 1) return
+    const newCount = activeCount - 1
+    setPainPoints(prev => prev.map(pp => pp.index === activeCount ? { ...pp, title: '', description: '' } : pp))
+    setActiveCount(newCount)
+    setActiveTab(newCount)
+    scheduleStep4Save()
+  }
+
+  function handleStep4Blur() {
+    if (step4SaveTimer.current) clearTimeout(step4SaveTimer.current)
+    void step4SaveRef.current()
+  }
+
   // ── Copilot action ──────────────────────────────────────────────────────────
 
   async function runCopilot(action: CopilotAction) {
@@ -303,6 +569,13 @@ export default function StepPage() {
       explain: 'Explain the reasoning behind the current content. Return the same JSON shape with an explanation in the draft field.',
     }
 
+    const currentContent = stepId === '4'
+      ? painPoints
+          .slice(0, activeCount)
+          .map(pp => `Pain Point ${pp.index}:\nTitle: ${pp.title}\nDescription: ${pp.description}`)
+          .join('\n\n')
+      : content
+
     try {
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
@@ -312,7 +585,7 @@ export default function StepPage() {
           workspaceId,
           stepTitle: stepDef?.title ?? `Step ${stepId}`,
           stepDescription: stepDef?.description ?? '',
-          currentContent: content,
+          currentContent,
           preferredModel,
           actionHint: actionPrompts[action],
         }),
@@ -344,13 +617,11 @@ export default function StepPage() {
         return
       }
 
-      // Parse JSON from streamed text
       try {
         const parsed = JSON.parse(accumulated) as CopilotOutput
         setCopilotOutput(parsed)
         setStreamBuffer('')
       } catch {
-        // Show raw output if not valid JSON
         setCopilotOutput({
           draft: accumulated,
           confidence: 0,
@@ -370,6 +641,21 @@ export default function StepPage() {
 
   function applyDraft() {
     if (!copilotOutput) return
+
+    if (stepId === '4') {
+      const draft = copilotOutput.draft.trim()
+      // Extract first sentence as title (capped at 70 chars)
+      const match = draft.match(/^([^.!?]+[.!?])/)
+      const rawTitle = match ? match[1].trim() : draft.split(' ').slice(0, 8).join(' ')
+      const title = rawTitle.length > 70 ? rawTitle.slice(0, 70) + '…' : rawTitle
+      const newPoints = painPoints.map(pp =>
+        pp.index === activeTab ? { ...pp, title, description: draft } : pp
+      )
+      setPainPoints(newPoints)
+      scheduleStep4Save()
+      return
+    }
+
     setContent(copilotOutput.draft)
     scheduleSave()
   }
@@ -386,6 +672,7 @@ export default function StepPage() {
 
   const stepTitle = stepDef?.title ?? `Step ${stepId}`
   const stepDesc = stepDef?.description ?? ''
+  const isStep4 = stepId === '4'
 
   return (
     <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
@@ -407,31 +694,50 @@ export default function StepPage() {
 
         {/* ── Left: Editor ─────────────────────────────────────────────────── */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <label style={LABEL_STYLE}>Your Content</label>
-            <SaveIndicator state={saveState} />
-          </div>
-          <textarea
-            value={content}
-            onChange={handleContentChange}
-            onBlur={handleBlur}
-            placeholder="Start writing, or use the Copilot panel to generate a first draft…"
-            style={{
-              width: '100%',
-              minHeight: '420px',
-              padding: '16px',
-              border: '1px solid #9CA3AF',
-              borderRadius: '10px',
-              fontSize: '14px',
-              lineHeight: '1.65',
-              color: '#0D0D0D',
-              backgroundColor: '#FFFFFF',
-              resize: 'vertical',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              outline: 'none',
-            }}
-          />
+          {isStep4 ? (
+            <div style={PANEL_CARD}>
+              <Step4Editor
+                painPoints={painPoints}
+                activeCount={activeCount}
+                activeTab={activeTab}
+                saveState={saveState}
+                onTabChange={setActiveTab}
+                onTitleChange={handleStep4TitleChange}
+                onDescriptionChange={handleStep4DescriptionChange}
+                onAddPainPoint={handleAddPainPoint}
+                onRemovePainPoint={handleRemovePainPoint}
+                onBlur={handleStep4Blur}
+              />
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <label style={LABEL_STYLE}>Your Content</label>
+                <SaveIndicator state={saveState} />
+              </div>
+              <textarea
+                value={content}
+                onChange={handleContentChange}
+                onBlur={handleBlur}
+                placeholder="Start writing, or use the Copilot panel to generate a first draft…"
+                style={{
+                  width: '100%',
+                  minHeight: '420px',
+                  padding: '16px',
+                  border: '1px solid #9CA3AF',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  lineHeight: '1.65',
+                  color: '#0D0D0D',
+                  backgroundColor: '#FFFFFF',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                }}
+              />
+            </>
+          )}
 
           {/* Missing prerequisites banner */}
           {missingPrereqs.length > 0 && (
@@ -545,7 +851,9 @@ export default function StepPage() {
                 </div>
 
                 {/* Draft */}
-                <p style={{ ...LABEL_STYLE, marginBottom: '6px' }}>Proposed draft</p>
+                <p style={{ ...LABEL_STYLE, marginBottom: '6px' }}>
+                  {isStep4 ? `Proposed draft for Pain Point ${activeTab}` : 'Proposed draft'}
+                </p>
                 <div style={{
                   fontSize: '13px',
                   color: '#0D0D0D',
@@ -574,7 +882,7 @@ export default function StepPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Apply to editor
+                  {isStep4 ? `Apply to Pain Point ${activeTab}` : 'Apply to editor'}
                 </button>
               </div>
 
