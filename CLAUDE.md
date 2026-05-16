@@ -44,7 +44,7 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [x] Supabase middleware auth guard → /auth/login
 - [x] Administration page: users, company settings, company profile link (app/dashboard/administration/)
 
-## Sprint 2 — IN PROGRESS
+## Sprint 2 — COMPLETE
 - [x] Build resolveContextPacket() in lib/context/resolveContextPacket.ts
 - [x] Intelligence section: survey builder, response import, DCP map + Gate 1 (app/dashboard/intelligence/)
 - [x] AI model selector in Administration page (org_admin only, stored in organizations.preferred_model)
@@ -55,13 +55,18 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [x] Step 4 Copilot prompt rewrite: drafts directly from DCP Stage 1 + company profile, no qualifying questions
 - [x] Wire copilot_run Supabase writes after every Claude API call
 - [x] Build Step 4 Copilot integration in app/dashboard/journeys/step/[stepId]/page.tsx
-- [ ] Journeys index page (app/dashboard/journeys/page.tsx) — lists all 38 steps by section
-- [ ] Step page navigation: previous / next step links on step/[stepId] page
-- [ ] Build Copilot output display component in components/copilot/CopilotOutput.tsx
-- [ ] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
+- [x] Journeys index page (app/dashboard/journeys/page.tsx) — lists all 38 steps by section
+- [x] Step page navigation: previous / next step links on step/[stepId] page
+- [x] Build Copilot output display component in components/copilot/CopilotOutput.tsx
+- [x] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
 
-## Phase 3 Deliverables
-- [ ] DCP Infographic generator: After Gate 1 approval, generate a visual horizontal flow diagram of the 7 DCP stages as a React/SVG component. Each stage shows stage name, 2-3 key insights from the Copilot summary, confidence score badge, and which C3 steps it feeds into. Styled in Assembly Navy and Signal Orange. Exportable as PNG via canvas API. Route: /dashboard/intelligence/dcp-map/infographic
+## Sprint 3 — IN PROGRESS
+- [ ] Target Markets & Offers section (app/dashboard/target-markets/)
+- [ ] ICP definition per target market segment
+- [ ] Offer alignment per ICP
+- [ ] Wire ICP + offer context into PainPointStepEditor Copilot prompts
+- [ ] Message blending step (end of Journeys)
+- [ ] DCP Infographic generator (Phase 3)
 
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
