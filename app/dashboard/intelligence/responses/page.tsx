@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, Link as LinkIcon, BarChart2 } from 'lucide-react'
+import { Loader2, Upload, Link as LinkIcon, BarChart2, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,6 +51,18 @@ function extractSheetId(url: string): string | null {
   return match ? match[1] : null
 }
 
+// Detect [Stage X - ...] prefix in column headers and return header → stage_number map
+function extractStageMappings(headers: string[]): Record<string, number> {
+  const mapping: Record<string, number> = {}
+  for (const h of headers) {
+    const match = h.match(/^\[Stage\s+(\d+)\s+-/)
+    if (match) {
+      mapping[h] = parseInt(match[1], 10)
+    }
+  }
+  return mapping
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ResponseImportPage() {
@@ -62,15 +74,18 @@ export default function ResponseImportPage() {
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [rawCsv, setRawCsv] = useState('')
+  const [stageMapping, setStageMapping] = useState<Record<string, number>>({})
 
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState<number | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [loadingInit, setLoadingInit] = useState(true)
 
+  // FIX: import panel stays visible even when data exists
+  const [importPanelOpen, setImportPanelOpen] = useState(true)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load org and latest saved responses
   useEffect(() => {
     async function init() {
       try {
@@ -84,7 +99,7 @@ export default function ResponseImportPage() {
 
         const { data: existing } = await supabase
           .from('dcp_imports')
-          .select('raw_csv, parsed_responses, response_count')
+          .select('raw_csv, parsed_responses, response_count, stage_mapping')
           .eq('org_id', oid)
           .order('imported_at', { ascending: false })
           .limit(1)
@@ -99,6 +114,13 @@ export default function ResponseImportPage() {
             setRows(r)
             setRawCsv(csv)
             setSavedCount(Number(row['response_count'] ?? r.length))
+            const savedMapping = row['stage_mapping']
+            setStageMapping(
+              savedMapping && typeof savedMapping === 'object' && !Array.isArray(savedMapping)
+                ? (savedMapping as Record<string, number>)
+                : extractStageMappings(h)
+            )
+            setImportPanelOpen(false)
           }
         }
       } catch {
@@ -110,16 +132,15 @@ export default function ResponseImportPage() {
     void init()
   }, [])
 
-  // ── Load CSV from parsed text ───────────────────────────────────────────────
-
   function loadCsv(text: string) {
     const { headers: h, rows: r } = parseCSV(text)
     setHeaders(h)
     setRows(r)
     setRawCsv(text)
+    setStageMapping(extractStageMappings(h))
+    setSavedCount(null)
+    setImportPanelOpen(false)
   }
-
-  // ── Google Sheets fetch ─────────────────────────────────────────────────────
 
   async function fetchSheet() {
     setSheetError(null)
@@ -145,8 +166,6 @@ export default function ResponseImportPage() {
     }
   }
 
-  // ── File upload ─────────────────────────────────────────────────────────────
-
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -158,8 +177,6 @@ export default function ResponseImportPage() {
     reader.readAsText(file)
   }
 
-  // ── Save to Supabase ────────────────────────────────────────────────────────
-
   async function saveResponses() {
     if (!orgId || rows.length === 0) return
     setSaving(true)
@@ -170,6 +187,7 @@ export default function ResponseImportPage() {
         raw_csv: rawCsv,
         parsed_responses: rows,
         response_count: rows.length,
+        stage_mapping: stageMapping,
         imported_at: new Date().toISOString(),
       })
       if (error) throw error
@@ -180,8 +198,6 @@ export default function ResponseImportPage() {
       setSaving(false)
     }
   }
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loadingInit) {
     return (
@@ -204,9 +220,24 @@ export default function ResponseImportPage() {
 
       <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
 
-        {/* Import options */}
-        {!hasData && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
+        <div style={{ marginBottom: '28px' }}>
+
+          {hasData && (
+            <button
+              onClick={() => setImportPanelOpen(prev => !prev)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '13px', fontWeight: 600, color: '#6B7280',
+                padding: '0 0 12px',
+              }}
+            >
+              {importPanelOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {importPanelOpen ? 'Hide import options' : 'Re-import data'}
+            </button>
+          )}
+
+          <div style={{ display: importPanelOpen ? 'grid' : 'none', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
             {/* Google Sheets */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
@@ -221,12 +252,14 @@ export default function ResponseImportPage() {
                 type="url"
                 value={sheetUrl}
                 onChange={e => setSheetUrl(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && sheetUrl.trim()) void fetchSheet() }}
                 placeholder="https://docs.google.com/spreadsheets/d/..."
                 style={{
                   width: '100%', padding: '10px 12px', fontSize: '13px',
                   color: '#0D0D0D', backgroundColor: '#FFFFFF',
                   border: '1px solid #9CA3AF', borderRadius: '8px',
                   outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
+                  position: 'relative', zIndex: 1, pointerEvents: 'auto', cursor: 'text',
                 }}
               />
               {sheetError && (
@@ -279,9 +312,8 @@ export default function ResponseImportPage() {
               </button>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Response count + status */}
         {hasData && (
           <div style={{
             backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '16px 20px',
@@ -293,12 +325,17 @@ export default function ResponseImportPage() {
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
                 {rows.length} response{rows.length !== 1 ? 's' : ''} imported
               </p>
+              {Object.keys(stageMapping).length > 0 && (
+                <p style={{ fontSize: '12px', color: '#E8520A', margin: '2px 0 0' }}>
+                  {Object.keys(stageMapping).length} column{Object.keys(stageMapping).length !== 1 ? 's' : ''} auto-mapped to DCP stages
+                </p>
+              )}
               {savedCount !== null && savedCount === rows.length && (
                 <p style={{ fontSize: '12px', color: '#16A34A', margin: '2px 0 0' }}>Saved to workspace</p>
               )}
             </div>
             <button
-              onClick={() => { setHeaders([]); setRows([]); setRawCsv(''); setSavedCount(null) }}
+              onClick={() => { setHeaders([]); setRows([]); setRawCsv(''); setSavedCount(null); setStageMapping({}); setSheetUrl(''); setImportPanelOpen(true) }}
               style={{
                 minHeight: '36px', padding: '0 14px', fontSize: '13px', fontWeight: 500,
                 border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
@@ -322,7 +359,8 @@ export default function ResponseImportPage() {
               {saving && <Loader2 size={14} className="animate-spin" />}
               {savedCount === rows.length ? 'Saved' : 'Save Responses'}
             </button>
-            <a
+            
+<a
               href="/dashboard/intelligence/dcp-map"
               style={{
                 minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center',
@@ -339,7 +377,6 @@ export default function ResponseImportPage() {
           <p style={{ fontSize: '13px', color: '#EF4444', marginBottom: '12px' }}>{saveError}</p>
         )}
 
-        {/* Data table */}
         {hasData && headers.length > 0 && (
           <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto', maxHeight: '520px', overflowY: 'auto' }}>

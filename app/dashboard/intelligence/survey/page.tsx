@@ -53,7 +53,9 @@ function buildCSV(questions: DcpQuestion[], selectedIds: Set<string>, customized
   for (const q of questions) {
     if (!selectedIds.has(q.id)) continue
     const text = customized.get(q.id) ?? q.question_text
-    const escapedText = `"${text.replace(/"/g, '""')}"`
+    // Prefix with stage label so the response importer can auto-map columns back to stages
+    const prefixed = `[Stage ${q.stage_number} - ${q.stage_name}] ${text}`
+    const escapedText = `"${prefixed.replace(/"/g, '""')}"`
     if (q.sub_bullets.length === 0) {
       rows.push(`${q.stage_number},"${q.stage_name}",${escapedText},`)
     } else {
