@@ -18,8 +18,13 @@ interface DcpMapRow {
   stage_summaries: StageSummary[] | null
   overall_confidence: number | null
   status: string
+  analysis_version: number
   submitted_at: string | null
   approved_at: string | null
+}
+
+interface ImportBatch {
+  response_count: number
 }
 
 type UserRole = string
@@ -85,12 +90,20 @@ export default function DcpMapPage() {
         setUserRole(String(r['role'] ?? ''))
 
         const [responsesRes, dcpRes] = await Promise.all([
-          supabase.from('dcp_imports').select('response_count').eq('org_id', oid).order('imported_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('dcp_imports').select('batches, response_count').eq('org_id', oid).order('imported_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('dcp_analysis').select('*').eq('org_id', oid).maybeSingle(),
         ])
 
         const rcRow = responsesRes.data as Record<string, unknown> | null
-        setResponseCount(Number(rcRow?.['response_count'] ?? 0))
+        if (rcRow) {
+          const batchesData = rcRow['batches']
+          if (Array.isArray(batchesData) && batchesData.length > 0) {
+            const total = (batchesData as ImportBatch[]).reduce((sum, b) => sum + (b.response_count ?? 0), 0)
+            setResponseCount(total)
+          } else {
+            setResponseCount(Number(rcRow['response_count'] ?? 0))
+          }
+        }
 
         const dcpRow = dcpRes.data as Record<string, unknown> | null
         if (dcpRow) {
@@ -99,6 +112,7 @@ export default function DcpMapPage() {
             stage_summaries: (dcpRow['stage_summaries'] as StageSummary[] | null),
             overall_confidence: dcpRow['overall_confidence'] != null ? Number(dcpRow['overall_confidence']) : null,
             status: String(dcpRow['status'] ?? 'draft'),
+            analysis_version: Number(dcpRow['analysis_version'] ?? 1),
             submitted_at: dcpRow['submitted_at'] as string | null,
             approved_at: dcpRow['approved_at'] as string | null,
           }
@@ -150,14 +164,15 @@ export default function DcpMapPage() {
         stage_summaries: StageSummary[]
         overall_confidence: number
         dcp_map_id: string
+        analysis_version: number
       }
       const sm = new Map<number, StageSummary>()
       for (const s of data.stage_summaries) sm.set(s.stage_number, s)
       setSummaries(sm)
       setOpenStages(new Set(data.stage_summaries.map(s => s.stage_number)))
       setDcpMap(prev => prev
-        ? { ...prev, id: data.dcp_map_id, stage_summaries: data.stage_summaries, overall_confidence: data.overall_confidence, status: 'draft' }
-        : { id: data.dcp_map_id, stage_summaries: data.stage_summaries, overall_confidence: data.overall_confidence, status: 'draft', submitted_at: null, approved_at: null }
+        ? { ...prev, id: data.dcp_map_id, stage_summaries: data.stage_summaries, overall_confidence: data.overall_confidence, analysis_version: data.analysis_version, status: 'draft' }
+        : { id: data.dcp_map_id, stage_summaries: data.stage_summaries, overall_confidence: data.overall_confidence, analysis_version: data.analysis_version, status: 'draft', submitted_at: null, approved_at: null }
       )
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : 'Analysis failed')
@@ -306,6 +321,14 @@ export default function DcpMapPage() {
             <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
               Based on {responseCount} response{responseCount !== 1 ? 's' : ''}
             </p>
+            {dcpMap?.analysis_version && dcpMap.analysis_version > 1 && (
+              <span style={{
+                fontSize: '11px', fontWeight: 600, color: '#6B7280',
+                backgroundColor: '#F3F4F6', padding: '2px 8px', borderRadius: '999px',
+              }}>
+                v{dcpMap.analysis_version}
+              </span>
+            )}
           </div>
         )}
 

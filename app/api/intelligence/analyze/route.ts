@@ -20,6 +20,12 @@ interface AnalyzeResponse {
   stage_summaries: StageSummary[]
   overall_confidence: number
   dcp_map_id: string
+  analysis_version: number
+}
+
+interface ImportBatch {
+  parsed_responses: Record<string, string>[]
+  response_count: number
 }
 
 // ── Stage definitions (canonical) ─────────────────────────────────────────────
@@ -89,10 +95,10 @@ async function handleAnalyze(req: NextRequest): Promise<Response> {
     ? String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5')
     : 'claude-sonnet-4-5'
 
-  // Load latest survey responses
+  // Load cumulative import batches (fall back to legacy flat columns if batches is empty)
   const { data: responseRow } = await supabase
     .from('dcp_imports')
-    .select('parsed_responses, response_count')
+    .select('batches, parsed_responses, response_count')
     .eq('org_id', orgId)
     .order('imported_at', { ascending: false })
     .limit(1)
@@ -103,10 +109,27 @@ async function handleAnalyze(req: NextRequest): Promise<Response> {
   }
 
   const row = responseRow as Record<string, unknown>
-  const parsedResponses = row['parsed_responses']
-  const responseCount = Number(row['response_count'] ?? 0)
+  const batchesData = row['batches']
 
-  const responseSample = JSON.stringify(parsedResponses).slice(0, 8000)
+  let allResponses: Record<string, string>[]
+  let responseCount: number
+
+  if (Array.isArray(batchesData) && batchesData.length > 0) {
+    const batches = batchesData as ImportBatch[]
+    allResponses = batches.flatMap(b => b.parsed_responses ?? [])
+    responseCount = allResponses.length
+  } else {
+    // Legacy: single flat import
+    const legacyResponses = row['parsed_responses']
+    allResponses = Array.isArray(legacyResponses) ? (legacyResponses as Record<string, string>[]) : []
+    responseCount = Number(row['response_count'] ?? allResponses.length)
+  }
+
+  if (allResponses.length === 0) {
+    return NextResponse.json({ error: 'No survey responses found for this workspace' }, { status: 422 })
+  }
+
+  const responseSample = JSON.stringify(allResponses).slice(0, 8000)
 
   // Build prompt
   const systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market analyst.
@@ -191,19 +214,22 @@ Be specific and actionable. Identify patterns, common themes, and notable outlie
 
   const { stage_summaries, overall_confidence } = parsed
 
-  // Upsert into dcp_maps
+  // Upsert into dcp_analysis, incrementing analysis_version on each re-run
   const now = new Date().toISOString()
   let dcpMapId = ''
+  let analysisVersion = 1
 
   const { data: existing } = await supabase
-    .from('dcp_analysis').select('id').eq('org_id', orgId).maybeSingle()
+    .from('dcp_analysis').select('id, analysis_version').eq('org_id', orgId).maybeSingle()
 
   if (existing) {
     const exRow = existing as Record<string, unknown>
     dcpMapId = String(exRow['id'] ?? '')
+    analysisVersion = Number(exRow['analysis_version'] ?? 1) + 1
     await supabase.from('dcp_analysis').update({
       stage_summaries,
       overall_confidence,
+      analysis_version: analysisVersion,
       status: 'draft',
       updated_at: now,
     }).eq('id', dcpMapId)
@@ -212,6 +238,7 @@ Be specific and actionable. Identify patterns, common themes, and notable outlie
       org_id: orgId,
       stage_summaries,
       overall_confidence,
+      analysis_version: 1,
       status: 'draft',
       created_at: now,
       updated_at: now,
@@ -219,6 +246,6 @@ Be specific and actionable. Identify patterns, common themes, and notable outlie
     if (inserted) dcpMapId = String((inserted as Record<string, unknown>)['id'] ?? '')
   }
 
-  const result: AnalyzeResponse = { stage_summaries, overall_confidence, dcp_map_id: dcpMapId }
+  const result: AnalyzeResponse = { stage_summaries, overall_confidence, dcp_map_id: dcpMapId, analysis_version: analysisVersion }
   return NextResponse.json(result)
 }

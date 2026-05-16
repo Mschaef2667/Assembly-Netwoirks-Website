@@ -1,13 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, Link as LinkIcon, BarChart2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Upload, Link as LinkIcon, BarChart2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ParsedRow {
   [column: string]: string
+}
+
+interface ImportBatch {
+  imported_at: string
+  source: 'google_sheets' | 'csv'
+  response_count: number
+  parsed_responses: ParsedRow[]
+  stage_mapping: Record<string, number>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,40 +59,48 @@ function extractSheetId(url: string): string | null {
   return match ? match[1] : null
 }
 
-// Detect [Stage X - ...] prefix in column headers and return header → stage_number map
 function extractStageMappings(headers: string[]): Record<string, number> {
   const mapping: Record<string, number> = {}
   for (const h of headers) {
     const match = h.match(/^\[Stage\s+(\d+)\s+-/)
-    if (match) {
-      mapping[h] = parseInt(match[1], 10)
-    }
+    if (match) mapping[h] = parseInt(match[1], 10)
   }
   return mapping
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
+  const [importRowId, setImportRowId] = useState<string | null>(null)
+
+  // Import form state
   const [sheetUrl, setSheetUrl] = useState('')
   const [fetchingSheet, setFetchingSheet] = useState(false)
   const [sheetError, setSheetError] = useState<string | null>(null)
 
-  const [headers, setHeaders] = useState<string[]>([])
-  const [rows, setRows] = useState<ParsedRow[]>([])
-  const [rawCsv, setRawCsv] = useState('')
-  const [stageMapping, setStageMapping] = useState<Record<string, number>>({})
+  // Pending (loaded, not yet saved) import
+  const [pendingHeaders, setPendingHeaders] = useState<string[]>([])
+  const [pendingRows, setPendingRows] = useState<ParsedRow[]>([])
+  const [pendingStageMapping, setPendingStageMapping] = useState<Record<string, number>>({})
+  const [pendingSource, setPendingSource] = useState<'google_sheets' | 'csv'>('csv')
 
+  // Saved batches (from DB)
+  const [batches, setBatches] = useState<ImportBatch[]>([])
   const [saving, setSaving] = useState(false)
-  const [savedCount, setSavedCount] = useState<number | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [loadingInit, setLoadingInit] = useState(true)
 
-  // FIX: import panel stays visible even when data exists
-  const [importPanelOpen, setImportPanelOpen] = useState(true)
-
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Load ─────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function init() {
@@ -99,7 +115,7 @@ export default function ResponseImportPage() {
 
         const { data: existing } = await supabase
           .from('dcp_imports')
-          .select('raw_csv, parsed_responses, response_count, stage_mapping')
+          .select('id, batches, parsed_responses, response_count, stage_mapping')
           .eq('org_id', oid)
           .order('imported_at', { ascending: false })
           .limit(1)
@@ -107,20 +123,33 @@ export default function ResponseImportPage() {
 
         if (existing) {
           const row = existing as Record<string, unknown>
-          const csv = String(row['raw_csv'] ?? '')
-          if (csv) {
-            const { headers: h, rows: r } = parseCSV(csv)
-            setHeaders(h)
-            setRows(r)
-            setRawCsv(csv)
-            setSavedCount(Number(row['response_count'] ?? r.length))
-            const savedMapping = row['stage_mapping']
-            setStageMapping(
-              savedMapping && typeof savedMapping === 'object' && !Array.isArray(savedMapping)
-                ? (savedMapping as Record<string, number>)
-                : extractStageMappings(h)
-            )
-            setImportPanelOpen(false)
+          const rowId = String(row['id'] ?? '')
+          setImportRowId(rowId)
+
+          const batchesData = row['batches']
+          if (Array.isArray(batchesData) && batchesData.length > 0) {
+            setBatches(batchesData as ImportBatch[])
+          } else {
+            // Migrate legacy flat row into a synthetic batch
+            const legacyResponses = row['parsed_responses']
+            const legacyCount = Number(row['response_count'] ?? 0)
+            const legacyMapping = row['stage_mapping']
+            if (Array.isArray(legacyResponses) && legacyResponses.length > 0) {
+              const legacyBatch: ImportBatch = {
+                imported_at: new Date().toISOString(),
+                source: 'csv',
+                response_count: legacyCount,
+                parsed_responses: legacyResponses as ParsedRow[],
+                stage_mapping:
+                  legacyMapping && typeof legacyMapping === 'object' && !Array.isArray(legacyMapping)
+                    ? (legacyMapping as Record<string, number>)
+                    : {},
+              }
+              setBatches([legacyBatch])
+              await supabase.from('dcp_imports').update({
+                batches: [legacyBatch],
+              }).eq('id', rowId)
+            }
           }
         }
       } catch {
@@ -132,15 +161,18 @@ export default function ResponseImportPage() {
     void init()
   }, [])
 
-  function loadCsv(text: string) {
+  // ── Load CSV ─────────────────────────────────────────────────────────────────
+
+  function loadCsv(text: string, source: 'google_sheets' | 'csv') {
     const { headers: h, rows: r } = parseCSV(text)
-    setHeaders(h)
-    setRows(r)
-    setRawCsv(text)
-    setStageMapping(extractStageMappings(h))
-    setSavedCount(null)
-    setImportPanelOpen(false)
+    setPendingHeaders(h)
+    setPendingRows(r)
+    setPendingStageMapping(extractStageMappings(h))
+    setPendingSource(source)
+    setSaveError(null)
   }
+
+  // ── Google Sheets fetch ───────────────────────────────────────────────────────
 
   async function fetchSheet() {
     setSheetError(null)
@@ -158,7 +190,7 @@ export default function ResponseImportPage() {
         return
       }
       const csv = await res.text()
-      loadCsv(csv)
+      loadCsv(csv, 'google_sheets')
     } catch (err) {
       setSheetError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -166,38 +198,66 @@ export default function ResponseImportPage() {
     }
   }
 
+  // ── File upload ───────────────────────────────────────────────────────────────
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = ev => {
       const text = ev.target?.result
-      if (typeof text === 'string') loadCsv(text)
+      if (typeof text === 'string') loadCsv(text, 'csv')
     }
     reader.readAsText(file)
   }
 
-  async function saveResponses() {
-    if (!orgId || rows.length === 0) return
+  // ── Save batch ────────────────────────────────────────────────────────────────
+
+  async function saveBatch() {
+    if (!orgId || pendingRows.length === 0) return
     setSaving(true)
     setSaveError(null)
     try {
-      const { error } = await supabase.from('dcp_imports').insert({
-        org_id: orgId,
-        raw_csv: rawCsv,
-        parsed_responses: rows,
-        response_count: rows.length,
-        stage_mapping: stageMapping,
+      const newBatch: ImportBatch = {
         imported_at: new Date().toISOString(),
-      })
-      if (error) throw error
-      setSavedCount(rows.length)
+        source: pendingSource,
+        response_count: pendingRows.length,
+        parsed_responses: pendingRows,
+        stage_mapping: pendingStageMapping,
+      }
+      const updatedBatches = [...batches, newBatch]
+      const totalCount = updatedBatches.reduce((sum, b) => sum + b.response_count, 0)
+
+      if (importRowId) {
+        const { error } = await supabase.from('dcp_imports')
+          .update({ batches: updatedBatches, response_count: totalCount })
+          .eq('id', importRowId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.from('dcp_imports')
+          .insert({
+            org_id: orgId,
+            batches: updatedBatches,
+            response_count: totalCount,
+            imported_at: new Date().toISOString(),
+          })
+          .select('id').single()
+        if (error) throw error
+        if (data) setImportRowId(String((data as Record<string, unknown>)['id'] ?? ''))
+      }
+
+      setBatches(updatedBatches)
+      setPendingHeaders([])
+      setPendingRows([])
+      setPendingStageMapping({})
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loadingInit) {
     return (
@@ -207,7 +267,10 @@ export default function ResponseImportPage() {
     )
   }
 
-  const hasData = rows.length > 0
+  const totalResponses = batches.reduce((sum, b) => sum + b.response_count, 0)
+  const hasBatches = batches.length > 0
+  const hasPending = pendingRows.length > 0
+  const mappedCount = Object.keys(pendingStageMapping).length
 
   return (
     <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
@@ -220,201 +283,226 @@ export default function ResponseImportPage() {
 
       <div style={{ padding: '28px 32px', maxWidth: '1100px' }}>
 
-        <div style={{ marginBottom: '28px' }}>
+        {/* ── Import options ──────────────────────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
 
-          {hasData && (
-            <button
-              onClick={() => setImportPanelOpen(prev => !prev)}
+          {/* Google Sheets */}
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <LinkIcon size={20} style={{ color: '#E8520A' }} />
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Google Sheets URL</p>
+            </div>
+            <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
+              Paste the URL of a public Google Sheet containing your survey responses.
+            </p>
+            <input
+              type="url"
+              value={sheetUrl}
+              onChange={e => setSheetUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && sheetUrl.trim()) void fetchSheet() }}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: '13px', fontWeight: 600, color: '#6B7280',
-                padding: '0 0 12px',
+                width: '100%', padding: '10px 12px', fontSize: '13px',
+                color: '#0D0D0D', backgroundColor: '#FFFFFF',
+                border: '1px solid #9CA3AF', borderRadius: '8px',
+                outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
+                cursor: 'text',
               }}
-            >
-              {importPanelOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              {importPanelOpen ? 'Hide import options' : 'Re-import data'}
-            </button>
-          )}
-
-          <div style={{ display: importPanelOpen ? 'grid' : 'none', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-
-            {/* Google Sheets */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <LinkIcon size={20} style={{ color: '#E8520A' }} />
-                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Google Sheets URL</p>
-              </div>
-              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
-                Paste the URL of a public Google Sheet containing your survey responses.
-              </p>
-              <input
-                type="url"
-                value={sheetUrl}
-                onChange={e => setSheetUrl(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && sheetUrl.trim()) void fetchSheet() }}
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                style={{
-                  width: '100%', padding: '10px 12px', fontSize: '13px',
-                  color: '#0D0D0D', backgroundColor: '#FFFFFF',
-                  border: '1px solid #9CA3AF', borderRadius: '8px',
-                  outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
-                  position: 'relative', zIndex: 1, pointerEvents: 'auto', cursor: 'text',
-                }}
-              />
-              {sheetError && (
-                <p style={{ fontSize: '12px', color: '#EF4444', marginBottom: '8px' }}>{sheetError}</p>
-              )}
-              <button
-                onClick={() => void fetchSheet()}
-                disabled={fetchingSheet || !sheetUrl.trim()}
-                style={{
-                  width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  backgroundColor: (fetchingSheet || !sheetUrl.trim()) ? '#E5E7EB' : '#E8520A',
-                  color: (fetchingSheet || !sheetUrl.trim()) ? '#9CA3AF' : '#FFFFFF',
-                  border: 'none', borderRadius: '8px', cursor: (fetchingSheet || !sheetUrl.trim()) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px', fontWeight: 600,
-                }}
-              >
-                {fetchingSheet && <Loader2 size={14} className="animate-spin" />}
-                Fetch Responses
-              </button>
-            </div>
-
-            {/* CSV Upload */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <Upload size={20} style={{ color: '#E8520A' }} />
-                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Upload CSV</p>
-              </div>
-              <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
-                Upload a CSV file exported from Google Forms, Typeform, or any other survey tool.
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  width: '100%', minHeight: '44px',
-                  border: '2px dashed #D1D5DB', borderRadius: '8px',
-                  backgroundColor: '#F9FAFB', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: '6px', color: '#6B7280', fontSize: '13px',
-                }}
-              >
-                <Upload size={20} />
-                Click to select CSV file
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {hasData && (
-          <div style={{
-            backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '16px 20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginBottom: '20px',
-            display: 'flex', alignItems: 'center', gap: '16px',
-          }}>
-            <BarChart2 size={20} style={{ color: '#E8520A' }} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
-                {rows.length} response{rows.length !== 1 ? 's' : ''} imported
-              </p>
-              {Object.keys(stageMapping).length > 0 && (
-                <p style={{ fontSize: '12px', color: '#E8520A', margin: '2px 0 0' }}>
-                  {Object.keys(stageMapping).length} column{Object.keys(stageMapping).length !== 1 ? 's' : ''} auto-mapped to DCP stages
-                </p>
-              )}
-              {savedCount !== null && savedCount === rows.length && (
-                <p style={{ fontSize: '12px', color: '#16A34A', margin: '2px 0 0' }}>Saved to workspace</p>
-              )}
-            </div>
+            />
+            {sheetError && <p style={{ fontSize: '12px', color: '#EF4444', marginBottom: '8px' }}>{sheetError}</p>}
             <button
-              onClick={() => { setHeaders([]); setRows([]); setRawCsv(''); setSavedCount(null); setStageMapping({}); setSheetUrl(''); setImportPanelOpen(true) }}
+              onClick={() => void fetchSheet()}
+              disabled={fetchingSheet || !sheetUrl.trim()}
               style={{
-                minHeight: '36px', padding: '0 14px', fontSize: '13px', fontWeight: 500,
-                border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
-                backgroundColor: '#FFFFFF', color: '#6B7280',
-              }}
-            >
-              Clear & re-import
-            </button>
-            <button
-              onClick={() => void saveResponses()}
-              disabled={saving || savedCount === rows.length}
-              style={{
-                minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px',
-                backgroundColor: (saving || savedCount === rows.length) ? '#E5E7EB' : '#E8520A',
-                color: (saving || savedCount === rows.length) ? '#9CA3AF' : '#FFFFFF',
+                width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                backgroundColor: (fetchingSheet || !sheetUrl.trim()) ? '#E5E7EB' : '#E8520A',
+                color: (fetchingSheet || !sheetUrl.trim()) ? '#9CA3AF' : '#FFFFFF',
                 border: 'none', borderRadius: '8px',
-                cursor: (saving || savedCount === rows.length) ? 'not-allowed' : 'pointer',
+                cursor: (fetchingSheet || !sheetUrl.trim()) ? 'not-allowed' : 'pointer',
                 fontSize: '14px', fontWeight: 600,
               }}
             >
-              {saving && <Loader2 size={14} className="animate-spin" />}
-              {savedCount === rows.length ? 'Saved' : 'Save Responses'}
+              {fetchingSheet && <Loader2 size={14} className="animate-spin" />}
+              Fetch Responses
             </button>
-            
-<a
-              href="/dashboard/intelligence/dcp-map"
+          </div>
+
+          {/* CSV Upload */}
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Upload size={20} style={{ color: '#E8520A' }} />
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Upload CSV</p>
+            </div>
+            <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
+              Upload a CSV file exported from Google Forms, Typeform, or any other survey tool.
+            </p>
+            <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleFileChange} style={{ display: 'none' }} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
               style={{
-                minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center',
-                backgroundColor: '#0A1628', color: '#FFFFFF',
-                borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600,
+                width: '100%', minHeight: '44px',
+                border: '2px dashed #D1D5DB', borderRadius: '8px',
+                backgroundColor: '#F9FAFB', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '6px', color: '#6B7280', fontSize: '13px',
               }}
             >
-              Analyze with Copilot →
-            </a>
+              <Upload size={20} />
+              Click to select CSV file
+            </button>
+          </div>
+        </div>
+
+        {/* ── Pending import preview ──────────────────────────────────────────── */}
+        {hasPending && (
+          <div style={{
+            backgroundColor: '#FFFFFF', borderRadius: '10px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginBottom: '20px', overflow: 'hidden',
+          }}>
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <BarChart2 size={20} style={{ color: '#E8520A' }} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+                  {pendingRows.length} response{pendingRows.length !== 1 ? 's' : ''} loaded
+                  <span style={{ fontSize: '12px', fontWeight: 400, color: '#6B7280', marginLeft: '8px' }}>
+                    {pendingSource === 'google_sheets' ? 'from Google Sheets' : 'from CSV'}
+                  </span>
+                </p>
+                {mappedCount > 0 && (
+                  <p style={{ fontSize: '12px', color: '#E8520A', margin: '2px 0 0' }}>
+                    {mappedCount} column{mappedCount !== 1 ? 's' : ''} auto-mapped to DCP stages
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => { setPendingHeaders([]); setPendingRows([]); setPendingStageMapping({}) }}
+                style={{
+                  minHeight: '36px', padding: '0 14px', fontSize: '13px', fontWeight: 500,
+                  border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
+                  backgroundColor: '#FFFFFF', color: '#6B7280',
+                }}
+              >
+                Discard
+              </button>
+              <button
+                onClick={() => void saveBatch()}
+                disabled={saving}
+                style={{
+                  minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px',
+                  backgroundColor: saving ? '#E5E7EB' : '#E8520A',
+                  color: saving ? '#9CA3AF' : '#FFFFFF',
+                  border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer',
+                  fontSize: '14px', fontWeight: 600,
+                }}
+              >
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                Save Import
+              </button>
+            </div>
+
+            {saveError && (
+              <p style={{ fontSize: '13px', color: '#EF4444', margin: '0 20px 12px' }}>{saveError}</p>
+            )}
+
+            {pendingHeaders.length > 0 && (
+              <div style={{ overflowX: 'auto', maxHeight: '360px', overflowY: 'auto', borderTop: '1px solid #F3F4F6' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#F9FAFB', zIndex: 1 }}>
+                    <tr>
+                      {pendingHeaders.map((h, i) => (
+                        <th key={i} style={{
+                          padding: '10px 14px', textAlign: 'left', fontWeight: 700,
+                          color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em',
+                          borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap',
+                        }}>
+                          {h}
+                          {pendingStageMapping[h] !== undefined && (
+                            <span style={{ marginLeft: '5px', fontSize: '10px', color: '#E8520A', fontWeight: 700 }}>
+                              ·S{pendingStageMapping[h]}
+                            </span>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingRows.slice(0, 100).map((row, ri) => (
+                      <tr key={ri} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                        {pendingHeaders.map((h, ci) => (
+                          <td key={ci} style={{
+                            padding: '8px 14px', color: '#0D0D0D',
+                            maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {row[h]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {pendingRows.length > 100 && (
+                  <p style={{ padding: '8px 14px', fontSize: '12px', color: '#6B7280', margin: 0 }}>
+                    Showing first 100 of {pendingRows.length} rows.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {saveError && (
-          <p style={{ fontSize: '13px', color: '#EF4444', marginBottom: '12px' }}>{saveError}</p>
-        )}
-
-        {hasData && headers.length > 0 && (
+        {/* ── Import history ──────────────────────────────────────────────────── */}
+        {hasBatches && (
           <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', maxHeight: '520px', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: '#F9FAFB', zIndex: 1 }}>
-                  <tr>
-                    {headers.map((h, i) => (
-                      <th key={i} style={{
-                        padding: '10px 14px', textAlign: 'left', fontWeight: 700,
-                        color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em',
-                        borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap',
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.slice(0, 200).map((row, ri) => (
-                    <tr key={ri} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                      {headers.map((h, ci) => (
-                        <td key={ci} style={{
-                          padding: '8px 14px', color: '#0D0D0D',
-                          maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {row[h]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {rows.length > 200 && (
-                <p style={{ padding: '10px 14px', fontSize: '12px', color: '#6B7280', margin: 0 }}>
-                  Showing first 200 of {rows.length} rows.
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #F3F4F6',
+              display: 'flex', alignItems: 'center', gap: '16px',
+            }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+                  {totalResponses} total response{totalResponses !== 1 ? 's' : ''}
                 </p>
-              )}
+                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>
+                  across {batches.length} import{batches.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <a
+                href="/dashboard/intelligence/dcp-map"
+                style={{
+                  minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center',
+                  backgroundColor: '#0A1628', color: '#FFFFFF',
+                  borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600,
+                }}
+              >
+                Analyze with Copilot →
+              </a>
             </div>
+
+            {[...batches].reverse().map((batch, i) => {
+              const batchMapped = Object.keys(batch.stage_mapping ?? {}).length
+              return (
+                <div key={i} style={{
+                  padding: '12px 20px', borderBottom: '1px solid #F9FAFB',
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: '#0D0D0D', margin: 0 }}>
+                      {batch.response_count} response{batch.response_count !== 1 ? 's' : ''}
+                      <span style={{ marginLeft: '8px', fontWeight: 400, color: '#6B7280' }}>
+                        {batch.source === 'google_sheets' ? 'Google Sheets' : 'CSV'}
+                      </span>
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '2px 0 0' }}>
+                      {formatDate(batch.imported_at)}
+                      {batchMapped > 0 && (
+                        <span style={{ color: '#E8520A', marginLeft: '8px' }}>
+                          {batchMapped} stage{batchMapped !== 1 ? 's' : ''} mapped
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
