@@ -126,6 +126,15 @@ function extractDraft(raw: string): string {
   return stripped
 }
 
+// Extracts a clean plain-text title from any raw value, handling JSON blobs and markdown fences
+function extractTitle(raw: unknown): string {
+  const s = String(raw ?? '').trim()
+  if (!s || s === 'undefined' || s === 'null') return ''
+  const extracted = extractDraft(s)
+  if (!extracted || extracted.startsWith('{') || extracted.startsWith('[') || extracted.startsWith('`')) return ''
+  return extracted
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SaveIndicator({ state }: { state: SaveState }) {
@@ -249,9 +258,12 @@ export default function PainPointStepEditor({
   const [discoveryLoading, setDiscoveryLoading] = useState(false)
   const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult | null>(null)
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
+  const [addedCompetitors, setAddedCompetitors] = useState<Set<string>>(new Set())
+  const [addSuccessMsg, setAddSuccessMsg] = useState<string | null>(null)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -296,7 +308,7 @@ export default function PainPointStepEditor({
           if (Array.isArray(pts)) {
             const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map((pp, i) => ({
               index: Number(pp['index'] ?? i + 1),
-              title: safeTitle(pp['title']),
+              title: extractTitle(pp['title']),
               description: String(pp['description'] ?? ''),
             }))
             setPainPoints(parsed)
@@ -520,8 +532,18 @@ export default function PainPointStepEditor({
 
   // ── Competitive Discovery (Step 17 only) ─────────────────────────────────────
 
+  function scheduleDiscoveryDismiss(ppTitle: string) {
+    const msg = `Added to ${ppTitle} ✓`
+    setAddSuccessMsg(msg)
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+    dismissTimer.current = setTimeout(() => {
+      setDiscoveryResults(null)
+      setAddedCompetitors(new Set())
+      setAddSuccessMsg(null)
+    }, 1500)
+  }
+
   function addCompetitorToTab(comp: Competitor) {
-    // Capture tab index at call time — pain points are 1-indexed (1–4), matching contentMap keys
     const tabKey = activeTab
     console.log('Adding competitor to tab:', tabKey, comp.name)
     const line = `• ${comp.name} — ${comp.description}`
@@ -529,9 +551,12 @@ export default function PainPointStepEditor({
     const updated = current ? `${current}\n${line}` : line
     const newMap: Record<number, string> = { ...contentMap, [tabKey]: updated }
     setContentMap(newMap)
-    // Pass newMap directly — avoids relying on saveRef.current being reassigned before timer fires
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => { void persistContent(newMap) }, AUTOSAVE_MS)
+
+    setAddedCompetitors(prev => new Set(prev).add(comp.name))
+    const ppTitle = painPoints.find(pp => pp.index === tabKey)?.title || `Pain Point ${tabKey}`
+    scheduleDiscoveryDismiss(ppTitle)
   }
 
   function addAllToTab(competitors: Competitor[]) {
@@ -543,6 +568,14 @@ export default function PainPointStepEditor({
     setContentMap(newMap)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => { void persistContent(newMap) }, AUTOSAVE_MS)
+
+    setAddedCompetitors(prev => {
+      const s = new Set(prev)
+      competitors.forEach(c => s.add(c.name))
+      return s
+    })
+    const ppTitle = painPoints.find(pp => pp.index === tabKey)?.title || `Pain Point ${tabKey}`
+    scheduleDiscoveryDismiss(ppTitle)
   }
 
   async function runDiscovery() {
@@ -712,7 +745,12 @@ export default function PainPointStepEditor({
                 Competitive Landscape
               </h3>
               <button
-                onClick={() => setDiscoveryResults(null)}
+                onClick={() => {
+                  if (dismissTimer.current) clearTimeout(dismissTimer.current)
+                  setDiscoveryResults(null)
+                  setAddedCompetitors(new Set())
+                  setAddSuccessMsg(null)
+                }}
                 style={{
                   background: 'none', border: '1px solid #374151', borderRadius: '6px',
                   color: '#9CA3AF', fontSize: '12px', padding: '4px 10px',
@@ -726,6 +764,7 @@ export default function PainPointStepEditor({
             {DISCOVERY_SECTIONS.map(section => {
               const items = discoveryResults[section.key]
               if (!items || items.length === 0) return null
+              const allAdded = items.every(c => addedCompetitors.has(c.name))
               return (
                 <div key={section.key} style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -736,46 +775,52 @@ export default function PainPointStepEditor({
                       {section.label}
                     </h4>
                     <button
-                      onClick={() => addAllToTab(items)}
+                      onClick={() => { if (!allAdded) addAllToTab(items) }}
+                      disabled={allAdded}
                       style={{
                         background: 'none', border: '1px solid #374151', borderRadius: '6px',
-                        color: '#9CA3AF', fontSize: '11px', padding: '3px 8px',
-                        cursor: 'pointer', minHeight: '28px',
+                        color: allAdded ? '#4B5563' : '#9CA3AF', fontSize: '11px', padding: '3px 8px',
+                        cursor: allAdded ? 'default' : 'pointer', minHeight: '28px',
                       }}
                     >
-                      Add All
+                      {allAdded ? 'All Added ✓' : 'Add All'}
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {items.map((comp, i) => (
-                      <div key={i} style={{
-                        backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px',
-                        padding: '12px', display: 'flex', alignItems: 'flex-start', gap: '12px',
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
-                            {comp.name}
-                          </p>
-                          <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#D1D5DB', lineHeight: '1.45' }}>
-                            {comp.description}
-                          </p>
-                          <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>
-                            {comp.why_relevant}
-                          </p>
+                    {items.map((comp, i) => {
+                      const isAdded = addedCompetitors.has(comp.name)
+                      return (
+                        <div key={i} style={{
+                          backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px',
+                          padding: '12px', display: 'flex', alignItems: 'flex-start', gap: '12px',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
+                              {comp.name}
+                            </p>
+                            <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#D1D5DB', lineHeight: '1.45' }}>
+                              {comp.description}
+                            </p>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                              {comp.why_relevant}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => { if (!isAdded) addCompetitorToTab(comp) }}
+                            disabled={isAdded}
+                            style={{
+                              flexShrink: 0, minHeight: '32px', padding: '0 12px',
+                              backgroundColor: isAdded ? '#6B7280' : '#E8520A', color: '#FFFFFF',
+                              border: 'none', borderRadius: '6px',
+                              fontSize: '12px', fontWeight: 600,
+                              cursor: isAdded ? 'default' : 'pointer',
+                            }}
+                          >
+                            {isAdded ? 'Added ✓' : 'Add'}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => addCompetitorToTab(comp)}
-                          style={{
-                            flexShrink: 0, minHeight: '32px', padding: '0 12px',
-                            backgroundColor: '#E8520A', color: '#FFFFFF',
-                            border: 'none', borderRadius: '6px',
-                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                          }}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -789,6 +834,16 @@ export default function PainPointStepEditor({
 
       {/* ── Left: tabs + textarea ─────────────────────────────────────────── */}
       <div>
+        {/* Success message after adding from discovery */}
+        {addSuccessMsg && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: '#DCFCE7',
+            border: '1px solid #86EFAC', borderRadius: '6px', marginBottom: '12px',
+            fontSize: '13px', fontWeight: 600, color: '#16A34A',
+          }}>
+            {addSuccessMsg}
+          </div>
+        )}
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {[1, 2, 3, 4].map(idx => {
