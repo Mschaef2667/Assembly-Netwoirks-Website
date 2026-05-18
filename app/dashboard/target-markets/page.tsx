@@ -671,7 +671,7 @@ export default function TargetMarketsPage() {
       if (!res.ok) {
         if (res.status === 422) {
           const body = await res.json().catch(() => ({})) as { error?: string; raw?: string }
-          console.error('[icp-generate] parse_failed. Raw response:', body.raw)
+          console.error('ICP raw response:', body.raw)
         }
         setCopilotErrors(prev => setAt(prev, i, copilotErrorMessage(res.status)))
         return

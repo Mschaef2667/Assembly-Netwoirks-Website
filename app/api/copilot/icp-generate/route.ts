@@ -182,13 +182,13 @@ ${journeyContext || 'Not yet available.'}`
     const match = trimmed.match(/\{[\s\S]*\}/)
     if (!match) {
       console.error('[copilot/icp-generate] parse failed — no JSON block found. Raw:', fullText)
-      return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
+      return NextResponse.json({ error: 'parse_failed', raw: fullText.substring(0, 500) }, { status: 422 })
     }
     try {
       parsed = JSON.parse(match[0]) as Record<string, unknown>
     } catch {
       console.error('[copilot/icp-generate] parse failed after regex extraction. Raw:', fullText)
-      return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
+      return NextResponse.json({ error: 'parse_failed', raw: fullText.substring(0, 500) }, { status: 422 })
     }
   }
 
