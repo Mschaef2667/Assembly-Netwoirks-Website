@@ -127,6 +127,9 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 ### Copilot Quality
 - [ ] Prompt engineering pass — tune system prompts for CVPs, Key Selling Points, and Strategic Messages for higher output quality
 
+### Competitive Intelligence
+- [ ] Competitive Discovery on Step 17 (Target Competition) — Copilot "Discover Competitors" button that analyzes company profile, ICP firmographics, and pain points to surface: known competitors (validation), adjacent competitors (same problem, different approach), and emerging threats (newer players). Use Claude API web search tool to find competitors beyond training data. Results presented as cards user can accept or dismiss before saving to step output.
+
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
 - /dashboard/company-profile → Company Profile wizard (done)
