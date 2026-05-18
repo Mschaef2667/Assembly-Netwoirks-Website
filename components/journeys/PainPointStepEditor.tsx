@@ -532,15 +532,21 @@ export default function PainPointStepEditor({
 
   // ── Competitive Discovery (Step 17 only) ─────────────────────────────────────
 
-  function scheduleDiscoveryDismiss(ppTitle: string) {
-    const msg = `Added to ${ppTitle} ✓`
-    setAddSuccessMsg(msg)
+  function showAddedMessage(ppTitle: string) {
+    setAddSuccessMsg(`Added to ${ppTitle} ✓`)
     if (dismissTimer.current) clearTimeout(dismissTimer.current)
+    // Fade message only — card stays open
     dismissTimer.current = setTimeout(() => {
-      setDiscoveryResults(null)
-      setAddedCompetitors(new Set())
       setAddSuccessMsg(null)
+      dismissTimer.current = null
     }, 1500)
+  }
+
+  function dismissCard() {
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+    setDiscoveryResults(null)
+    setAddedCompetitors(new Set())
+    setAddSuccessMsg(null)
   }
 
   function addCompetitorToTab(comp: Competitor) {
@@ -556,7 +562,8 @@ export default function PainPointStepEditor({
 
     setAddedCompetitors(prev => new Set(prev).add(comp.name))
     const ppTitle = painPoints.find(pp => pp.index === tabKey)?.title || `Pain Point ${tabKey}`
-    scheduleDiscoveryDismiss(ppTitle)
+    // Show success message but keep card open so user can add more
+    showAddedMessage(ppTitle)
   }
 
   function addAllToTab(competitors: Competitor[]) {
@@ -575,7 +582,10 @@ export default function PainPointStepEditor({
       return s
     })
     const ppTitle = painPoints.find(pp => pp.index === tabKey)?.title || `Pain Point ${tabKey}`
-    scheduleDiscoveryDismiss(ppTitle)
+    setAddSuccessMsg(`Added to ${ppTitle} ✓`)
+    // Auto-dismiss after Add All — all competitors in section added at once
+    if (dismissTimer.current) clearTimeout(dismissTimer.current)
+    dismissTimer.current = setTimeout(() => { dismissCard() }, 2000)
   }
 
   async function runDiscovery() {
@@ -744,21 +754,28 @@ export default function PainPointStepEditor({
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
                 Competitive Landscape
               </h3>
-              <button
-                onClick={() => {
-                  if (dismissTimer.current) clearTimeout(dismissTimer.current)
-                  setDiscoveryResults(null)
-                  setAddedCompetitors(new Set())
-                  setAddSuccessMsg(null)
-                }}
-                style={{
-                  background: 'none', border: '1px solid #374151', borderRadius: '6px',
-                  color: '#9CA3AF', fontSize: '12px', padding: '4px 10px',
-                  cursor: 'pointer', minHeight: '28px',
-                }}
-              >
-                Dismiss
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => dismissCard()}
+                  style={{
+                    background: 'none', border: '1px solid #374151', borderRadius: '6px',
+                    color: '#9CA3AF', fontSize: '12px', padding: '4px 10px',
+                    cursor: 'pointer', minHeight: '28px',
+                  }}
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={() => dismissCard()}
+                  style={{
+                    backgroundColor: '#E8520A', border: 'none', borderRadius: '6px',
+                    color: '#FFFFFF', fontSize: '12px', fontWeight: 600,
+                    padding: '4px 12px', cursor: 'pointer', minHeight: '28px',
+                  }}
+                >
+                  Done
+                </button>
+              </div>
             </div>
 
             {DISCOVERY_SECTIONS.map(section => {
