@@ -7,6 +7,7 @@ import { useState } from 'react'
 import {
   Building2,
   Brain,
+  Target,
   Route,
   Zap,
   Layers,
@@ -21,6 +22,7 @@ import { supabase } from '@/lib/supabase/client'
 const navItems = [
   { label: 'Workspace',      href: '/dashboard',                   icon: Building2 },
   { label: 'Intelligence',   href: '/dashboard/intelligence',      icon: Brain     },
+  { label: 'Target Markets', href: '/dashboard/target-markets',    icon: Target    },
   { label: 'Journeys',       href: '/dashboard/journeys',          icon: Route     },
   { label: 'Activation',     href: '/dashboard/activation',        icon: Zap       },
   { label: 'Assets Studio',  href: '/dashboard/assets',            icon: Layers    },
