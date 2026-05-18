@@ -10,6 +10,8 @@ import ConfidenceBar from '@/components/copilot/ConfidenceBar'
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
 import Step14Editor from '@/components/journeys/Step14Editor'
 import BlendEditor from '@/components/journeys/BlendEditor'
+import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
+import DealScorecard from '@/components/journeys/DealScorecard'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ const STEP4_AUTOSAVE_DELAY_MS = 800
 
 const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
+const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 
 const DEFAULT_PAIN_POINTS: PainPoint[] = [
   { index: 1, title: '', description: '' },
@@ -965,6 +968,7 @@ export default function StepPage() {
   const isStep4 = stepId === '4'
   const isPainPointStep = PAIN_POINT_STEPS.has(stepId)
   const isBlendStep = BLEND_STEPS.has(stepId)
+  const isActionPlanStep = ACTION_PLAN_STEPS.has(stepId)
   const stepIndex = allSteps.findIndex(s => s.id === stepId)
   const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
   const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
@@ -1099,6 +1103,38 @@ export default function StepPage() {
             workspaceId={workspaceId}
             stepId={stepId}
             stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (isActionPlanStep && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+          <ActionPlanEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '38' && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', flex: 1 }}>
+          <DealScorecard
+            workspaceId={workspaceId}
             preferredModel={preferredModel}
           />
         </div>
