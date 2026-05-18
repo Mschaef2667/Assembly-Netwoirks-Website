@@ -668,41 +668,17 @@ export default function TargetMarketsPage() {
         }),
       })
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
+        if (res.status === 422) {
+          const body = await res.json().catch(() => ({})) as { error?: string; raw?: string }
+          console.error('[icp-generate] parse_failed. Raw response:', body.raw)
+        }
         setCopilotErrors(prev => setAt(prev, i, copilotErrorMessage(res.status)))
         return
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-      }
-
-      if (accumulated.includes('__STREAM_ERROR__')) {
-        const m = accumulated.match(/__STREAM_ERROR__:(\w+)/)
-        setCopilotErrors(prev => setAt(prev, i, copilotErrorMessage(m ? m[1] : 0)))
-        return
-      }
-
-      try {
-        let jsonText = accumulated.trim()
-        let parsed: Record<string, unknown>
-        try {
-          parsed = JSON.parse(jsonText) as Record<string, unknown>
-        } catch {
-          const match = jsonText.match(/\{[\s\S]*\}/)
-          if (!match) throw new Error('no_json_block')
-          parsed = JSON.parse(match[0]) as Record<string, unknown>
-        }
-        setCopilotPreviews(prev => setAt(prev, i, sanitizeIcp(parsed)))
-      } catch {
-        console.error('[icp-generate] parse failed. Raw response:', accumulated)
-        setCopilotErrors(prev => setAt(prev, i, 'Could not parse the generated ICP. Please try again.'))
-      }
+      const data = await res.json() as Record<string, unknown>
+      setCopilotPreviews(prev => setAt(prev, i, sanitizeIcp(data)))
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
       setCopilotErrors(prev => setAt(prev, i, msg.includes('timeout') || msg.includes('aborted')

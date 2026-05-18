@@ -120,64 +120,77 @@ ${journeyContext || 'Not yet available.'}`
 
   const anthropic = new Anthropic({ apiKey })
   let fullText = ''
-  let streamError: string | null = null
+  let claudeError: string | null = null
   const maxAttempts = 3
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder()
+  outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    fullText = ''
+    try {
+      const claudeStream = anthropic.messages.stream({
+        model,
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: 'Generate the ICP now.' }],
+        system: systemPrompt,
+      })
 
-      outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          const claudeStream = anthropic.messages.stream({
-            model,
-            max_tokens: 1500,
-            messages: [{ role: 'user', content: 'Generate the ICP now.' }],
-            system: systemPrompt,
-          })
-
-          for await (const chunk of claudeStream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-              const text = chunk.delta.text
-              fullText += text
-              controller.enqueue(encoder.encode(text))
-            }
-          }
-          console.log(`[copilot/icp-generate] raw response (${fullText.length} chars):`, fullText)
-          break outer
-        } catch (err) {
-          const status =
-            typeof err === 'object' && err !== null && 'status' in err
-              ? Number((err as { status: unknown }).status) || 0 : 0
-          streamError = err instanceof Error ? err.message : String(err)
-          console.error(`[copilot/icp-generate] Claude error attempt ${attempt}/${maxAttempts}:`, streamError)
-          if (status >= 500 && status < 600 && fullText.length === 0 && attempt < maxAttempts) {
-            await new Promise<void>(resolve => setTimeout(resolve, 1000))
-            continue outer
-          }
-          controller.enqueue(encoder.encode(`\n__STREAM_ERROR__:${status > 0 ? String(status) : 'unknown'}`))
-          break outer
+      for await (const chunk of claudeStream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          fullText += chunk.delta.text
         }
       }
-
-      // Write to copilot_run — non-fatal
-      try {
-        await supabase.from('copilot_run').insert({
-          workspace_id: workspaceId,
-          step_id: `icp-segment-${segmentIndex}`,
-          model,
-          status: streamError ? 'error' : 'success',
-          error_code: streamError ?? null,
-        })
-      } catch (insertErr) {
-        console.error('[copilot/icp-generate] copilot_run insert failed:', insertErr)
+      break outer
+    } catch (err) {
+      const status =
+        typeof err === 'object' && err !== null && 'status' in err
+          ? Number((err as { status: unknown }).status) || 0 : 0
+      claudeError = err instanceof Error ? err.message : String(err)
+      console.error(`[copilot/icp-generate] Claude error attempt ${attempt}/${maxAttempts}:`, claudeError)
+      if (status >= 500 && status < 600 && attempt < maxAttempts) {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000))
+        continue outer
       }
+      break outer
+    }
+  }
 
-      controller.close()
-    },
-  })
+  console.log(`[copilot/icp-generate] raw response (${fullText.length} chars):`, fullText)
 
-  return new Response(stream, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-  })
+  // Write to copilot_run — non-fatal
+  try {
+    await supabase.from('copilot_run').insert({
+      workspace_id: workspaceId,
+      step_id: `icp-segment-${segmentIndex}`,
+      model,
+      status: claudeError ? 'error' : 'success',
+      error_code: claudeError ?? null,
+    })
+  } catch (insertErr) {
+    console.error('[copilot/icp-generate] copilot_run insert failed:', insertErr)
+  }
+
+  if (claudeError) {
+    return NextResponse.json({ error: claudeError }, { status: 500 })
+  }
+
+  // Parse JSON — try direct, then regex extraction
+  const trimmed = fullText.trim()
+  let parsed: Record<string, unknown>
+
+  try {
+    parsed = JSON.parse(trimmed) as Record<string, unknown>
+  } catch {
+    const match = trimmed.match(/\{[\s\S]*\}/)
+    if (!match) {
+      console.error('[copilot/icp-generate] parse failed — no JSON block found. Raw:', fullText)
+      return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
+    }
+    try {
+      parsed = JSON.parse(match[0]) as Record<string, unknown>
+    } catch {
+      console.error('[copilot/icp-generate] parse failed after regex extraction. Raw:', fullText)
+      return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
+    }
+  }
+
+  return NextResponse.json(parsed)
 }
