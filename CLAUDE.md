@@ -60,13 +60,15 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [x] Build Copilot output display component in components/copilot/CopilotOutput.tsx
 - [x] Implement confidence decay calculation at read time in lib/context/confidenceDecay.ts
 
-## Sprint 3 — IN PROGRESS
-- [ ] Target Markets & Offers section (app/dashboard/target-markets/)
-- [ ] ICP definition per target market segment
-- [ ] Offer alignment per ICP
-- [ ] Wire ICP + offer context into PainPointStepEditor Copilot prompts
-- [ ] Message blending step (end of Journeys)
-- [ ] DCP Infographic generator (Phase 3)
+## Sprint 3 — COMPLETE
+- [x] Target Markets & Offers section (app/dashboard/target-markets/)
+- [x] ICP definition per target market segment
+- [x] Offer alignment per ICP
+- [x] Wire ICP + offer context into PainPointStepEditor Copilot prompts
+- [x] Message blending step (end of Journeys)
+- [x] DCP Infographic generator (Phase 3)
+
+Sprint 3 COMPLETE as of 2026-05-18
 
 ## Sprint 4 — Acid Tests, CRM Upload & Prospecting (PLANNED)
 
