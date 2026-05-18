@@ -172,14 +172,14 @@ ${journeyContext || 'Not yet available.'}`
     return NextResponse.json({ error: claudeError }, { status: 500 })
   }
 
-  // Parse JSON — try direct, then regex extraction
-  const trimmed = fullText.trim()
+  // Parse JSON — strip markdown fences, then try direct parse, then regex extraction
+  const stripped = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
   let parsed: Record<string, unknown>
 
   try {
-    parsed = JSON.parse(trimmed) as Record<string, unknown>
+    parsed = JSON.parse(stripped) as Record<string, unknown>
   } catch {
-    const match = trimmed.match(/\{[\s\S]*\}/)
+    const match = stripped.match(/\{[\s\S]*\}/)
     if (!match) {
       console.error('[copilot/icp-generate] parse failed — no JSON block found. Raw:', fullText)
       return NextResponse.json({ error: 'parse_failed', raw: fullText.substring(0, 500) }, { status: 422 })
