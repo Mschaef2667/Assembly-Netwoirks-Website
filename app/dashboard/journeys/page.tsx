@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, CheckCircle2, AlertTriangle, Lock, ChevronRight, Clock } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, Lock, ChevronRight, Clock, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
+import ConfidenceBar from '@/components/copilot/ConfidenceBar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,6 +24,13 @@ interface StepDef {
 interface StepDep {
   step_id: string
   prerequisite_step_id: string
+}
+
+interface StepOutputRow {
+  status: StepStatus
+  original_confidence: number | null
+  last_reviewed_at: string | null
+  created_at: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -49,18 +59,18 @@ function numericId(id: string): number {
 function getDepHealth(
   stepId: string,
   depsMap: Map<string, string[]>,
-  outputMap: Map<string, StepStatus>,
+  outputMap: Map<string, StepOutputRow>,
 ): DepHealth {
   const prereqs = depsMap.get(stepId) ?? []
   if (prereqs.length === 0) return 'healthy'
-  const approvedCount = prereqs.filter(pid => outputMap.get(pid) === 'approved').length
+  const approvedCount = prereqs.filter(pid => outputMap.get(pid)?.status === 'approved').length
   if (approvedCount === prereqs.length) return 'healthy'
   if (approvedCount === 0) return 'locked'
   return 'warning'
 }
 
-function getGateState(gateStepId: string, outputMap: Map<string, StepStatus>): GateState {
-  const status = outputMap.get(gateStepId)
+function getGateState(gateStepId: string, outputMap: Map<string, StepOutputRow>): GateState {
+  const status = outputMap.get(gateStepId)?.status
   if (status === 'approved') return 'approved'
   if (status === 'pending_approval') return 'pending'
   return 'locked'
@@ -69,11 +79,11 @@ function getGateState(gateStepId: string, outputMap: Map<string, StepStatus>): G
 function getContinueStepId(
   steps: StepDef[],
   depsMap: Map<string, string[]>,
-  outputMap: Map<string, StepStatus>,
+  outputMap: Map<string, StepOutputRow>,
 ): string | null {
   const sorted = [...steps].sort((a, b) => numericId(a.id) - numericId(b.id))
   for (const step of sorted) {
-    if ((outputMap.get(step.id) ?? 'not_started') === 'approved') continue
+    if ((outputMap.get(step.id)?.status ?? 'not_started') === 'approved') continue
     if (getDepHealth(step.id, depsMap, outputMap) === 'healthy') return step.id
   }
   return null
@@ -95,10 +105,10 @@ function DepHealthIcon({ health }: { health: DepHealth }) {
 
 function StatusBadge({ status }: { status: StepStatus }) {
   const map: Record<StepStatus, { label: string; color: string; bg: string }> = {
-    approved:         { label: 'Approved',   color: '#15803D', bg: '#DCFCE7' },
-    pending_approval: { label: 'In Review',  color: '#92400E', bg: '#FEF3C7' },
-    draft:            { label: 'Draft',      color: '#1D4ED8', bg: '#DBEAFE' },
-    not_started:      { label: 'Not Started',color: '#6B7280', bg: '#F3F4F6' },
+    approved:         { label: 'Approved',    color: '#15803D', bg: '#DCFCE7' },
+    pending_approval: { label: 'In Review',   color: '#92400E', bg: '#FEF3C7' },
+    draft:            { label: 'Draft',       color: '#1D4ED8', bg: '#DBEAFE' },
+    not_started:      { label: 'Not Started', color: '#6B7280', bg: '#F3F4F6' },
   }
   const { label, color, bg } = map[status]
   return (
@@ -150,15 +160,76 @@ function GateBanner({ label, state }: { label: string; state: GateState }) {
   )
 }
 
+// ── Start Here Banner ─────────────────────────────────────────────────────────
+
+function StartHereCard({ href, title, desc }: { href: string; title: string; desc: string }) {
+  return (
+    <Link href={href} style={{ textDecoration: 'none', flex: 1, minWidth: '180px' }}>
+      <div style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '10px',
+        padding: '20px',
+        height: '100%',
+        boxSizing: 'border-box',
+      }}>
+        <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: '0 0 6px' }}>
+          {title}
+        </p>
+        <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.55' }}>
+          {desc}
+        </p>
+      </div>
+    </Link>
+  )
+}
+
+function StartHereBanner() {
+  return (
+    <div style={{
+      backgroundColor: '#0A1628',
+      borderRadius: '14px',
+      padding: '32px',
+      marginBottom: '32px',
+    }}>
+      <h2 style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 700, margin: '0 0 6px' }}>
+        Welcome to your C3 Method Journey
+      </h2>
+      <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '0 0 28px', lineHeight: '1.6' }}>
+        Complete these sections in order to build your strategic messaging framework
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <StartHereCard
+          href="/dashboard/company-profile"
+          title="Company Foundation"
+          desc="Start with your company profile and buying center"
+        />
+        <ArrowRight size={20} style={{ color: '#E8520A', flexShrink: 0 }} />
+        <StartHereCard
+          href="/dashboard/intelligence"
+          title="Intelligence"
+          desc="Run your Decision Clarity Process survey"
+        />
+        <ArrowRight size={20} style={{ color: '#E8520A', flexShrink: 0 }} />
+        <StartHereCard
+          href="/dashboard/journeys/step/1"
+          title="Begin Journey"
+          desc="Start Step 1 of your C3 Method journey"
+        />
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function JourneysPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [steps, setSteps] = useState<StepDef[]>([])
-  const [outputMap, setOutputMap] = useState<Map<string, StepStatus>>(new Map())
+  const [outputMap, setOutputMap] = useState<Map<string, StepOutputRow>>(new Map())
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
   const [continueStepId, setContinueStepId] = useState<string | null>(null)
+  const [decayMap, setDecayMap] = useState<Map<string, number | null>>(new Map())
 
   useEffect(() => {
     async function load() {
@@ -176,7 +247,7 @@ export default function JourneysPage() {
           supabase.from('step_dependency').select('step_id, prerequisite_step_id'),
           supabase
             .from('step_output')
-            .select('step_id, status, version')
+            .select('step_id, status, version, original_confidence, last_reviewed_at, created_at')
             .eq('workspace_id', wsId)
             .order('version', { ascending: false }),
         ])
@@ -200,15 +271,50 @@ export default function JourneysPage() {
         }
         setDepsMap(dm)
 
-        // Build outputMap: step_id → status (latest version = first row since ordered DESC)
-        const om = new Map<string, StepStatus>()
+        // Build outputMap: step_id → StepOutputRow (latest version = first since ordered DESC)
+        const om = new Map<string, StepOutputRow>()
         for (const row of ((outputsRes.data ?? []) as Array<Record<string, unknown>>)) {
           const sid = String(row['step_id'] ?? '')
           if (!om.has(sid)) {
-            om.set(sid, (row['status'] as StepStatus) ?? 'not_started')
+            om.set(sid, {
+              status: (row['status'] as StepStatus) ?? 'not_started',
+              original_confidence: typeof row['original_confidence'] === 'number' ? row['original_confidence'] : null,
+              last_reviewed_at: typeof row['last_reviewed_at'] === 'string' ? row['last_reviewed_at'] : null,
+              created_at: String(row['created_at'] ?? new Date().toISOString()),
+            })
           }
         }
         setOutputMap(om)
+
+        // Compute confidence decay for approved/draft steps
+        const decayDm = new Map<string, number | null>()
+        for (const [sid, row] of om.entries()) {
+          if (row.status !== 'approved' && row.status !== 'draft') continue
+          const decayed = calculateDecayedConfidence({
+            status: row.status,
+            original_confidence: row.original_confidence,
+            last_reviewed_at: row.last_reviewed_at,
+            created_at: row.created_at,
+          })
+          decayDm.set(sid, decayed)
+
+          // Fire-and-forget decay log when score has changed — non-fatal
+          if (decayed !== null && decayed !== row.original_confidence) {
+            const refDate = row.last_reviewed_at ?? row.created_at
+            const decayDays = Math.max(0, Math.floor(
+              (Date.now() - Date.parse(refDate)) / (1000 * 60 * 60 * 24),
+            ))
+            supabase.from('confidence_decay_log').insert({
+              workspace_id: wsId,
+              step_id: sid,
+              original_confidence: row.original_confidence,
+              decayed_confidence: decayed,
+              decay_days: decayDays,
+              logged_at: new Date().toISOString(),
+            }).then(() => {}, () => {})
+          }
+        }
+        setDecayMap(decayDm)
 
         setContinueStepId(getContinueStepId(parsedSteps, dm, om))
       } catch {
@@ -237,7 +343,8 @@ export default function JourneysPage() {
   }
 
   const totalSteps = steps.length
-  const totalApproved = steps.filter(s => outputMap.get(s.id) === 'approved').length
+  const totalApproved = steps.filter(s => outputMap.get(s.id)?.status === 'approved').length
+  const hasAnyProgress = outputMap.size > 0
 
   return (
     <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
@@ -256,12 +363,17 @@ export default function JourneysPage() {
       </header>
 
       <div style={{ padding: '24px 32px', maxWidth: '900px' }}>
-        {PHASES.map(({ phase, section }) => {
+
+        {/* Empty state — shown only when no steps have been started */}
+        {!hasAnyProgress && <StartHereBanner />}
+
+        {/* Step list — shown only when any step has been started */}
+        {hasAnyProgress && PHASES.map(({ phase, section }) => {
           const phaseSteps = (stepsByPhase.get(phase) ?? [])
             .sort((a, b) => numericId(a.id) - numericId(b.id))
           if (phaseSteps.length === 0) return null
 
-          const approvedCount = phaseSteps.filter(s => outputMap.get(s.id) === 'approved').length
+          const approvedCount = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
           const progressPct = (approvedCount / phaseSteps.length) * 100
           const gate = GATES.find(g => g.afterPhase === phase)
 
@@ -300,9 +412,11 @@ export default function JourneysPage() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden',
               }}>
                 {phaseSteps.map((step, idx) => {
-                  const status = outputMap.get(step.id) ?? 'not_started'
+                  const outputRow = outputMap.get(step.id)
+                  const status = outputRow?.status ?? 'not_started'
                   const health = getDepHealth(step.id, depsMap, outputMap)
                   const isContinue = step.id === continueStepId
+                  const decayedConfidence = decayMap.get(step.id) ?? null
 
                   return (
                     <button
@@ -345,6 +459,13 @@ export default function JourneysPage() {
                       </div>
 
                       <StatusBadge status={status} />
+
+                      {/* Confidence decay — only for steps with an output record */}
+                      {outputRow !== undefined && decayedConfidence !== null && (
+                        <div style={{ width: '170px', flexShrink: 0 }}>
+                          <ConfidenceBar score={decayedConfidence} />
+                        </div>
+                      )}
 
                       {isContinue && (
                         <span style={{
