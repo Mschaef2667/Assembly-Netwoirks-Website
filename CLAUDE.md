@@ -106,6 +106,27 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 
 ### Prospecting Mod
 
+## Product Improvements Backlog
+
+### UX & Activation
+- [ ] Empty state on Journeys index — "Start Here" guided onboarding for users with zero steps completed
+- [ ] Progress accountability widget on Dashboard — "X% complete, last activity Y days ago" with continue nudge
+- [ ] Confidence decay visible on Journeys index — flag low-confidence approved steps with amber/red indicator
+
+### Methodology Integrity
+- [ ] Gate enforcement — Gates 2, 3, 4 should optionally block progression until approved (configurable per org)
+- [ ] Acid Test system — Sprint 4 (already documented)
+
+### Output & Reporting
+- [ ] C3 Method Output Report — exportable PDF/Word doc compiling all approved steps at journey completion
+- [ ] Prompt library — versioned Copilot prompt templates stored in database, improvable without code deploys
+
+### Collaboration
+- [ ] Team collaboration — assign steps to roles, multi-user editing, role-based gate approvals (schema already supports this)
+
+### Copilot Quality
+- [ ] Prompt engineering pass — tune system prompts for CVPs, Key Selling Points, and Strategic Messages for higher output quality
+
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
 - /dashboard/company-profile → Company Profile wizard (done)
