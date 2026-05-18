@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader2, Wand2, AlertTriangle } from 'lucide-react'
+import { Loader2, Wand2, AlertTriangle, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,6 +53,18 @@ interface CopilotResult {
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
+interface Competitor {
+  name: string
+  description: string
+  why_relevant: string
+}
+
+interface DiscoveryResult {
+  known_validators: Competitor[]
+  adjacent_competitors: Competitor[]
+  emerging_threats: Competitor[]
+}
 
 export interface PainPointStepEditorProps {
   workspaceId: string
@@ -226,6 +238,10 @@ export default function PainPointStepEditor({
   const [streamBuffer, setStreamBuffer] = useState('')
   const [copilotOutput, setCopilotOutput] = useState<CopilotResult | null>(null)
   const [copilotError, setCopilotError] = useState<string | null>(null)
+
+  const [discoveryLoading, setDiscoveryLoading] = useState(false)
+  const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult | null>(null)
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
@@ -495,6 +511,110 @@ export default function PainPointStepEditor({
     setCopilotOutput(null)
   }
 
+  // ── Competitive Discovery (Step 17 only) ─────────────────────────────────────
+
+  function addCompetitorToTab(comp: Competitor) {
+    const line = `• ${comp.name} — ${comp.description}`
+    setContentMap(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab] ? `${prev[activeTab]}\n${line}` : line,
+    }))
+    scheduleSave()
+  }
+
+  function addAllToTab(competitors: Competitor[]) {
+    const lines = competitors.map(c => `• ${c.name} — ${c.description}`).join('\n')
+    setContentMap(prev => ({
+      ...prev,
+      [activeTab]: prev[activeTab] ? `${prev[activeTab]}\n${lines}` : lines,
+    }))
+    scheduleSave()
+  }
+
+  async function runDiscovery() {
+    if (discoveryLoading) return
+    setDiscoveryLoading(true)
+    setDiscoveryResults(null)
+    setDiscoveryError(null)
+
+    try {
+      const [s1, s2, s3, s11, icpFirm] = await Promise.all([
+        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '1').order('version', { ascending: false }).limit(1),
+        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '2').order('version', { ascending: false }).limit(1),
+        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '3').order('version', { ascending: false }).limit(1),
+        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '11').order('version', { ascending: false }).limit(1),
+        supabase.from('icp_definition').select('segment_name, industry_verticals, company_size_range, job_titles').eq('org_id', workspaceId),
+      ] as const)
+
+      function getStepText(data: Array<Record<string, unknown>> | null): string {
+        if (!data || data.length === 0) return 'Not provided.'
+        const c = data[0]['content']
+        return c ? JSON.stringify(c, null, 2) : 'Not provided.'
+      }
+
+      const companyContext = [
+        'STEP 1 - PRODUCT/SERVICE PROFILE:\n' + getStepText(s1.data as Array<Record<string, unknown>> | null),
+        'STEP 2 - TARGET SEGMENTS:\n' + getStepText(s2.data as Array<Record<string, unknown>> | null),
+        'STEP 3 - DECISION MAKERS:\n' + getStepText(s3.data as Array<Record<string, unknown>> | null),
+      ].join('\n\n')
+
+      const cvpContext = 'STEP 11 - CUSTOMER VALUE PROPOSITIONS:\n' + getStepText(s11.data as Array<Record<string, unknown>> | null)
+
+      const icpLines: string[] = []
+      if (icpFirm.data) {
+        for (const rawRow of icpFirm.data) {
+          const row = rawRow as Record<string, unknown>
+          const verticals = Array.isArray(row['industry_verticals'])
+            ? (row['industry_verticals'] as unknown[]).map(String).join(', ')
+            : ''
+          const size = row['company_size_range'] != null ? String(row['company_size_range']) : ''
+          const titles = Array.isArray(row['job_titles'])
+            ? (row['job_titles'] as unknown[]).map(String).join(', ')
+            : ''
+          icpLines.push(`Segment: ${String(row['segment_name'] ?? '')} | Industries: ${verticals} | Size: ${size} | Titles: ${titles}`)
+        }
+      }
+      const icpContext = icpLines.length > 0 ? icpLines.join('\n') : 'Not provided.'
+
+      const activePP = painPoints.find(pp => pp.index === activeTab)
+      const painPointContext = [
+        `Pain Point: ${activePP?.title ?? ''}`,
+        `Description: ${activePP?.description ?? ''}`,
+        `Step 17 Content: ${contentMap[activeTab] ?? ''}`,
+      ].join('\n')
+
+      const res = await fetch('/api/copilot/competitive-discovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          companyContext,
+          icpContext,
+          painPointContext,
+          cvpContext,
+          preferredModel,
+        }),
+      })
+
+      if (!res.ok) {
+        let errMsg = `Error ${res.status}`
+        try {
+          const errBody = (await res.json()) as Record<string, unknown>
+          errMsg = String(errBody['error'] ?? errMsg)
+        } catch { /* ignore */ }
+        setDiscoveryError(res.status === 422 ? 'Could not parse competitor data. Please try again.' : errMsg)
+        return
+      }
+
+      const data = (await res.json()) as DiscoveryResult
+      setDiscoveryResults(data)
+    } catch (err) {
+      setDiscoveryError(err instanceof Error ? err.message : 'An error occurred during discovery.')
+    } finally {
+      setDiscoveryLoading(false)
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -532,7 +652,125 @@ export default function PainPointStepEditor({
   const activePainPoint = painPoints.find(pp => pp.index === activeTab)
   const tabLabel = activePainPoint?.title?.trim() || `Pain Point ${activeTab}`
 
+  const DISCOVERY_SECTIONS: Array<{ key: keyof DiscoveryResult; label: string }> = [
+    { key: 'known_validators', label: 'Known Players' },
+    { key: 'adjacent_competitors', label: 'Adjacent Competitors' },
+    { key: 'emerging_threats', label: 'Emerging Threats' },
+  ]
+
   return (
+    <>
+    {/* ── Step 17: Competitive Discovery ─────────────────────────────────── */}
+    {stepId === '17' && (
+      <div style={{ marginBottom: '24px' }}>
+        <button
+          onClick={() => void runDiscovery()}
+          disabled={discoveryLoading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 20px', minHeight: '44px',
+            backgroundColor: discoveryLoading ? '#F3F4F6' : '#0A1628',
+            color: discoveryLoading ? '#9CA3AF' : '#FFFFFF',
+            border: 'none', borderRadius: '8px',
+            fontSize: '14px', fontWeight: 600, cursor: discoveryLoading ? 'not-allowed' : 'pointer',
+            marginBottom: discoveryError || discoveryResults ? '16px' : '0',
+          }}
+        >
+          {discoveryLoading
+            ? <><Loader2 size={15} className="animate-spin" /> Searching for competitors…</>
+            : <><Search size={15} /> Discover Competitors</>
+          }
+        </button>
+
+        {discoveryError && !discoveryLoading && (
+          <div style={{
+            padding: '12px 16px', backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5', borderRadius: '8px', marginBottom: '16px',
+          }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#991B1B' }}>{discoveryError}</p>
+          </div>
+        )}
+
+        {discoveryResults && !discoveryLoading && (
+          <div style={{ backgroundColor: '#0A1628', borderRadius: '12px', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+                Competitive Landscape
+              </h3>
+              <button
+                onClick={() => setDiscoveryResults(null)}
+                style={{
+                  background: 'none', border: '1px solid #374151', borderRadius: '6px',
+                  color: '#9CA3AF', fontSize: '12px', padding: '4px 10px',
+                  cursor: 'pointer', minHeight: '28px',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+
+            {DISCOVERY_SECTIONS.map(section => {
+              const items = discoveryResults[section.key]
+              if (!items || items.length === 0) return null
+              return (
+                <div key={section.key} style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <h4 style={{
+                      margin: 0, fontSize: '11px', fontWeight: 700, color: '#E8520A',
+                      textTransform: 'uppercase', letterSpacing: '0.07em',
+                    }}>
+                      {section.label}
+                    </h4>
+                    <button
+                      onClick={() => addAllToTab(items)}
+                      style={{
+                        background: 'none', border: '1px solid #374151', borderRadius: '6px',
+                        color: '#9CA3AF', fontSize: '11px', padding: '3px 8px',
+                        cursor: 'pointer', minHeight: '28px',
+                      }}
+                    >
+                      Add All
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {items.map((comp, i) => (
+                      <div key={i} style={{
+                        backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px',
+                        padding: '12px', display: 'flex', alignItems: 'flex-start', gap: '12px',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
+                            {comp.name}
+                          </p>
+                          <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#D1D5DB', lineHeight: '1.45' }}>
+                            {comp.description}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                            {comp.why_relevant}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => addCompetitorToTab(comp)}
+                          style={{
+                            flexShrink: 0, minHeight: '32px', padding: '0 12px',
+                            backgroundColor: '#E8520A', color: '#FFFFFF',
+                            border: 'none', borderRadius: '6px',
+                            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )}
+
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
 
       {/* ── Left: tabs + textarea ─────────────────────────────────────────── */}
@@ -721,5 +959,6 @@ export default function PainPointStepEditor({
         )}
       </div>
     </div>
+    </>
   )
 }
