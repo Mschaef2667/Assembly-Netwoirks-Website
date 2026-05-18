@@ -521,21 +521,28 @@ export default function PainPointStepEditor({
   // ── Competitive Discovery (Step 17 only) ─────────────────────────────────────
 
   function addCompetitorToTab(comp: Competitor) {
+    // Capture tab index at call time — pain points are 1-indexed (1–4), matching contentMap keys
+    const tabKey = activeTab
+    console.log('Adding competitor to tab:', tabKey, comp.name)
     const line = `• ${comp.name} — ${comp.description}`
-    setContentMap(prev => ({
-      ...prev,
-      [activeTab]: prev[activeTab] ? `${prev[activeTab]}\n${line}` : line,
-    }))
-    scheduleSave()
+    const current = contentMap[tabKey] ?? ''
+    const updated = current ? `${current}\n${line}` : line
+    const newMap: Record<number, string> = { ...contentMap, [tabKey]: updated }
+    setContentMap(newMap)
+    // Pass newMap directly — avoids relying on saveRef.current being reassigned before timer fires
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { void persistContent(newMap) }, AUTOSAVE_MS)
   }
 
   function addAllToTab(competitors: Competitor[]) {
+    const tabKey = activeTab
     const lines = competitors.map(c => `• ${c.name} — ${c.description}`).join('\n')
-    setContentMap(prev => ({
-      ...prev,
-      [activeTab]: prev[activeTab] ? `${prev[activeTab]}\n${lines}` : lines,
-    }))
-    scheduleSave()
+    const current = contentMap[tabKey] ?? ''
+    const updated = current ? `${current}\n${lines}` : lines
+    const newMap: Record<number, string> = { ...contentMap, [tabKey]: updated }
+    setContentMap(newMap)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { void persistContent(newMap) }, AUTOSAVE_MS)
   }
 
   async function runDiscovery() {
