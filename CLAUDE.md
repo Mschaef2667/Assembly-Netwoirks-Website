@@ -67,6 +67,12 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [x] Wire ICP + offer context into PainPointStepEditor Copilot prompts
 - [x] Message blending step (end of Journeys)
 - [x] DCP Infographic generator (Phase 3)
+- [x] Steps 19–26 wired into PainPointStepEditor
+- [x] Step 21 Acid Test 2 placeholder built
+- [x] BlendEditor component for Steps 27–30 (components/journeys/BlendEditor.tsx)
+- [x] ActionPlanEditor component for Steps 31–37 (components/journeys/ActionPlanEditor.tsx)
+- [x] DealScorecard component for Step 38 (components/journeys/DealScorecard.tsx)
+- [x] Full 38-step journey complete
 
 Sprint 3 COMPLETE as of 2026-05-18
 
@@ -105,6 +111,13 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 - Default CRM assumption: HubSpot (per CLAUDE.md defaults)
 
 ### Prospecting Mod
+
+## Sprint 5 — UX, Intelligence & Reporting (IN PROGRESS)
+- [ ] Empty state on Journeys index with "Start Here" guidance
+- [ ] Confidence decay indicators on Journeys index page
+- [ ] Competitive Discovery on Step 17 (web search powered)
+- [ ] C3 Method Output Report (PDF/Word export of all approved steps)
+- [ ] Gate enforcement (configurable per org)
 
 ## Product Improvements Backlog
 
