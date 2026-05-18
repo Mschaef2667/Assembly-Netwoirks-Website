@@ -68,6 +68,42 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 - [ ] Message blending step (end of Journeys)
 - [ ] DCP Infographic generator (Phase 3)
 
+## Sprint 4 — Acid Tests, CRM Upload & Prospecting (PLANNED)
+
+### Acid Test System
+Three structured checkpoint cards that appear at key moments in the journey:
+
+Acid Test 1 — Offer Alignment (Step 16, Company Formulas)
+- Checks: Does our current product/service deliver on our Critical Success Formulas?
+- User scores alignment per CSF (1-5)
+- Copilot surfaces gaps and recommends adjustments to offer definition
+- Links back to Step 13 (Critical Success Formulas) and Target Markets & Offers if gaps found
+
+Acid Test 2 — Competitive Gap (Step 21, Competitive Environments)
+- Checks: Can each competitor in Step 17 deliver on our Critical Success Formulas?
+- User scores each competitor against each CSF (Yes / Partial / No)
+- Gaps = competitive opportunities, fed forward into Step 25 (Competitive Opportunities)
+- Output: competitor gap matrix (competitor vs CSF grid)
+
+Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
+- Checks: Do our generated ICPs match our most valuable/profitable real customers?
+- User uploads a CSV export from their CRM (HubSpot or other)
+- CSV fields: company name, industry, company size, deal value, close rate, contact title
+- Copilot analyzes uploaded customers against icp_definition records
+- Scores alignment per ICP (High / Partial / Low)
+- Surfaces patterns and suggests ICP refinements
+- User chooses: Proceed or Go back and refine (with direct links)
+- Result logged to a new acid_test_result table
+
+### CRM Upload (Acid Test 3)
+- File upload component accepting CSV
+- Parser extracts: company name, industry, size, deal value, close rate, contact title
+- Copilot compares each row against icp_definition firmographics and pain points
+- Alignment score computed per ICP
+- Default CRM assumption: HubSpot (per CLAUDE.md defaults)
+
+### Prospecting Mod
+
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
 - /dashboard/company-profile → Company Profile wizard (done)
