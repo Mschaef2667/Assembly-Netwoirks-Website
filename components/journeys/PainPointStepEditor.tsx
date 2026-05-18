@@ -106,6 +106,13 @@ function copilotErrorMessage(code: number | string): string {
   return 'Copilot encountered an unexpected error. Please try again.'
 }
 
+function safeTitle(raw: unknown): string {
+  const s = String(raw ?? '').trim()
+  if (!s || s === 'undefined' || s === 'null') return ''
+  if (s.startsWith('{') || s.startsWith('[')) return ''
+  return s
+}
+
 function extractDraft(raw: string): string {
   const stripped = raw
     .replace(/^```json\s*/i, '')
@@ -287,9 +294,9 @@ export default function PainPointStepEditor({
           const c = (step4Result.data[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null
           const pts = c?.['pain_points']
           if (Array.isArray(pts)) {
-            const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map(pp => ({
-              index: Number(pp['index'] ?? 0),
-              title: String(pp['title'] ?? ''),
+            const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map((pp, i) => ({
+              index: Number(pp['index'] ?? i + 1),
+              title: safeTitle(pp['title']),
               description: String(pp['description'] ?? ''),
             }))
             setPainPoints(parsed)

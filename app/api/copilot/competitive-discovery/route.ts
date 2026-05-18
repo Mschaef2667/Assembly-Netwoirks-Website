@@ -189,12 +189,10 @@ ${cvpContext || 'Not provided.'}`
     return NextResponse.json({ error: claudeError }, { status: 500 })
   }
 
+  console.log('Full raw competitive discovery response:', fullText)
+
   // Parse JSON — strip markdown fences, then try direct parse, then regex extraction
-  const stripped = fullText
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim()
+  const stripped = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
 
   let parsed: Record<string, unknown>
 
@@ -203,13 +201,13 @@ ${cvpContext || 'Not provided.'}`
   } catch {
     const match = stripped.match(/\{[\s\S]*\}/)
     if (!match) {
-      console.error('[copilot/competitive-discovery] parse failed. Raw:', fullText)
+      console.error('[copilot/competitive-discovery] parse failed — no JSON block found. Raw:', fullText)
       return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
     }
     try {
       parsed = JSON.parse(match[0]) as Record<string, unknown>
     } catch {
-      console.error('[copilot/competitive-discovery] parse failed after regex. Raw:', fullText)
+      console.error('[copilot/competitive-discovery] parse failed after regex extraction. Raw:', fullText)
       return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
     }
   }
