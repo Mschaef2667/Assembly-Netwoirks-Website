@@ -27,6 +27,22 @@ interface StageSummary {
   summary: string
 }
 
+interface IcpRecord {
+  segment_name: string
+  buyer_type: string
+  job_titles: string[]
+  primary_challenges: string[]
+  the_big_win: string | null
+  buying_urgency_trigger: string | null
+  common_objections: Array<{ objection: string; overcomes: string }>
+}
+
+interface OfferRecord {
+  offer_name: string
+  key_outcome: string | null
+  primary_differentiator: string | null
+}
+
 interface CopilotResult {
   draft: string
   confidence: number
@@ -106,6 +122,72 @@ function ConfidenceBadge({ score }: { score: number }) {
   )
 }
 
+// ── ICP / Offer helpers ───────────────────────────────────────────────────────
+
+function parseIcpRow(row: Record<string, unknown>): IcpRecord {
+  const toStringArray = (v: unknown): string[] =>
+    Array.isArray(v) ? (v as unknown[]).map(x => String(x)) : []
+  const rawObjs = row['common_objections']
+  return {
+    segment_name: String(row['segment_name'] ?? ''),
+    buyer_type: String(row['buyer_type'] ?? ''),
+    job_titles: toStringArray(row['job_titles']),
+    primary_challenges: toStringArray(row['primary_challenges']),
+    the_big_win: row['the_big_win'] != null ? String(row['the_big_win']) : null,
+    buying_urgency_trigger: row['buying_urgency_trigger'] != null ? String(row['buying_urgency_trigger']) : null,
+    common_objections: Array.isArray(rawObjs)
+      ? (rawObjs as Array<Record<string, unknown>>).map(o => ({
+          objection: String(o['objection'] ?? ''),
+          overcomes: String(o['overcomes'] ?? ''),
+        }))
+      : [],
+  }
+}
+
+function parseOfferRow(row: Record<string, unknown>): OfferRecord {
+  return {
+    offer_name: String(row['offer_name'] ?? ''),
+    key_outcome: row['key_outcome'] != null ? String(row['key_outcome']) : null,
+    primary_differentiator: row['primary_differentiator'] != null ? String(row['primary_differentiator']) : null,
+  }
+}
+
+function buildIcpOfferContext(icps: IcpRecord[], offers: OfferRecord[]): string {
+  const parts: string[] = []
+
+  if (icps.length === 0) {
+    parts.push('TARGET MARKET ICPs:\nNo ICPs defined yet — generate them in Target Markets & Offers first')
+  } else {
+    const lines: string[] = ['TARGET MARKET ICPs:']
+    for (const icp of icps) {
+      lines.push('')
+      lines.push(`Segment: ${icp.segment_name}`)
+      if (icp.buyer_type) lines.push(`Buyer Type: ${icp.buyer_type}`)
+      if (icp.job_titles.length > 0) lines.push(`Job Titles: ${icp.job_titles.join(', ')}`)
+      if (icp.primary_challenges.length > 0) lines.push(`Primary Challenges: ${icp.primary_challenges.join(', ')}`)
+      if (icp.the_big_win) lines.push(`The Big Win: ${icp.the_big_win}`)
+      if (icp.buying_urgency_trigger) lines.push(`Buying Urgency Trigger: ${icp.buying_urgency_trigger}`)
+      if (icp.common_objections.length > 0) {
+        lines.push(`Common Objections: ${icp.common_objections.map(o => `${o.objection} → ${o.overcomes}`).join('; ')}`)
+      }
+    }
+    parts.push(lines.join('\n'))
+  }
+
+  if (offers.length > 0) {
+    const lines: string[] = ['OFFERS:']
+    for (const offer of offers) {
+      lines.push('')
+      lines.push(`Offer: ${offer.offer_name}`)
+      if (offer.key_outcome) lines.push(`Key Outcome: ${offer.key_outcome}`)
+      if (offer.primary_differentiator) lines.push(`Primary Differentiator: ${offer.primary_differentiator}`)
+    }
+    parts.push(lines.join('\n'))
+  }
+
+  return parts.join('\n\n')
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PainPointStepEditor({
@@ -124,6 +206,8 @@ export default function PainPointStepEditor({
   const [outputVersion, setOutputVersion] = useState(1)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [dcpSummaries, setDcpSummaries] = useState<StageSummary[]>([])
+  const [icpRecords, setIcpRecords] = useState<IcpRecord[]>([])
+  const [offerRecords, setOfferRecords] = useState<OfferRecord[]>([])
 
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [streamBuffer, setStreamBuffer] = useState('')
@@ -138,17 +222,40 @@ export default function PainPointStepEditor({
   useEffect(() => {
     async function load() {
       try {
-        // Step 4 pain points
-        const { data: step4Rows } = await supabase
-          .from('step_output')
-          .select('content')
-          .eq('workspace_id', workspaceId)
-          .eq('step_id', '4')
-          .order('version', { ascending: false })
-          .limit(1)
+        const [step4Result, outputResult, dcpResult, icpResult, offerResult] = await Promise.all([
+          supabase
+            .from('step_output')
+            .select('content')
+            .eq('workspace_id', workspaceId)
+            .eq('step_id', '4')
+            .order('version', { ascending: false })
+            .limit(1),
+          supabase
+            .from('step_output')
+            .select('id, content, version')
+            .eq('workspace_id', workspaceId)
+            .eq('step_id', stepId)
+            .order('version', { ascending: false })
+            .limit(1),
+          supabase
+            .from('dcp_analysis')
+            .select('stage_summaries')
+            .eq('org_id', workspaceId)
+            .maybeSingle(),
+          supabase
+            .from('icp_definition')
+            .select('segment_name, buyer_type, job_titles, primary_challenges, the_big_win, buying_urgency_trigger, common_objections')
+            .eq('org_id', workspaceId)
+            .order('segment_index'),
+          supabase
+            .from('offer_definition')
+            .select('offer_name, key_outcome, primary_differentiator')
+            .eq('org_id', workspaceId),
+        ])
 
-        if (step4Rows && step4Rows.length > 0) {
-          const c = (step4Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null
+        // Step 4 pain points
+        if (step4Result.data && step4Result.data.length > 0) {
+          const c = (step4Result.data[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null
           const pts = c?.['pain_points']
           if (Array.isArray(pts)) {
             const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map(pp => ({
@@ -163,16 +270,8 @@ export default function PainPointStepEditor({
         }
 
         // Current step output
-        const { data: outputRows } = await supabase
-          .from('step_output')
-          .select('id, content, version')
-          .eq('workspace_id', workspaceId)
-          .eq('step_id', stepId)
-          .order('version', { ascending: false })
-          .limit(1)
-
-        if (outputRows && outputRows.length > 0) {
-          const row = outputRows[0] as Record<string, unknown>
+        if (outputResult.data && outputResult.data.length > 0) {
+          const row = outputResult.data[0] as Record<string, unknown>
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
@@ -188,14 +287,8 @@ export default function PainPointStepEditor({
         }
 
         // DCP stage summaries
-        const { data: dcpRow } = await supabase
-          .from('dcp_analysis')
-          .select('stage_summaries')
-          .eq('org_id', workspaceId)
-          .maybeSingle()
-
-        if (dcpRow) {
-          const summaries = (dcpRow as Record<string, unknown>)['stage_summaries']
+        if (dcpResult.data) {
+          const summaries = (dcpResult.data as Record<string, unknown>)['stage_summaries']
           if (Array.isArray(summaries)) {
             setDcpSummaries(
               (summaries as Array<Record<string, unknown>>).map(s => ({
@@ -205,6 +298,16 @@ export default function PainPointStepEditor({
               })),
             )
           }
+        }
+
+        // ICP definitions
+        if (icpResult.data) {
+          setIcpRecords((icpResult.data as Array<Record<string, unknown>>).map(parseIcpRow))
+        }
+
+        // Offer definitions
+        if (offerResult.data) {
+          setOfferRecords((offerResult.data as Array<Record<string, unknown>>).map(parseOfferRow))
         }
       } catch {
         // non-fatal
@@ -295,6 +398,8 @@ export default function PainPointStepEditor({
       ? dcpSummaries.map(s => `Stage ${s.stage_number} — ${s.stage_name}:\n${s.summary}`).join('\n\n')
       : 'No DCP buyer research data available yet.'
 
+    const icpOfferBlock = buildIcpOfferContext(icpRecords, offerRecords)
+
     const extraContext = [
       'PAIN POINT CONTEXT (from Step 4 — The Problem):',
       `Title: ${activePP?.title?.trim() || `Pain Point ${activeTab}`}`,
@@ -302,6 +407,8 @@ export default function PainPointStepEditor({
       '',
       'DCP STAGE SUMMARIES (buyer journey research):',
       dcpBlock,
+      '',
+      icpOfferBlock,
     ].join('\n')
 
     try {
