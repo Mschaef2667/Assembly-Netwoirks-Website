@@ -94,6 +94,19 @@ function copilotErrorMessage(code: number | string): string {
   return 'Copilot encountered an unexpected error. Please try again.'
 }
 
+function extractDraft(raw: string): string {
+  const stripped = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
+  try {
+    const obj = JSON.parse(stripped) as Record<string, unknown>
+    if (typeof obj['draft'] === 'string') return obj['draft']
+  } catch { /* not JSON — use as-is */ }
+  return stripped
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SaveIndicator({ state }: { state: SaveState }) {
@@ -451,19 +464,18 @@ export default function PainPointStepEditor({
 
       try {
         const parsed = JSON.parse(accumulated) as CopilotResult
-        setCopilotOutput(parsed)
-        setStreamBuffer('')
+        setCopilotOutput({ ...parsed, draft: extractDraft(parsed.draft) })
       } catch {
         setCopilotOutput({
-          draft: accumulated,
+          draft: extractDraft(accumulated),
           confidence: 0,
           sources: [],
           assumptions: [],
           open_questions: [],
           verification_checks: [],
         })
-        setStreamBuffer('')
       }
+      setStreamBuffer('')
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
       setCopilotError(

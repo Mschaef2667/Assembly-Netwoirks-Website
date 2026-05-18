@@ -81,6 +81,27 @@ function copilotErrorMessage(code: number | string): string {
   return 'Copilot encountered an unexpected error. Please try again.'
 }
 
+function extractDraft(raw: string): string {
+  const stripped = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
+  try {
+    const obj = JSON.parse(stripped) as Record<string, unknown>
+    if (typeof obj['draft'] === 'string') return obj['draft']
+  } catch { /* not JSON — use as-is */ }
+  return stripped
+}
+
+function safeTitle(raw: unknown): string {
+  const s = String(raw ?? '').trim()
+  if (!s || s === 'undefined' || s === 'null') return ''
+  // Guard: if the title is a JSON blob, it was stored wrong — discard it
+  if (s.startsWith('{') || s.startsWith('[')) return ''
+  return s
+}
+
 function parseBlendOutput(c: Record<string, unknown> | null): BlendStepOutput | null {
   if (!c) return null
   const mode: BlendStepOutput['mode'] = c['mode'] === 'blended' ? 'blended' : 'per_pain_point'
@@ -215,7 +236,7 @@ export default function ActionPlanEditor({
           if (Array.isArray(pts)) {
             const parsed: PainPoint[] = (pts as Array<Record<string, unknown>>).map(pp => ({
               index: Number(pp['index'] ?? 0),
-              title: String(pp['title'] ?? ''),
+              title: safeTitle(pp['title']),
               description: String(pp['description'] ?? ''),
             }))
             setPainPoints(parsed)
@@ -496,9 +517,9 @@ export default function ActionPlanEditor({
 
       try {
         const parsed = JSON.parse(accumulated) as CopilotResult
-        setCopilotOutput(parsed)
+        setCopilotOutput({ ...parsed, draft: extractDraft(parsed.draft) })
       } catch {
-        setCopilotOutput({ draft: accumulated, confidence: 0, sources: [], assumptions: [], open_questions: [], verification_checks: [] })
+        setCopilotOutput({ draft: extractDraft(accumulated), confidence: 0, sources: [], assumptions: [], open_questions: [], verification_checks: [] })
       }
       setStreamBuffer('')
     } catch (err) {
