@@ -143,6 +143,16 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 ### Competitive Intelligence
 - [ ] Competitive Discovery on Step 17 (Target Competition) — Copilot "Discover Competitors" button that analyzes company profile, ICP firmographics, and pain points to surface: known competitors (validation), adjacent competitors (same problem, different approach), and emerging threats (newer players). Use Claude API web search tool to find competitors beyond training data. Results presented as cards user can accept or dismiss before saving to step output.
 
+### Engagement & Gamification
+- [ ] Performance Score tips — Copilot suggests specific actions to improve score based on low-scoring areas
+- [ ] Performance Score benchmarking — "You rank in the top X% of Assembly AI clients" — requires anonymized aggregate scoring
+- [ ] Performance Score leaderboard — opt-in ranking among clients, appeals to competitive nature
+- [ ] Daily words of encouragement on Dashboard — personalized to user's current progress stage (just started / halfway / nearly complete)
+
+### Workspace Personalization
+- [ ] Client logo upload — stored in Supabase storage, displayed in sidebar alongside Assembly AI logo
+- [ ] Workspace theme — allow orgs to pick an accent color to complement Assembly AI branding
+
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
 - /dashboard/company-profile → Company Profile wizard (done)
