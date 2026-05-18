@@ -74,7 +74,9 @@ async function handleIcpGenerate(req: NextRequest): Promise<Response> {
 
   const systemPrompt = `You are an expert B2B ICP researcher. Based on the following company and market intelligence, generate a detailed ICP for the "${segmentName}" target market segment (Segment ${segmentIndex}).
 
-Return ONLY valid JSON (no markdown fences, no prose) matching this exact structure:
+Return ONLY a valid JSON object. No markdown, no backticks, no explanation text before or after. Start your response with { and end with }.
+
+The JSON must match this exact structure:
 {
   "buyer_type": "economic_buyer",
   "job_titles": ["<title1>", "<title2>", "<title3>"],
@@ -141,6 +143,7 @@ ${journeyContext || 'Not yet available.'}`
               controller.enqueue(encoder.encode(text))
             }
           }
+          console.log(`[copilot/icp-generate] raw response (${fullText.length} chars):`, fullText)
           break outer
         } catch (err) {
           const status =

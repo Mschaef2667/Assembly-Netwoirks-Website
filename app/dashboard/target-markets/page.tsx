@@ -689,9 +689,18 @@ export default function TargetMarketsPage() {
       }
 
       try {
-        const parsed = JSON.parse(accumulated) as Record<string, unknown>
+        let jsonText = accumulated.trim()
+        let parsed: Record<string, unknown>
+        try {
+          parsed = JSON.parse(jsonText) as Record<string, unknown>
+        } catch {
+          const match = jsonText.match(/\{[\s\S]*\}/)
+          if (!match) throw new Error('no_json_block')
+          parsed = JSON.parse(match[0]) as Record<string, unknown>
+        }
         setCopilotPreviews(prev => setAt(prev, i, sanitizeIcp(parsed)))
       } catch {
+        console.error('[icp-generate] parse failed. Raw response:', accumulated)
         setCopilotErrors(prev => setAt(prev, i, 'Could not parse the generated ICP. Please try again.'))
       }
     } catch (err) {
