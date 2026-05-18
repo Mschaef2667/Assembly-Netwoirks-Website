@@ -68,7 +68,7 @@ interface AllStep {
 const AUTOSAVE_DELAY_MS = 1200
 const STEP4_AUTOSAVE_DELAY_MS = 800
 
-const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18'])
+const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26'])
 
 const DEFAULT_PAIN_POINTS: PainPoint[] = [
   { index: 1, title: '', description: '' },
@@ -1014,6 +1014,56 @@ export default function StepPage() {
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '21') {
+    return (
+      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', flex: 1 }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '12px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+            overflow: 'hidden',
+            maxWidth: '640px',
+          }}>
+            <div style={{
+              backgroundColor: '#0A1628',
+              padding: '20px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+            }}>
+              <h2 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: 0 }}>
+                Acid Test 2 — Competitive Gap Analysis
+              </h2>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '4px 12px',
+                backgroundColor: '#E8520A',
+                color: '#FFFFFF',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>
+                Coming Soon
+              </span>
+            </div>
+            <div style={{ padding: '20px 24px' }}>
+              <p style={{ fontSize: '14px', color: '#0D0D0D', lineHeight: '1.65', margin: 0 }}>
+                This step will allow you to evaluate whether your competitors can deliver on your Critical Success Formulas. Coming in Sprint 4.
+              </p>
+            </div>
+          </div>
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
