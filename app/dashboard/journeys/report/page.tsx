@@ -150,13 +150,16 @@ function extractReadableContent(content: Record<string, unknown>): string {
 function NotCompleted({ stepId, title }: { stepId: string; title: string }) {
   return (
     <p style={{ color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic', margin: '4px 0 0' }}>
-      Not yet completed —{' '}
-      <Link
-        href={`/dashboard/journeys/step/${stepId}`}
-        style={{ color: '#0EA5E9', textDecoration: 'underline' }}
-      >
-        Go to {title}
-      </Link>
+      Not yet completed
+      <span className="screen-only">
+        {' — '}
+        <Link
+          href={`/dashboard/journeys/step/${stepId}`}
+          style={{ color: '#0EA5E9', textDecoration: 'underline' }}
+        >
+          Go to {title}
+        </Link>
+      </span>
     </p>
   )
 }
@@ -281,7 +284,18 @@ export default function ReportPage() {
           margin: [15, 15, 15, 15] as [number, number, number, number],
           filename: `C3-Strategic-Plan-${companySlug}.pdf`,
           image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            onclone: (doc: Document) => {
+              doc.querySelectorAll('.screen-only').forEach(el => {
+                (el as HTMLElement).style.display = 'none'
+              })
+              doc.querySelectorAll('[data-empty="true"]').forEach(el => {
+                (el as HTMLElement).style.display = 'none'
+              })
+            },
+          },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
         })
         .from(reportRef.current)
@@ -577,6 +591,12 @@ export default function ReportPage() {
     return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
   }
 
+  // Section emptiness — used to set data-empty for PDF onclone hiding
+  const sec2Empty = !hasContent('17') && !hasContent('19') && !hasContent('20')
+  const sec3Empty = !hasContent('27') && !hasContent('28') && !hasContent('29') && !hasContent('30')
+  const sec4Empty = ['31','32','33','34','35','36','37'].every(id => !hasContent(id))
+  const sec5Empty = !hasContent('26')
+
   const sectionHeadStyle: React.CSSProperties = {
     fontSize: '18px',
     fontWeight: 700,
@@ -774,7 +794,7 @@ export default function ReportPage() {
 
               <p style={subheadStyle}>1d. Ideal Customer Profiles</p>
               {icps.length === 0
-                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No ICPs defined yet — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define ICPs</Link></p>
+                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No ICPs defined yet<span className="screen-only"> — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define ICPs</Link></span></p>
                 : icps.map(icp => (
                   <div key={icp.id} style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#F9FAFB', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
                     <p style={{ fontSize: '14px', fontWeight: 600, color: '#0A1628', margin: '0 0 6px' }}>{icp.name}</p>
@@ -798,7 +818,7 @@ export default function ReportPage() {
 
               <p style={subheadStyle}>1e. Offers</p>
               {offers.length === 0
-                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No offers defined yet — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define Offers</Link></p>
+                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No offers defined yet<span className="screen-only"> — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define Offers</Link></span></p>
                 : offers.map(offer => (
                   <div key={offer.id} style={{ marginBottom: '12px', padding: '12px 16px', backgroundColor: '#F9FAFB', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
                     <p style={{ fontSize: '14px', fontWeight: 600, color: '#0A1628', margin: '0 0 4px' }}>{offer.name}</p>
@@ -820,50 +840,54 @@ export default function ReportPage() {
               <BlendContent id="15" />
 
               {/* ── Section 2: Competitive Environment ── */}
-              <div style={{ ...dividerStyle, margin: '40px 0' }} />
-              <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
-
-              {(['17', '19', '20'] as const).map((sid, i) => (
-                <div key={sid}>
-                  <p style={subheadStyle}>{['2a', '2b', '2c'][i]}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
-                  <BlendContent id={sid} />
-                  {i < 2 && <div style={dividerStyle} />}
-                </div>
-              ))}
+              <div data-empty={sec2Empty ? 'true' : undefined}>
+                <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
+                {(['17', '19', '20'] as const).map((sid, i) => (
+                  <div key={sid}>
+                    <p style={subheadStyle}>{['2a', '2b', '2c'][i]}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
+                    <BlendContent id={sid} />
+                    {i < 2 && <div style={dividerStyle} />}
+                  </div>
+                ))}
+              </div>
 
               {/* ── Section 3: Strategic Messages ── */}
-              <div style={{ ...dividerStyle, margin: '40px 0' }} />
-              <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
-
-              {(['27', '28', '29', '30'] as const).map((sid, i) => (
-                <div key={sid}>
-                  <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                  <BlendContent id={sid} />
-                  {i < 3 && <div style={dividerStyle} />}
-                </div>
-              ))}
+              <div data-empty={sec3Empty ? 'true' : undefined}>
+                <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
+                {(['27', '28', '29', '30'] as const).map((sid, i) => (
+                  <div key={sid}>
+                    <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                    <BlendContent id={sid} />
+                    {i < 3 && <div style={dividerStyle} />}
+                  </div>
+                ))}
+              </div>
 
               {/* ── Section 4: Strategic Plan ── */}
-              <div style={{ ...dividerStyle, margin: '40px 0' }} />
-              <h2 style={sectionHeadStyle}>4. Strategic Plan</h2>
-
-              {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
-                <div key={sid}>
-                  <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                  <ActionPlanContent id={sid} />
-                  {i < 6 && <div style={dividerStyle} />}
-                </div>
-              ))}
+              <div data-empty={sec4Empty ? 'true' : undefined}>
+                <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                <h2 style={sectionHeadStyle}>4. Strategic Plan</h2>
+                {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
+                  <div key={sid}>
+                    <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                    <ActionPlanContent id={sid} />
+                    {i < 6 && <div style={dividerStyle} />}
+                  </div>
+                ))}
+              </div>
 
               {/* ── Section 5: Development & Partnership ── */}
-              <div style={{ ...dividerStyle, margin: '40px 0' }} />
-              <h2 style={sectionHeadStyle}>5. Development &amp; Partnership</h2>
-
-              <p style={subheadStyle}>{getStep('26')?.title ?? 'Step 26'}</p>
-              <BlendContent id="26" />
+              <div data-empty={sec5Empty ? 'true' : undefined}>
+                <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                <h2 style={sectionHeadStyle}>5. Development &amp; Partnership</h2>
+                <p style={subheadStyle}>{getStep('26')?.title ?? 'Step 26'}</p>
+                <BlendContent id="26" />
+              </div>
 
               {/* Footer */}
-              <div style={{ marginTop: '60px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Generated {today}</span>
                 <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Assembly AI · C3 Method</span>
               </div>
