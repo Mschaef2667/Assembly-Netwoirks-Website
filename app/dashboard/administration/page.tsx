@@ -49,12 +49,12 @@ const SECTIONS = [
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const INPUT: CSSProperties = {
-  border: '1px solid #9CA3AF',
+  border: '1px solid rgba(255,255,255,0.15)',
   borderRadius: '8px',
   padding: '10px 12px',
   fontSize: '14px',
-  color: '#0D0D0D',
-  backgroundColor: '#FFFFFF',
+  color: '#FFFFFF',
+  backgroundColor: '#1A3050',
   width: '100%',
   minHeight: '44px',
   boxSizing: 'border-box',
@@ -65,17 +65,25 @@ const LABEL: CSSProperties = {
   display: 'block',
   fontSize: '13px',
   fontWeight: 600,
-  color: '#0D0D0D',
+  color: 'rgba(255,255,255,0.6)',
   marginBottom: '6px',
 }
 
 const SECTION_HEADING: CSSProperties = {
   fontSize: '16px',
   fontWeight: 700,
-  color: '#0A1628',
+  color: '#FFFFFF',
   marginBottom: '16px',
   paddingBottom: '10px',
-  borderBottom: '1px solid #E5E7EB',
+  borderBottom: '1px solid rgba(255,255,255,0.1)',
+}
+
+const CARD: CSSProperties = {
+  backgroundColor: '#0F2140',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderLeft: '3px solid #0EA5E9',
+  borderRadius: '10px',
+  padding: '24px',
 }
 
 // ── Save indicator ────────────────────────────────────────────────────────────
@@ -83,17 +91,17 @@ const SECTION_HEADING: CSSProperties = {
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null
   if (state === 'saving') return (
-    <span className="flex items-center gap-1.5 text-xs" style={{ color: '#6B7280' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
       <Loader2 size={12} className="animate-spin" /> Saving…
     </span>
   )
   if (state === 'saved') return (
-    <span className="flex items-center gap-1.5 text-xs" style={{ color: '#16A34A' }}>
-      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#16A34A' }} />
+    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#4ADE80' }}>
+      <span style={{ width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block', backgroundColor: '#4ADE80' }} />
       Saved
     </span>
   )
-  return <span className="text-xs" style={{ color: '#EF4444' }}>Save failed</span>
+  return <span style={{ fontSize: '12px', color: '#FCA5A5' }}>Save failed</span>
 }
 
 // ── Orange button ─────────────────────────────────────────────────────────────
@@ -110,8 +118,8 @@ function OrangeButton({ onClick, loading, children }: {
       style={{
         minHeight: '44px',
         padding: '0 24px',
-        backgroundColor: loading ? '#E5E7EB' : '#E8520A',
-        color: loading ? '#9CA3AF' : '#FFFFFF',
+        backgroundColor: loading ? 'rgba(255,255,255,0.1)' : '#E8520A',
+        color: loading ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
         border: 'none',
         borderRadius: '8px',
         fontSize: '14px',
@@ -153,7 +161,6 @@ export default function AdministrationPage() {
           .eq('id', user.id)
           .single()
 
-        // Extract role as plain string before the AssemblyUser cast (interface type is stale)
         const rawRow = userRow as Record<string, unknown>
         setCurrentUserRole(String(rawRow['role'] ?? ''))
 
@@ -260,49 +267,50 @@ export default function AdministrationPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1' }} className="min-h-screen">
-        <header style={{ backgroundColor: '#0A1628' }} className="px-8 py-6">
-          <h1 className="text-white text-2xl font-semibold">Administration</h1>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Administration</h1>
         </header>
-        <div className="flex items-center justify-center py-24">
-          <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1' }} className="min-h-screen">
-      <header style={{ backgroundColor: '#0A1628' }} className="px-8 py-6">
-        <h1 className="text-white text-2xl font-semibold">Administration</h1>
-        <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
+      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Administration</h1>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', margin: '6px 0 0' }}>
           Manage users, roles, and workspace settings.
         </p>
       </header>
 
-      <div className="px-8 py-8 space-y-10" style={{ maxWidth: '960px' }}>
+      <div style={{ padding: '32px', maxWidth: '960px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
 
         {/* ── User Administration ──────────────────────────────────────────── */}
         <section>
           <h2 style={SECTION_HEADING}>User Administration</h2>
           {users.length === 0 ? (
-            <p className="text-sm" style={{ color: '#6B7280' }}>No users found in this workspace.</p>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>No users found in this workspace.</p>
           ) : (
-            <div className="rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#FFFFFF' }}>
+            <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#0F2140' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     {['Name', 'Email', 'Role', 'Section Assignments'].map(col => (
                       <th
                         key={col}
                         style={{
                           padding: '12px 16px',
                           textAlign: 'left',
-                          fontSize: '12px',
+                          fontSize: '11px',
                           fontWeight: 700,
-                          color: '#6B7280',
+                          color: 'rgba(255,255,255,0.4)',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
+                          letterSpacing: '0.06em',
+                          backgroundColor: '#0F2140',
                         }}
                       >
                         {col}
@@ -314,12 +322,12 @@ export default function AdministrationPage() {
                   {users.map((u, i) => (
                     <tr
                       key={u.id}
-                      style={{ borderBottom: i < users.length - 1 ? '1px solid #F3F4F6' : 'none' }}
+                      style={{ borderBottom: i < users.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
                     >
-                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#0D0D0D', fontWeight: 500 }}>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#FFFFFF', fontWeight: 500 }}>
                         {u.name || '—'}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', color: 'rgba(255,255,255,0.55)' }}>
                         {u.email}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -334,7 +342,7 @@ export default function AdministrationPage() {
                         </select>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
                           {SECTIONS.map(section => (
                             <label
                               key={section}
@@ -343,7 +351,7 @@ export default function AdministrationPage() {
                                 alignItems: 'center',
                                 gap: '6px',
                                 fontSize: '12px',
-                                color: '#0D0D0D',
+                                color: 'rgba(255,255,255,0.75)',
                                 cursor: 'pointer',
                                 minHeight: '24px',
                                 whiteSpace: 'nowrap',
@@ -353,7 +361,7 @@ export default function AdministrationPage() {
                                 type="checkbox"
                                 checked={u.section_assignments.includes(section)}
                                 onChange={() => toggleSection(u.id, section)}
-                                style={{ accentColor: '#E8520A', width: '14px', height: '14px' }}
+                                style={{ accentColor: '#0EA5E9', width: '14px', height: '14px' }}
                               />
                               {section}
                             </label>
@@ -366,7 +374,7 @@ export default function AdministrationPage() {
               </table>
             </div>
           )}
-          <div className="flex items-center gap-4 mt-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
             <OrangeButton onClick={saveUsers} loading={userSave === 'saving'}>
               Save changes
             </OrangeButton>
@@ -374,13 +382,10 @@ export default function AdministrationPage() {
           </div>
         </section>
 
-        {/* ── Company Settings + AI Model Settings (shared save) ───────────── */}
+        {/* ── Company Settings ─────────────────────────────────────────────── */}
         <section>
           <h2 style={SECTION_HEADING}>Company Settings</h2>
-          <div
-            className="rounded-xl p-6 space-y-4"
-            style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
-          >
+          <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={LABEL}>Company Name</label>
               <input
@@ -405,11 +410,8 @@ export default function AdministrationPage() {
 
           {currentUserRole === 'org_admin' && (
             <>
-              <h2 style={{ ...SECTION_HEADING, marginTop: '32px' }}>AI Model Settings</h2>
-              <div
-                className="rounded-xl p-6 space-y-3"
-                style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
-              >
+              <h2 style={{ ...SECTION_HEADING, marginTop: '28px' }}>AI Model Settings</h2>
+              <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={LABEL}>Copilot Model</label>
                   <select
@@ -422,14 +424,14 @@ export default function AdministrationPage() {
                     ))}
                   </select>
                 </div>
-                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
                   Sonnet is faster and cost-efficient. Opus produces higher quality drafts but uses more of your monthly token budget.
                 </p>
               </div>
             </>
           )}
 
-          <div className="flex items-center gap-4 mt-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
             <OrangeButton onClick={saveSettings} loading={settingsSave === 'saving'}>
               Save changes
             </OrangeButton>
@@ -440,11 +442,8 @@ export default function AdministrationPage() {
         {/* ── Company Profile ──────────────────────────────────────────────── */}
         <section>
           <h2 style={SECTION_HEADING}>Company Profile</h2>
-          <div
-            className="rounded-xl p-6"
-            style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
-          >
-            <p className="text-sm mb-4" style={{ color: '#6B7280' }}>
+          <div style={CARD}>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.55)', marginBottom: '16px', marginTop: 0 }}>
               Review and edit your C3 Method company profile inputs (Steps 1–3.5).
             </p>
             <Link
