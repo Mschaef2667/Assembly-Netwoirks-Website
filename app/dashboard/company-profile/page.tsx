@@ -576,7 +576,26 @@ export default function CompanyProfilePage() {
           .eq('id', user.id)
           .single()
 
-        const userData = userRow as AssemblyUser | null
+        let userData = userRow as AssemblyUser | null
+
+        // If no user record exists (e.g. email-confirmation flow where callback
+        // provisioning hasn't run yet), attempt provisioning now.
+        if (!userData) {
+          const provisionRes = await fetch('/api/auth/provision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          })
+          if (provisionRes.ok) {
+            const { data: retryRow } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            userData = retryRow as AssemblyUser | null
+          }
+        }
+
         if (!userData) return
 
         const wsId = userData.org_id

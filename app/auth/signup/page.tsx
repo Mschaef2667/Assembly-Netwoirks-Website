@@ -30,6 +30,7 @@ const INPUT: CSSProperties = {
 
 export default function SignupPage() {
   const router = useRouter()
+  const [workspaceName, setWorkspaceName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -42,16 +43,35 @@ export default function SignupPage() {
     setInfo(null)
     setLoading(true)
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { workspace_name: workspaceName.trim() || email.split('@')[0] } },
+      })
       if (signUpError) {
         setError(signUpError.message)
         return
       }
-      // Email confirmation required — no session yet
+
       if (!data.session) {
+        // Email confirmation required — workspace name is in user metadata, provision happens after callback
         setInfo('Check your email for a confirmation link, then sign in.')
         return
       }
+
+      // Session available — provision org + user record now
+      const provisionRes = await fetch('/api/auth/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceName: workspaceName.trim() || email.split('@')[0] }),
+      })
+
+      if (!provisionRes.ok) {
+        const body = await provisionRes.json() as { error?: string }
+        setError(body.error ?? 'Failed to set up workspace. Please contact support.')
+        return
+      }
+
       router.push('/dashboard/company-profile')
     } catch {
       setError('An unexpected error occurred.')
@@ -85,6 +105,18 @@ export default function SignupPage() {
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={LABEL}>Workspace name</label>
+              <input
+                type="text"
+                value={workspaceName}
+                onChange={e => setWorkspaceName(e.target.value)}
+                required
+                autoComplete="organization"
+                placeholder="Acme Corp"
+                style={INPUT}
+              />
+            </div>
             <div>
               <label style={LABEL}>Email</label>
               <input
