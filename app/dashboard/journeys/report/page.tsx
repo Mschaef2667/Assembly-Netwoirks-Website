@@ -86,10 +86,32 @@ function extractActionPlan(content: Record<string, unknown>): { entries: PainPoi
   return { entries, summary }
 }
 
-function extractPainPoints(content: Record<string, unknown>): string[] {
+interface PainPointItem {
+  index: number
+  title: string
+  description: string
+}
+
+function extractPainPoints(content: Record<string, unknown>): PainPointItem[] {
   const raw = content['pain_points']
+  const activeCount = typeof content['active_count'] === 'number' ? content['active_count'] : undefined
   if (!Array.isArray(raw)) return []
-  return (raw as unknown[]).map(String)
+  const items = (raw as unknown[]).map((e, i) => {
+    const obj = typeof e === 'object' && e !== null ? (e as Record<string, unknown>) : {}
+    const rawTitle = typeof obj['title'] === 'string' ? obj['title'] : ''
+    return {
+      index: typeof obj['index'] === 'number' ? obj['index'] : i + 1,
+      title: rawTitle.startsWith('{') ? '' : rawTitle,
+      description: typeof obj['description'] === 'string' ? obj['description'] : '',
+    }
+  })
+  return activeCount !== undefined ? items.slice(0, activeCount) : items
+}
+
+function extractReadableContent(content: Record<string, unknown>): string {
+  return Object.values(content)
+    .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    .join('\n')
 }
 
 // ─── Render helpers ──────────────────────────────────────────────────────────
@@ -206,12 +228,10 @@ export default function ReportPage() {
     const o = getOutput(id)
     if (!o) return false
     const c = o.content
-    if (typeof c['text'] === 'string' && c['text'].trim()) return true
+    if (extractReadableContent(c).length > 0) return true
     if (Array.isArray(c['pain_points']) && (c['pain_points'] as unknown[]).length > 0) return true
-    if (typeof c['blended'] === 'string' && c['blended'].trim()) return true
     if (Array.isArray(c['per_pain_point']) && (c['per_pain_point'] as unknown[]).length > 0) return true
     if (Array.isArray(c['by_pain_point']) && (c['by_pain_point'] as unknown[]).length > 0) return true
-    if (typeof c['summary'] === 'string' && c['summary'].trim()) return true
     return false
   }
 
@@ -250,7 +270,7 @@ export default function ReportPage() {
       {
         const o = getOutput('1'); const s = getStep('1')
         children.push(subheading(lib, `1a. ${s?.title ?? 'Product / Service Profile'}`))
-        if (o && hasContent('1')) children.push(para(lib, extractText(o.content)))
+        if (o && hasContent('1')) children.push(para(lib, extractReadableContent(o.content)))
         else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
@@ -259,7 +279,7 @@ export default function ReportPage() {
       {
         const o = getOutput('3'); const s = getStep('3')
         children.push(subheading(lib, `1b. ${s?.title ?? 'Target Market Segments'}`))
-        if (o && hasContent('3')) children.push(para(lib, extractText(o.content)))
+        if (o && hasContent('3')) children.push(para(lib, extractReadableContent(o.content)))
         else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
@@ -269,9 +289,16 @@ export default function ReportPage() {
         const o = getOutput('4'); const s = getStep('4')
         children.push(subheading(lib, `1c. ${s?.title ?? 'Pain Points'}`))
         if (o && hasContent('4')) {
-          extractPainPoints(o.content).forEach((p, i) => {
-            children.push(para(lib, `${i + 1}. ${p}`, false, true))
-          })
+          const pts = extractPainPoints(o.content)
+          if (pts.length > 0) {
+            pts.forEach((p, i) => {
+              const label = p.title || `Pain Point ${i + 1}`
+              const text = p.description ? `${label} — ${p.description}` : label
+              children.push(para(lib, `${i + 1}. ${text}`, false, true))
+            })
+          } else {
+            children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
@@ -342,7 +369,10 @@ export default function ReportPage() {
           const b = extractBlend(o.content)
           if (b.mode === 'blended' && b.blended) children.push(para(lib, b.blended))
           else if (b.entries.length) b.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
-          else children.push(para(lib, extractText(o.content)))
+          else {
+            const fallback = extractReadableContent(o.content)
+            children.push(para(lib, fallback || ''))
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
@@ -367,8 +397,13 @@ export default function ReportPage() {
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
         if (o && hasContent(sid)) {
           const ap = extractActionPlan(o.content)
-          if (ap.summary) children.push(para(lib, ap.summary))
-          ap.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          if (ap.summary || ap.entries.length > 0) {
+            if (ap.summary) children.push(para(lib, ap.summary))
+            ap.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          } else {
+            const fallback = extractReadableContent(o.content)
+            children.push(para(lib, fallback || ''))
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
@@ -381,7 +416,11 @@ export default function ReportPage() {
         if (o && hasContent('26')) {
           const b = extractBlend(o.content)
           if (b.mode === 'blended' && b.blended) children.push(para(lib, b.blended))
-          else b.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          else if (b.entries.length) b.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          else {
+            const fallback = extractReadableContent(o.content)
+            children.push(para(lib, fallback || ''))
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
       }
 
@@ -443,7 +482,7 @@ export default function ReportPage() {
     const o = getOutput(id)
     const s = getStep(id)
     if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-    const text = extractText(o.content)
+    const text = extractReadableContent(o.content)
     if (text) return <p style={bodyStyle}>{text}</p>
     return null
   }
@@ -459,6 +498,8 @@ export default function ReportPage() {
         {b.entries.map(e => <li key={e.index} style={bodyStyle}>{e.content}</li>)}
       </ul>
     )
+    const fallback = extractReadableContent(o.content)
+    if (fallback) return <p style={bodyStyle}>{fallback}</p>
     return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
   }
 
@@ -467,16 +508,21 @@ export default function ReportPage() {
     const s = getStep(id)
     if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
     const ap = extractActionPlan(o.content)
-    return (
-      <>
-        {ap.summary && <p style={bodyStyle}>{ap.summary}</p>}
-        {ap.entries.length > 0 && (
-          <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-            {ap.entries.map(e => <li key={e.index} style={bodyStyle}>{e.content}</li>)}
-          </ul>
-        )}
-      </>
-    )
+    if (ap.summary || ap.entries.length > 0) {
+      return (
+        <>
+          {ap.summary && <p style={bodyStyle}>{ap.summary}</p>}
+          {ap.entries.length > 0 && (
+            <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
+              {ap.entries.map(e => <li key={e.index} style={bodyStyle}>{e.content}</li>)}
+            </ul>
+          )}
+        </>
+      )
+    }
+    const fallback = extractReadableContent(o.content)
+    if (fallback) return <p style={bodyStyle}>{fallback}</p>
+    return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
   }
 
   const sectionHeadStyle: React.CSSProperties = {
@@ -659,9 +705,15 @@ export default function ReportPage() {
                 const s = getStep('4')
                 if (!o || !hasContent('4')) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
                 const pts = extractPainPoints(o.content)
+                if (pts.length === 0) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
                 return (
                   <ol style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-                    {pts.map((p, i) => <li key={i} style={bodyStyle}>{p}</li>)}
+                    {pts.map((p, i) => (
+                      <li key={p.index} style={bodyStyle}>
+                        <strong>{p.title || `Pain Point ${i + 1}`}</strong>
+                        {p.description ? ` — ${p.description}` : ''}
+                      </li>
+                    ))}
                   </ol>
                 )
               })()}
