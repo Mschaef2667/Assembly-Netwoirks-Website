@@ -19,9 +19,9 @@ interface PhaseStatus {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const CARD: React.CSSProperties = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: '#0F2140',
   borderRadius: '12px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+  border: '1px solid rgba(255,255,255,0.1)',
   padding: '28px',
   display: 'flex',
   flexDirection: 'column',
@@ -53,7 +53,7 @@ function GateBadge({ status }: { status: GateStatus }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '6px',
       padding: '4px 12px', borderRadius: '999px',
-      backgroundColor: '#F3F4F6', color: '#6B7280', fontSize: '13px', fontWeight: 700,
+      backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontWeight: 700,
     }}>
       <Lock size={14} /> Gate 1 Locked
     </span>
@@ -66,7 +66,7 @@ function StepDot({ done }: { done: boolean }) {
   return (
     <div style={{
       width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-      backgroundColor: done ? '#16A34A' : '#E5E7EB',
+      backgroundColor: done ? '#16A34A' : 'rgba(255,255,255,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {done && <CheckCircle2 size={12} color="#FFFFFF" />}
@@ -149,8 +149,8 @@ export default function IntelligencePage() {
   ]
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
-      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
+      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>
           Intelligence
         </h1>
@@ -173,26 +173,26 @@ export default function IntelligencePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '10px',
-                  backgroundColor: done ? '#DCFCE7' : '#F3F4F6',
+                  backgroundColor: done ? 'rgba(22,163,74,0.2)' : 'rgba(255,255,255,0.07)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <Icon size={20} color={done ? '#16A34A' : '#6B7280'} />
+                  <Icon size={20} color={done ? '#16A34A' : '#0EA5E9'} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '11px', color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
                     Step {step}
                   </p>
-                  <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>{title}</p>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>{title}</p>
                 </div>
               </div>
 
-              <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.55', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: '1.55', margin: 0 }}>
                 {description}
               </p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 'auto' }}>
                 <StepDot done={done} />
-                <span style={{ fontSize: '12px', color: done ? '#16A34A' : '#6B7280' }}>
+                <span style={{ fontSize: '12px', color: done ? '#16A34A' : 'rgba(255,255,255,0.4)' }}>
                   {done ? 'Complete' : 'Not started'}
                 </span>
               </div>
@@ -216,12 +216,12 @@ export default function IntelligencePage() {
         {status.gate1Status !== 'approved' && (
           <div style={{
             marginTop: '28px', padding: '16px 20px',
-            backgroundColor: '#FFFFFF', borderRadius: '10px',
-            border: '1px solid #E5E7EB',
+            backgroundColor: '#0F2140', borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', alignItems: 'center', gap: '12px',
           }}>
-            <Lock size={18} style={{ color: '#6B7280', flexShrink: 0 }} />
-            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+            <Lock size={18} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>
               Phase 2 (C3 Processing — Steps 4–38) is locked until Gate 1 is approved by an Approver or Admin.
             </p>
           </div>

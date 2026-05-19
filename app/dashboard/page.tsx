@@ -30,7 +30,7 @@ function ProgressRing({ percent }: { percent: number }) {
   )
 }
 
-const GATES = [1, 2, 3, 4, 5] as const
+const GATES = [1, 2, 3, 4] as const
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3'] as const
 
 const WIDGET: React.CSSProperties = {

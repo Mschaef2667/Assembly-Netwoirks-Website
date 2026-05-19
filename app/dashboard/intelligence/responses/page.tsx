@@ -261,8 +261,8 @@ export default function ResponseImportPage() {
 
   if (loadingInit) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
@@ -273,7 +273,7 @@ export default function ResponseImportPage() {
   const mappedCount = Object.keys(pendingStageMapping).length
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Response Import</h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
@@ -287,12 +287,12 @@ export default function ResponseImportPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
 
           {/* Google Sheets */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
+          <div style={{ backgroundColor: '#0F2140', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <LinkIcon size={20} style={{ color: '#E8520A' }} />
-              <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Google Sheets URL</p>
+              <LinkIcon size={20} style={{ color: '#0EA5E9' }} />
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Google Sheets URL</p>
             </div>
-            <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
               Paste the URL of a public Google Sheet containing your survey responses.
             </p>
             <input
@@ -303,8 +303,8 @@ export default function ResponseImportPage() {
               placeholder="https://docs.google.com/spreadsheets/d/..."
               style={{
                 width: '100%', padding: '10px 12px', fontSize: '13px',
-                color: '#0D0D0D', backgroundColor: '#FFFFFF',
-                border: '1px solid #9CA3AF', borderRadius: '8px',
+                color: '#FFFFFF', backgroundColor: '#1A3050',
+                border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px',
                 outline: 'none', boxSizing: 'border-box', marginBottom: '10px',
                 cursor: 'text',
               }}
@@ -315,8 +315,8 @@ export default function ResponseImportPage() {
               disabled={fetchingSheet || !sheetUrl.trim()}
               style={{
                 width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                backgroundColor: (fetchingSheet || !sheetUrl.trim()) ? '#E5E7EB' : '#E8520A',
-                color: (fetchingSheet || !sheetUrl.trim()) ? '#9CA3AF' : '#FFFFFF',
+                backgroundColor: (fetchingSheet || !sheetUrl.trim()) ? 'rgba(255,255,255,0.1)' : '#E8520A',
+                color: (fetchingSheet || !sheetUrl.trim()) ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                 border: 'none', borderRadius: '8px',
                 cursor: (fetchingSheet || !sheetUrl.trim()) ? 'not-allowed' : 'pointer',
                 fontSize: '14px', fontWeight: 600,
@@ -328,12 +328,12 @@ export default function ResponseImportPage() {
           </div>
 
           {/* CSV Upload */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '24px' }}>
+          <div style={{ backgroundColor: '#0F2140', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <Upload size={20} style={{ color: '#E8520A' }} />
-              <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Upload CSV</p>
+              <Upload size={20} style={{ color: '#0EA5E9' }} />
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Upload CSV</p>
             </div>
-            <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
               Upload a CSV file exported from Google Forms, Typeform, or any other survey tool.
             </p>
             <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleFileChange} style={{ display: 'none' }} />
@@ -341,10 +341,10 @@ export default function ResponseImportPage() {
               onClick={() => fileInputRef.current?.click()}
               style={{
                 width: '100%', minHeight: '44px',
-                border: '2px dashed #D1D5DB', borderRadius: '8px',
-                backgroundColor: '#F9FAFB', cursor: 'pointer',
+                border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '8px',
+                backgroundColor: 'rgba(255,255,255,0.04)', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: '6px', color: '#6B7280', fontSize: '13px',
+                gap: '6px', color: 'rgba(255,255,255,0.5)', fontSize: '13px',
               }}
             >
               <Upload size={20} />
@@ -356,20 +356,20 @@ export default function ResponseImportPage() {
         {/* ── Pending import preview ──────────────────────────────────────────── */}
         {hasPending && (
           <div style={{
-            backgroundColor: '#FFFFFF', borderRadius: '10px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginBottom: '20px', overflow: 'hidden',
+            backgroundColor: '#0F2140', borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.1)', marginBottom: '20px', overflow: 'hidden',
           }}>
             <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <BarChart2 size={20} style={{ color: '#E8520A' }} />
+              <BarChart2 size={20} style={{ color: '#0EA5E9' }} />
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                   {pendingRows.length} response{pendingRows.length !== 1 ? 's' : ''} loaded
-                  <span style={{ fontSize: '12px', fontWeight: 400, color: '#6B7280', marginLeft: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255,255,255,0.5)', marginLeft: '8px' }}>
                     {pendingSource === 'google_sheets' ? 'from Google Sheets' : 'from CSV'}
                   </span>
                 </p>
                 {mappedCount > 0 && (
-                  <p style={{ fontSize: '12px', color: '#E8520A', margin: '2px 0 0' }}>
+                  <p style={{ fontSize: '12px', color: '#0EA5E9', margin: '2px 0 0' }}>
                     {mappedCount} column{mappedCount !== 1 ? 's' : ''} auto-mapped to DCP stages
                   </p>
                 )}
@@ -378,8 +378,8 @@ export default function ResponseImportPage() {
                 onClick={() => { setPendingHeaders([]); setPendingRows([]); setPendingStageMapping({}) }}
                 style={{
                   minHeight: '36px', padding: '0 14px', fontSize: '13px', fontWeight: 500,
-                  border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
-                  backgroundColor: '#FFFFFF', color: '#6B7280',
+                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', cursor: 'pointer',
+                  backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)',
                 }}
               >
                 Discard
@@ -389,8 +389,8 @@ export default function ResponseImportPage() {
                 disabled={saving}
                 style={{
                   minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px',
-                  backgroundColor: saving ? '#E5E7EB' : '#E8520A',
-                  color: saving ? '#9CA3AF' : '#FFFFFF',
+                  backgroundColor: saving ? 'rgba(255,255,255,0.1)' : '#E8520A',
+                  color: saving ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                   border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer',
                   fontSize: '14px', fontWeight: 600,
                 }}
@@ -405,19 +405,19 @@ export default function ResponseImportPage() {
             )}
 
             {pendingHeaders.length > 0 && (
-              <div style={{ overflowX: 'auto', maxHeight: '360px', overflowY: 'auto', borderTop: '1px solid #F3F4F6' }}>
+              <div style={{ overflowX: 'auto', maxHeight: '360px', overflowY: 'auto', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#F9FAFB', zIndex: 1 }}>
+                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#0A1628', zIndex: 1 }}>
                     <tr>
                       {pendingHeaders.map((h, i) => (
                         <th key={i} style={{
                           padding: '10px 14px', textAlign: 'left', fontWeight: 700,
-                          color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em',
-                          borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap',
+                          color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em',
+                          borderBottom: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap',
                         }}>
                           {h}
                           {pendingStageMapping[h] !== undefined && (
-                            <span style={{ marginLeft: '5px', fontSize: '10px', color: '#E8520A', fontWeight: 700 }}>
+                            <span style={{ marginLeft: '5px', fontSize: '10px', color: '#0EA5E9', fontWeight: 700 }}>
                               ·S{pendingStageMapping[h]}
                             </span>
                           )}
@@ -427,10 +427,10 @@ export default function ResponseImportPage() {
                   </thead>
                   <tbody>
                     {pendingRows.slice(0, 100).map((row, ri) => (
-                      <tr key={ri} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                      <tr key={ri} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                         {pendingHeaders.map((h, ci) => (
                           <td key={ci} style={{
-                            padding: '8px 14px', color: '#0D0D0D',
+                            padding: '8px 14px', color: 'rgba(255,255,255,0.85)',
                             maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>
                             {row[h]}
@@ -441,7 +441,7 @@ export default function ResponseImportPage() {
                   </tbody>
                 </table>
                 {pendingRows.length > 100 && (
-                  <p style={{ padding: '8px 14px', fontSize: '12px', color: '#6B7280', margin: 0 }}>
+                  <p style={{ padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                     Showing first 100 of {pendingRows.length} rows.
                   </p>
                 )}
@@ -452,16 +452,16 @@ export default function ResponseImportPage() {
 
         {/* ── Import history ──────────────────────────────────────────────────── */}
         {hasBatches && (
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#0F2140', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
             <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #F3F4F6',
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)',
               display: 'flex', alignItems: 'center', gap: '16px',
             }}>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                   {totalResponses} total response{totalResponses !== 1 ? 's' : ''}
                 </p>
-                <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0' }}>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>
                   across {batches.length} import{batches.length !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -469,7 +469,7 @@ export default function ResponseImportPage() {
                 href="/dashboard/intelligence/dcp-map"
                 style={{
                   minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center',
-                  backgroundColor: '#0A1628', color: '#FFFFFF',
+                  backgroundColor: '#E8520A', color: '#FFFFFF',
                   borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600,
                 }}
               >
@@ -481,20 +481,20 @@ export default function ResponseImportPage() {
               const batchMapped = Object.keys(batch.stage_mapping ?? {}).length
               return (
                 <div key={i} style={{
-                  padding: '12px 20px', borderBottom: '1px solid #F9FAFB',
+                  padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
                   display: 'flex', alignItems: 'center', gap: '12px',
                 }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: '#0D0D0D', margin: 0 }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>
                       {batch.response_count} response{batch.response_count !== 1 ? 's' : ''}
-                      <span style={{ marginLeft: '8px', fontWeight: 400, color: '#6B7280' }}>
+                      <span style={{ marginLeft: '8px', fontWeight: 400, color: 'rgba(255,255,255,0.5)' }}>
                         {batch.source === 'google_sheets' ? 'Google Sheets' : 'CSV'}
                       </span>
                     </p>
-                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '2px 0 0' }}>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '2px 0 0' }}>
                       {formatDate(batch.imported_at)}
                       {batchMapped > 0 && (
-                        <span style={{ color: '#E8520A', marginLeft: '8px' }}>
+                        <span style={{ color: '#0EA5E9', marginLeft: '8px' }}>
                           {batchMapped} stage{batchMapped !== 1 ? 's' : ''} mapped
                         </span>
                       )}

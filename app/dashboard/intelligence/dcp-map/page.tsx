@@ -245,8 +245,8 @@ export default function DcpMapPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
@@ -256,7 +256,7 @@ export default function DcpMapPage() {
   const mapStatus = dcpMap?.status ?? null
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -290,12 +290,12 @@ export default function DcpMapPage() {
         {/* No responses yet */}
         {responseCount === 0 && !dcpMap && (
           <div style={{
-            backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
+            backgroundColor: '#0F2140', borderRadius: '10px', padding: '24px',
+            border: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px',
           }}>
             <AlertTriangle size={20} style={{ color: '#D97706', flexShrink: 0 }} />
-            <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>
               No survey responses imported yet.{' '}
               <a href="/dashboard/intelligence/responses" style={{ color: '#E8520A', fontWeight: 600 }}>Import responses</a>
               {' '}before running analysis.
@@ -304,27 +304,27 @@ export default function DcpMapPage() {
         )}
 
         {analyzeError && (
-          <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
-            <p style={{ fontSize: '13px', color: '#991B1B', margin: 0 }}>{analyzeError}</p>
+          <div style={{ backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#FCA5A5', margin: 0 }}>{analyzeError}</p>
           </div>
         )}
 
         {/* Overall confidence */}
         {overallConf !== null && (
           <div style={{
-            backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '16px 20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginBottom: '20px',
+            backgroundColor: '#0F2140', borderRadius: '10px', padding: '16px 20px',
+            border: '1px solid rgba(255,255,255,0.1)', marginBottom: '20px',
             display: 'flex', alignItems: 'center', gap: '16px',
           }}>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Overall Confidence</p>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Overall Confidence</p>
             <ConfidenceBadge score={overallConf} />
-            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
               Based on {responseCount} response{responseCount !== 1 ? 's' : ''}
             </p>
             {dcpMap?.analysis_version && dcpMap.analysis_version > 1 && (
               <span style={{
-                fontSize: '11px', fontWeight: 600, color: '#6B7280',
-                backgroundColor: '#F3F4F6', padding: '2px 8px', borderRadius: '999px',
+                fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.5)',
+                backgroundColor: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '999px',
               }}>
                 v{dcpMap.analysis_version}
               </span>
@@ -342,7 +342,7 @@ export default function DcpMapPage() {
               const editedText = editedSummaries.get(stage_number)
 
               return (
-                <div key={stage_number} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                <div key={stage_number} style={{ backgroundColor: '#0F2140', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
                   <button
                     onClick={() => toggleStage(stage_number)}
                     style={{
@@ -352,31 +352,32 @@ export default function DcpMapPage() {
                     }}
                   >
                     {isOpen
-                      ? <ChevronDown size={16} style={{ color: '#6B7280', flexShrink: 0 }} />
-                      : <ChevronRight size={16} style={{ color: '#6B7280', flexShrink: 0 }} />
+                      ? <ChevronDown size={16} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
+                      : <ChevronRight size={16} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
                     }
                     <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#0D0D0D' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>
                         Stage {stage_number}: {stage_name}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '10px' }}>{description}</span>
+                      <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '10px' }}>{description}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                      <span style={{ fontSize: '11px', color: '#E8520A', fontWeight: 600 }}>{populates}</span>
+                      <span style={{ fontSize: '11px', color: '#0EA5E9', fontWeight: 600 }}>{populates}</span>
                       <ConfidenceBadge score={s.confidence_score} />
                     </div>
                   </button>
 
                   {isOpen && (
-                    <div style={{ borderTop: '1px solid #F3F4F6', padding: '16px 20px' }}>
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px' }}>
                       <textarea
                         value={editedText ?? s.summary}
                         onChange={e => setEditedSummaries(prev => new Map(prev).set(stage_number, e.target.value))}
                         onBlur={() => { if (editedText !== undefined) void saveSummaryEdit(stage_number) }}
                         style={{
                           width: '100%', minHeight: '120px', padding: '12px',
-                          border: '1px solid #E5E7EB', borderRadius: '8px',
-                          fontSize: '13px', lineHeight: '1.65', color: '#0D0D0D',
+                          border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                          fontSize: '13px', lineHeight: '1.65', color: '#FFFFFF',
+                          backgroundColor: '#1A3050',
                           resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                           boxSizing: 'border-box',
                         }}
@@ -391,17 +392,17 @@ export default function DcpMapPage() {
 
         {/* Gate 1 panel */}
         <div style={{
-          backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: mapStatus === 'approved' ? '2px solid #16A34A' : '1px solid #E5E7EB',
+          backgroundColor: '#0F2140', borderRadius: '12px', padding: '24px',
+          border: mapStatus === 'approved' ? '2px solid #16A34A' : '1px solid rgba(255,255,255,0.1)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
             {mapStatus === 'approved'
               ? <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
-              : <Lock size={20} style={{ color: '#6B7280' }} />
+              : <Lock size={20} style={{ color: 'rgba(255,255,255,0.5)' }} />
             }
-            <p style={{ fontSize: '16px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>Gate 1 — DCP Map Approval</p>
+            <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Gate 1 — DCP Map Approval</p>
           </div>
-          <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px' }}>
             Gate 1 approval by an Approver or Admin unlocks Phase 2 (Steps 4–38).
             Submit when your DCP Map accurately reflects your buyer research.
           </p>
@@ -417,10 +418,10 @@ export default function DcpMapPage() {
 
           {mapStatus === 'pending_approval' && !isApprover && (
             <div style={{
-              padding: '12px 16px', backgroundColor: '#FEF3C7', borderRadius: '8px',
+              padding: '12px 16px', backgroundColor: 'rgba(217,119,6,0.15)', borderRadius: '8px',
               display: 'flex', alignItems: 'center', gap: '8px',
             }}>
-              <p style={{ fontSize: '13px', color: '#92400E', margin: 0, fontWeight: 600 }}>
+              <p style={{ fontSize: '13px', color: '#FDE68A', margin: 0, fontWeight: 600 }}>
                 Pending approval — waiting for an Approver or Admin to review.
               </p>
             </div>
@@ -433,8 +434,8 @@ export default function DcpMapPage() {
                 disabled={approving}
                 style={{
                   minHeight: '44px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px',
-                  backgroundColor: approving ? '#E5E7EB' : '#16A34A',
-                  color: approving ? '#9CA3AF' : '#FFFFFF',
+                  backgroundColor: approving ? 'rgba(255,255,255,0.1)' : '#16A34A',
+                  color: approving ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                   border: 'none', borderRadius: '8px', cursor: approving ? 'not-allowed' : 'pointer',
                   fontSize: '14px', fontWeight: 600,
                 }}
@@ -452,8 +453,8 @@ export default function DcpMapPage() {
               disabled={submitting || !dcpMap}
               style={{
                 minHeight: '44px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px',
-                backgroundColor: (submitting || !dcpMap) ? '#E5E7EB' : '#E8520A',
-                color: (submitting || !dcpMap) ? '#9CA3AF' : '#FFFFFF',
+                backgroundColor: (submitting || !dcpMap) ? 'rgba(255,255,255,0.1)' : '#E8520A',
+                color: (submitting || !dcpMap) ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                 border: 'none', borderRadius: '8px', cursor: (submitting || !dcpMap) ? 'not-allowed' : 'pointer',
                 fontSize: '14px', fontWeight: 600,
               }}

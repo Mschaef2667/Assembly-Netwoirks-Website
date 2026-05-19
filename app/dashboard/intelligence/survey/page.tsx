@@ -32,7 +32,7 @@ const STAGE_DESCRIPTIONS: Record<number, string> = {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const LABEL: React.CSSProperties = {
-  fontSize: '11px', fontWeight: 700, color: '#6B7280',
+  fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)',
   textTransform: 'uppercase', letterSpacing: '0.07em',
 }
 
@@ -210,8 +210,8 @@ export default function SurveyBuilderPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
@@ -220,7 +220,7 @@ export default function SurveyBuilderPage() {
   const totalSelected = selectedIds.size
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Survey Builder</h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
@@ -238,7 +238,7 @@ export default function SurveyBuilderPage() {
             const isOpen = openStages.has(stageNum)
 
             return (
-              <div key={stageNum} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+              <div key={stageNum} style={{ backgroundColor: '#0F2140', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                 {/* Accordion header */}
                 <button
                   onClick={() => toggleStage(stageNum)}
@@ -250,21 +250,21 @@ export default function SurveyBuilderPage() {
                   }}
                 >
                   {isOpen
-                    ? <ChevronDown size={18} style={{ color: '#6B7280', flexShrink: 0 }} />
-                    : <ChevronRight size={18} style={{ color: '#6B7280', flexShrink: 0 }} />
+                    ? <ChevronDown size={18} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
+                    : <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
                   }
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#0D0D0D' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>
                       Stage {stageNum}: {stageName}
                     </span>
-                    <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '10px' }}>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '10px' }}>
                       {STAGE_DESCRIPTIONS[stageNum]}
                     </span>
                   </div>
                   <span style={{
                     padding: '2px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                    backgroundColor: selected > 0 ? 'rgba(232,82,10,0.1)' : '#F3F4F6',
-                    color: selected > 0 ? '#E8520A' : '#6B7280', flexShrink: 0,
+                    backgroundColor: selected > 0 ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.08)',
+                    color: selected > 0 ? '#0EA5E9' : 'rgba(255,255,255,0.4)', flexShrink: 0,
                   }}>
                     {selected}/{stageQuestions.length}
                   </span>
@@ -272,20 +272,20 @@ export default function SurveyBuilderPage() {
 
                 {/* Accordion body */}
                 {isOpen && (
-                  <div style={{ borderTop: '1px solid #F3F4F6', padding: '4px 0 12px' }}>
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '4px 0 12px' }}>
                     {stageQuestions.map(q => {
                       const isSelected = selectedIds.has(q.id)
                       const isEditing = editingId === q.id
                       const customText = customized.get(q.id)
 
                       return (
-                        <div key={q.id} style={{ padding: '12px 20px 10px', borderBottom: '1px solid #F9FAFB' }}>
+                        <div key={q.id} style={{ padding: '12px 20px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => toggleQuestion(q.id)}
-                              style={{ marginTop: '3px', accentColor: '#E8520A', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
+                              style={{ marginTop: '3px', accentColor: '#0EA5E9', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
                             />
                             <div style={{ flex: 1 }}>
                               {isEditing ? (
@@ -304,18 +304,18 @@ export default function SurveyBuilderPage() {
                                   autoFocus
                                   style={{
                                     width: '100%', padding: '8px', fontSize: '14px',
-                                    color: '#0D0D0D',
-                                    border: '1px solid #E8520A', borderRadius: '6px',
+                                    color: '#FFFFFF',
+                                    border: '1px solid #0EA5E9', borderRadius: '6px',
                                     resize: 'vertical', minHeight: '70px', fontFamily: 'inherit',
                                     outline: 'none', boxSizing: 'border-box',
-                                    backgroundColor: '#FFFFFF',
+                                    backgroundColor: '#1A3050',
                                   }}
                                 />
                               ) : (
-                                <p style={{ fontSize: '14px', color: '#0D0D0D', margin: '0 0 4px', lineHeight: '1.5' }}>
+                                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.85)', margin: '0 0 4px', lineHeight: '1.5' }}>
                                   {customText ?? q.question_text}
                                   {customText && (
-                                    <span style={{ marginLeft: '6px', fontSize: '11px', color: '#E8520A', fontWeight: 600 }}>
+                                    <span style={{ marginLeft: '6px', fontSize: '11px', color: '#0EA5E9', fontWeight: 600 }}>
                                       (customized)
                                     </span>
                                   )}
@@ -325,7 +325,7 @@ export default function SurveyBuilderPage() {
                               {q.sub_bullets.length > 0 && !isEditing && (
                                 <ul style={{ margin: '4px 0 0', paddingLeft: '18px' }}>
                                   {q.sub_bullets.map((b, i) => (
-                                    <li key={i} style={{ fontSize: '12px', color: '#6B7280', marginBottom: '2px' }}>{b}</li>
+                                    <li key={i} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>{b}</li>
                                   ))}
                                 </ul>
                               )}
@@ -339,8 +339,8 @@ export default function SurveyBuilderPage() {
                                 }}
                                 style={{
                                   minHeight: '32px', padding: '0 10px', fontSize: '12px', fontWeight: 600,
-                                  border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer',
-                                  backgroundColor: '#FFFFFF', color: '#6B7280', flexShrink: 0,
+                                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', cursor: 'pointer',
+                                  backgroundColor: '#0F2140', color: 'rgba(255,255,255,0.5)', flexShrink: 0,
                                 }}
                               >
                                 Customize
@@ -361,14 +361,14 @@ export default function SurveyBuilderPage() {
       {/* Bottom bar */}
       <div style={{
         position: 'fixed', bottom: 0, left: '256px', right: 0,
-        backgroundColor: '#FFFFFF', borderTop: '1px solid #E5E7EB',
+        backgroundColor: '#0F2140', borderTop: '1px solid rgba(255,255,255,0.1)',
         padding: '14px 32px', display: 'flex', alignItems: 'center', gap: '16px',
       }}>
-        <p style={{ fontSize: '14px', color: '#0D0D0D', margin: 0, fontWeight: 500 }}>
+        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.85)', margin: 0, fontWeight: 500 }}>
           {totalSelected} question{totalSelected !== 1 ? 's' : ''} selected
         </p>
         <div style={{ flex: 1 }} />
-        {saveState === 'saving' && <span style={{ fontSize: '12px', color: '#6B7280' }}>Saving…</span>}
+        {saveState === 'saving' && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Saving…</span>}
         {saveState === 'saved' && <span style={{ fontSize: '12px', color: '#16A34A' }}>Saved</span>}
         {saveState === 'error' && <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>}
         <button
@@ -376,9 +376,9 @@ export default function SurveyBuilderPage() {
           disabled={totalSelected === 0}
           style={{
             minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px',
-            border: '1px solid #E5E7EB', borderRadius: '8px', cursor: totalSelected === 0 ? 'not-allowed' : 'pointer',
-            backgroundColor: totalSelected === 0 ? '#F3F4F6' : '#FFFFFF',
-            color: totalSelected === 0 ? '#9CA3AF' : '#0D0D0D', fontSize: '14px', fontWeight: 600,
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', cursor: totalSelected === 0 ? 'not-allowed' : 'pointer',
+            backgroundColor: totalSelected === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)',
+            color: totalSelected === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.85)', fontSize: '14px', fontWeight: 600,
           }}
         >
           <Download size={16} />

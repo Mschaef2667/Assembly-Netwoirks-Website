@@ -59,9 +59,9 @@ interface OfferData {
 const AUTOSAVE_MS = 800
 
 const CARD: React.CSSProperties = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: '#0F2140',
   borderRadius: '10px',
-  border: '1px solid #E5E7EB',
+  border: '1px solid rgba(255,255,255,0.1)',
   padding: '20px',
 }
 
@@ -69,7 +69,7 @@ const LABEL_ST: React.CSSProperties = {
   display: 'block',
   fontSize: '12px',
   fontWeight: 700,
-  color: '#6B7280',
+  color: 'rgba(255,255,255,0.5)',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
   marginBottom: '6px',
@@ -78,11 +78,11 @@ const LABEL_ST: React.CSSProperties = {
 const INPUT_ST: React.CSSProperties = {
   width: '100%',
   padding: '9px 12px',
-  border: '1px solid #D1D5DB',
+  border: '1px solid rgba(255,255,255,0.15)',
   borderRadius: '8px',
   fontSize: '14px',
-  color: '#0D0D0D',
-  backgroundColor: '#FFFFFF',
+  color: '#FFFFFF',
+  backgroundColor: '#1A3050',
   boxSizing: 'border-box',
   fontFamily: 'inherit',
   outline: 'none',
@@ -178,7 +178,7 @@ function sanitizeIcp(parsed: Record<string, unknown>): IcpFormData {
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null
   if (state === 'saving') return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#6B7280' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
       <Loader2 size={11} className="animate-spin" /> Saving…
     </span>
   )
@@ -210,18 +210,18 @@ function TagInput({
   return (
     <div style={{
       display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center',
-      padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: '8px',
-      backgroundColor: '#FFFFFF', minHeight: '44px',
+      padding: '8px 10px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+      backgroundColor: '#1A3050', minHeight: '44px',
     }}>
       {tags.map((tag, i) => (
         <span key={i} style={{
           display: 'inline-flex', alignItems: 'center', gap: '4px',
-          padding: '3px 10px', backgroundColor: 'rgba(232,82,10,0.1)',
-          color: '#E8520A', borderRadius: '999px', fontSize: '13px', fontWeight: 500,
+          padding: '3px 10px', backgroundColor: 'rgba(14,165,233,0.15)',
+          color: '#0EA5E9', borderRadius: '999px', fontSize: '13px', fontWeight: 500,
         }}>
           {tag}
           <button onClick={() => onChange(tags.filter((_, ti) => ti !== i))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E8520A', padding: '0 0 0 2px', lineHeight: 1 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0EA5E9', padding: '0 0 0 2px', lineHeight: 1 }}>
             ×
           </button>
         </span>
@@ -229,7 +229,7 @@ function TagInput({
       {tags.length < maxItems && (
         <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
           placeholder={tags.length === 0 ? placeholder : ''}
-          style={{ flex: 1, minWidth: '120px', border: 'none', outline: 'none', fontSize: '14px', color: '#0D0D0D', backgroundColor: 'transparent' }} />
+          style={{ flex: 1, minWidth: '120px', border: 'none', outline: 'none', fontSize: '14px', color: '#FFFFFF', backgroundColor: 'transparent' }} />
       )}
     </div>
   )
@@ -255,7 +255,7 @@ function ListInput({
       {values.length < maxItems && (
         <button onClick={() => onChange([...values, ''])}
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', minHeight: '36px',
-            backgroundColor: 'transparent', color: '#374151', border: '1px dashed #D1D5DB',
+            backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px dashed rgba(255,255,255,0.2)',
             borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
           <Plus size={13} /> Add item
         </button>
@@ -285,7 +285,7 @@ function ObjectionsInput({ objections, onChange }: { objections: Objection[]; on
       {objections.length < 5 && (
         <button onClick={() => onChange([...objections, { objection: '', overcomes: '' }])}
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', minHeight: '36px',
-            backgroundColor: 'transparent', color: '#374151', border: '1px dashed #D1D5DB',
+            backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px dashed rgba(255,255,255,0.2)',
             borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
           <Plus size={13} /> Add objection
         </button>
@@ -312,13 +312,13 @@ function IcpPreviewPanel({
             Apply to form
           </button>
           <button onClick={onDiscard}
-            style={{ minHeight: '36px', padding: '0 16px', backgroundColor: 'transparent', color: '#6B7280',
-              border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ minHeight: '36px', padding: '0 16px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)',
+              border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Discard
           </button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', color: '#374151' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.85)' }}>
         {preview.buyer_type && <div><strong>Buyer type:</strong> {preview.buyer_type.replace('_', ' ')}</div>}
         {preview.company_size_range && <div><strong>Company size:</strong> {preview.company_size_range}</div>}
         {preview.budget_range && <div><strong>Budget:</strong> {preview.budget_range}</div>}
@@ -725,7 +725,7 @@ export default function TargetMarketsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Section 1: Professional Identity & Firmographics */}
         <div style={CARD}>
-          <p style={{ ...LABEL_ST, color: '#E8520A', marginBottom: '14px' }}>Professional Identity & Firmographics</p>
+          <p style={{ ...LABEL_ST, color: '#0EA5E9', marginBottom: '14px' }}>Professional Identity & Firmographics</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div style={{ gridColumn: 'span 2' }}>
               {field('Buyer Type', (
@@ -733,9 +733,9 @@ export default function TargetMarketsPage() {
                   {(['economic_buyer', 'champion'] as BuyerType[]).map(bt => (
                     <button key={bt} onClick={() => u({ buyer_type: bt })}
                       style={{ flex: 1, minHeight: '40px', padding: '0 16px', borderRadius: '8px', border: '1px solid', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-                        backgroundColor: form.buyer_type === bt ? '#0A1628' : '#FFFFFF',
-                        color: form.buyer_type === bt ? '#FFFFFF' : '#374151',
-                        borderColor: form.buyer_type === bt ? '#0A1628' : '#D1D5DB' }}>
+                        backgroundColor: form.buyer_type === bt ? '#0EA5E9' : 'rgba(255,255,255,0.05)',
+                        color: form.buyer_type === bt ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+                        borderColor: form.buyer_type === bt ? '#0EA5E9' : 'rgba(255,255,255,0.15)' }}>
                       {bt === 'economic_buyer' ? 'Economic Buyer' : 'Champion'}
                     </button>
                   ))}
@@ -760,7 +760,7 @@ export default function TargetMarketsPage() {
 
         {/* Section 2: Pain & Gain */}
         <div style={CARD}>
-          <p style={{ ...LABEL_ST, color: '#E8520A', marginBottom: '14px' }}>Pain & Gain</p>
+          <p style={{ ...LABEL_ST, color: '#0EA5E9', marginBottom: '14px' }}>Pain & Gain</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {field('Primary Challenges', <ListInput values={form.primary_challenges} onChange={v => u({ primary_challenges: v })} placeholder="Describe a challenge…" />)}
             {field('Barriers to Success', <ListInput values={form.barriers_to_success} onChange={v => u({ barriers_to_success: v })} placeholder="Describe a barrier…" />)}
@@ -771,7 +771,7 @@ export default function TargetMarketsPage() {
 
         {/* Section 3: Behavioral Triggers & Information Habits */}
         <div style={CARD}>
-          <p style={{ ...LABEL_ST, color: '#E8520A', marginBottom: '14px' }}>Behavioral Triggers & Information Habits</p>
+          <p style={{ ...LABEL_ST, color: '#0EA5E9', marginBottom: '14px' }}>Behavioral Triggers & Information Habits</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {field('Buying Triggers', <ListInput values={form.buying_triggers} onChange={v => u({ buying_triggers: v })} placeholder="e.g. Board pressure to show ROI" />)}
             {field('Information Sources', <ListInput values={form.information_sources} onChange={v => u({ information_sources: v })} maxItems={6} placeholder="e.g. G2, LinkedIn, peer referrals" />)}
@@ -782,7 +782,7 @@ export default function TargetMarketsPage() {
 
         {/* Section 4: Psychographics & Objections */}
         <div style={CARD}>
-          <p style={{ ...LABEL_ST, color: '#E8520A', marginBottom: '14px' }}>Psychographics & Objections</p>
+          <p style={{ ...LABEL_ST, color: '#0EA5E9', marginBottom: '14px' }}>Psychographics & Objections</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {field('Values', <textarea style={TEXTAREA_ST} value={form.buyer_values} placeholder="What do they value culturally and professionally?" onChange={e => u({ buyer_values: e.target.value })} />)}
             {field('Common Objections', <ObjectionsInput objections={form.common_objections} onChange={v => u({ common_objections: v })} />)}
@@ -803,8 +803,8 @@ export default function TargetMarketsPage() {
       return (
         <div style={{ padding: '48px 0', textAlign: 'center' }}>
           <AlertTriangle size={28} style={{ color: '#D97706', margin: '0 auto 12px', display: 'block' }} />
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#92400E', margin: '0 0 4px' }}>No ICPs saved yet</p>
-          <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Complete your Target Markets ICPs first — offers are linked to ICPs.</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#FDE68A', margin: '0 0 4px' }}>No ICPs saved yet</p>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Complete your Target Markets ICPs first — offers are linked to ICPs.</p>
         </div>
       )
     }
@@ -816,17 +816,17 @@ export default function TargetMarketsPage() {
           const segOffers = offers.filter(o => o.icpId === icpId)
           return (
             <div key={i} style={CARD}>
-              <p style={{ fontSize: '16px', fontWeight: 700, color: '#0D0D0D', margin: '0 0 4px' }}>{seg.name}</p>
+              <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>{seg.name}</p>
               {!icpId ? (
-                <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '8px 0 0' }}>Save the ICP for this segment first to add offers.</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '8px 0 0' }}>Save the ICP for this segment first to add offers.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
                   {segOffers.map(offer => (
-                    <div key={offer.localKey} style={{ border: '1px solid #E5E7EB', borderRadius: '10px', padding: '16px', backgroundColor: '#FAFAFA' }}>
+                    <div key={offer.localKey} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.04)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                         <SaveIndicator state={offerSaveStates[offer.localKey] ?? 'idle'} />
                         <button onClick={() => handleDeleteOffer(offer.localKey)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center' }}>
                           <X size={15} />
                         </button>
                       </div>
@@ -857,7 +857,7 @@ export default function TargetMarketsPage() {
                   {segOffers.length < 3 && (
                     <button onClick={() => void handleAddOffer(i)}
                       style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', minHeight: '44px',
-                        backgroundColor: 'transparent', color: '#0A1628', border: '2px dashed #D1D5DB',
+                        backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '2px dashed rgba(255,255,255,0.2)',
                         borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
                       <Plus size={16} /> Add Offer
                     </button>
@@ -875,14 +875,14 @@ export default function TargetMarketsPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Target Markets &amp; Offers</h1>
@@ -897,8 +897,8 @@ export default function TargetMarketsPage() {
           {(['markets', 'offers'] as ActiveTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '12px 20px', minHeight: '44px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-                color: tab === t ? '#E8520A' : 'rgba(255,255,255,0.5)',
-                borderBottom: tab === t ? '2px solid #E8520A' : '2px solid transparent' }}>
+                color: tab === t ? '#0EA5E9' : 'rgba(255,255,255,0.5)',
+                borderBottom: tab === t ? '2px solid #0EA5E9' : '2px solid transparent' }}>
               {t === 'markets' ? 'Target Markets' : 'Offers'}
             </button>
           ))}
@@ -910,17 +910,17 @@ export default function TargetMarketsPage() {
         {tab === 'markets' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {segments.map((seg, i) => (
-              <div key={i} style={{ border: '1px solid #E5E7EB', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#FFFFFF' }}>
+              <div key={i} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#0F2140' }}>
                 {/* Accordion header */}
                 <button
                   onClick={() => setOpenAccordions(prev => setAt(prev, i, !prev[i]))}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '16px 20px', minHeight: '56px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {openAccordions[i] ? <ChevronDown size={18} style={{ color: '#6B7280', flexShrink: 0 }} /> : <ChevronRight size={18} style={{ color: '#6B7280', flexShrink: 0 }} />}
+                    {openAccordions[i] ? <ChevronDown size={18} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} /> : <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />}
                     <div>
-                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D' }}>{seg.name}</span>
-                      {seg.description && <p style={{ fontSize: '12px', color: '#6B7280', margin: '2px 0 0', fontWeight: 400 }}>{seg.description.slice(0, 100)}{seg.description.length > 100 ? '…' : ''}</p>}
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>{seg.name}</span>
+                      {seg.description && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '2px 0 0', fontWeight: 400 }}>{seg.description.slice(0, 100)}{seg.description.length > 100 ? '…' : ''}</p>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
@@ -929,7 +929,7 @@ export default function TargetMarketsPage() {
                       onClick={e => { e.stopPropagation(); void runCopilot(i) }}
                       disabled={copilotLoading[i]}
                       style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 14px', minHeight: '36px',
-                        backgroundColor: copilotLoading[i] ? '#F3F4F6' : '#E8520A', color: copilotLoading[i] ? '#9CA3AF' : '#FFFFFF',
+                        backgroundColor: copilotLoading[i] ? 'rgba(255,255,255,0.1)' : '#E8520A', color: copilotLoading[i] ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                         border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 600,
                         cursor: copilotLoading[i] ? 'not-allowed' : 'pointer' }}>
                       {copilotLoading[i] ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
@@ -940,13 +940,13 @@ export default function TargetMarketsPage() {
 
                 {/* Accordion body */}
                 {openAccordions[i] && (
-                  <div style={{ padding: '0 20px 20px', borderTop: '1px solid #F3F4F6' }}>
+                  <div style={{ padding: '0 20px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                     {/* Copilot error */}
                     {copilotErrors[i] && (
-                      <div style={{ margin: '16px 0', padding: '12px 16px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px' }}>
-                        <p style={{ fontSize: '13px', color: '#991B1B', margin: '0 0 6px' }}>{copilotErrors[i]}</p>
+                      <div style={{ margin: '16px 0', padding: '12px 16px', backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '13px', color: '#FCA5A5', margin: '0 0 6px' }}>{copilotErrors[i]}</p>
                         <a href="https://status.anthropic.com" target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: '12px', color: '#991B1B', textDecoration: 'underline' }}>
+                          style={{ fontSize: '12px', color: '#FCA5A5', textDecoration: 'underline' }}>
                           Check AI Status ↗
                         </a>
                       </div>

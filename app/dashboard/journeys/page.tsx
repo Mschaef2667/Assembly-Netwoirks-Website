@@ -347,8 +347,9 @@ export default function JourneysPage() {
     stepsByPhase.set(step.phase, arr)
   }
 
-  const totalSteps = steps.length
-  const totalApproved = steps.filter(s => outputMap.get(s.id)?.status === 'approved').length
+  const phaseSteps = steps.filter(s => s.phase >= 1 && s.phase <= 6)
+  const totalSteps = phaseSteps.length
+  const totalApproved = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
   const hasAnyProgress = outputMap.size > 0
 
   const renderList: RenderItem[] = []
