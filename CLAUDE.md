@@ -154,6 +154,7 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 ### Workspace Personalization
 - [ ] Client logo upload — stored in Supabase storage, displayed in sidebar alongside Assembly AI logo
 - [ ] Workspace theme — allow orgs to pick an accent color to complement Assembly AI branding
+- [ ] Company logo upload at setup — stored in Supabase Storage, displayed in top left of Dashboard page alongside Assembly AI logo, and included on the cover page of the C3 Method Output Report.
 
 ## Key Routes
 - /dashboard → Workspace Dashboard (done)
