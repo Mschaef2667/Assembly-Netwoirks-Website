@@ -369,9 +369,28 @@ export default function JourneysPage() {
               Complete all 38 C3 Method steps to build your go-to-market operating system.
             </p>
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0, flexShrink: 0 }}>
-            {totalApproved} / {totalSteps} steps approved
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>
+              {totalApproved} / {totalSteps} steps approved
+            </p>
+            <Link
+              href="/dashboard/journeys/report"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: '44px',
+                padding: '0 18px',
+                backgroundColor: '#E8520A',
+                color: '#FFFFFF',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Generate Report
+            </Link>
+          </div>
         </div>
         <div style={{ height: '4px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '999px', overflow: 'hidden' }}>
           <div style={{
