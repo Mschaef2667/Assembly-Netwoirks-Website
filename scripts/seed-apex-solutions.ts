@@ -274,24 +274,33 @@ async function main(): Promise<void> {
   let stepFail = 0
 
   for (const step of steps) {
-    const { error } = await supabase
+    const { error: delError } = await supabase
       .from('step_output')
-      .upsert(
-        {
-          workspace_id: workspaceId,
-          step_id: step.step_id,
-          version: 1,
-          status: 'draft',
-          content: step.content,
-          copilot_assisted: false,
-          last_saved_at: now,
-          last_updated_at: now,
-        },
-        { onConflict: 'workspace_id,step_id,version' }
-      )
+      .delete()
+      .eq('workspace_id', workspaceId)
+      .eq('step_id', step.step_id)
 
-    if (error) {
-      console.error(`  ✗ Step ${step.step_id}: ${error.message}`)
+    if (delError) {
+      console.error(`  ✗ Step ${step.step_id} (delete): ${delError.message}`)
+      stepFail++
+      continue
+    }
+
+    const { error: insError } = await supabase
+      .from('step_output')
+      .insert({
+        workspace_id: workspaceId,
+        step_id: step.step_id,
+        version: 1,
+        status: 'draft',
+        content: step.content,
+        copilot_assisted: false,
+        last_saved_at: now,
+        last_updated_at: now,
+      })
+
+    if (insError) {
+      console.error(`  ✗ Step ${step.step_id}: ${insError.message}`)
       stepFail++
     } else {
       console.log(`  ✓ Step ${step.step_id}`)
