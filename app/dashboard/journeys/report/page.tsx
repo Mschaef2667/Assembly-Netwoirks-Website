@@ -67,10 +67,10 @@ function extractBlend(content: Record<string, unknown>): { mode: string; entries
   const entries: PainPointEntry[] = Array.isArray(raw)
     ? (raw as unknown[]).map((e) => {
         const obj = e as Record<string, unknown>
-        return { index: Number(obj['index'] ?? 0), content: String(obj['content'] ?? '') }
+        return { index: Number(obj['index'] ?? 0), content: extractDraftText(obj['content']) }
       })
     : []
-  const blended = typeof content['blended'] === 'string' ? content['blended'] : ''
+  const blended = extractDraftText(content['blended'])
   return { mode, entries, blended }
 }
 
@@ -79,10 +79,10 @@ function extractActionPlan(content: Record<string, unknown>): { entries: PainPoi
   const entries: PainPointEntry[] = Array.isArray(raw)
     ? (raw as unknown[]).map((e) => {
         const obj = e as Record<string, unknown>
-        return { index: Number(obj['index'] ?? 0), content: String(obj['content'] ?? '') }
+        return { index: Number(obj['index'] ?? 0), content: extractDraftText(obj['content']) }
       })
     : []
-  const summary = typeof content['summary'] === 'string' ? content['summary'] : ''
+  const summary = extractDraftText(content['summary'])
   return { entries, summary }
 }
 
@@ -98,19 +98,50 @@ function extractPainPoints(content: Record<string, unknown>): PainPointItem[] {
   if (!Array.isArray(raw)) return []
   const items = (raw as unknown[]).map((e, i) => {
     const obj = typeof e === 'object' && e !== null ? (e as Record<string, unknown>) : {}
-    const rawTitle = typeof obj['title'] === 'string' ? obj['title'] : ''
+    const rawTitle = extractDraftText(obj['title'])
     return {
       index: typeof obj['index'] === 'number' ? obj['index'] : i + 1,
       title: rawTitle.startsWith('{') ? '' : rawTitle,
-      description: typeof obj['description'] === 'string' ? obj['description'] : '',
+      description: extractDraftText(obj['description']),
     }
   })
   return activeCount !== undefined ? items.slice(0, activeCount) : items
 }
 
+function extractDraftText(raw: unknown): string {
+  if (typeof raw === 'string') {
+    const stripped = raw
+      .replace(/^```json\s*/i, '')
+      .replace(/```\s*$/, '')
+      .trim()
+    try {
+      const parsed = JSON.parse(stripped) as unknown
+      if (parsed && typeof parsed === 'object' && 'draft' in parsed && typeof (parsed as Record<string, unknown>)['draft'] === 'string') {
+        return ((parsed as Record<string, unknown>)['draft'] as string).trim()
+      }
+    } catch {
+      // not JSON — use as plain text
+    }
+    if (stripped.startsWith('{')) {
+      const match = stripped.match(/"draft"\s*:\s*"([^"]+)"/)
+      if (match) return match[1].trim()
+    }
+    return stripped
+  }
+  if (typeof raw === 'object' && raw !== null) {
+    const obj = raw as Record<string, unknown>
+    if (typeof obj['draft'] === 'string') return obj['draft'].trim()
+    return Object.values(obj)
+      .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+      .join('\n')
+  }
+  return ''
+}
+
 function extractReadableContent(content: Record<string, unknown>): string {
   return Object.values(content)
-    .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    .map(v => extractDraftText(v))
+    .filter(s => s.trim() !== '')
     .join('\n')
 }
 
