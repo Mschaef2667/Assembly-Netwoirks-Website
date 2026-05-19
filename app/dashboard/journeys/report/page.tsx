@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 
@@ -196,6 +196,8 @@ export default function ReportPage() {
   const [icps, setIcps] = useState<IcpRow[]>([])
   const [offers, setOffers] = useState<OfferRow[]>([])
   const [exporting, setExporting] = useState(false)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
+  const reportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void loadData()
@@ -268,8 +270,27 @@ export default function ReportPage() {
 
   // ─── PDF export ────────────────────────────────────────────────────────────
 
-  function handlePrint() {
-    window.print()
+  async function handlePdf() {
+    if (!reportRef.current) return
+    setGeneratingPdf(true)
+    try {
+      const html2pdf = (await import('html2pdf.js')).default
+      const companySlug = (org?.name ?? 'strategic-plan').replace(/\s+/g, '-')
+      await html2pdf()
+        .set({
+          margin: [15, 15, 15, 15] as [number, number, number, number],
+          filename: `C3-Strategic-Plan-${companySlug}.pdf`,
+          image: { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+        })
+        .from(reportRef.current)
+        .save()
+    } catch (e) {
+      console.error('PDF export failed:', e)
+    } finally {
+      setGeneratingPdf(false)
+    }
   }
 
   // ─── DOCX export ───────────────────────────────────────────────────────────
@@ -320,7 +341,7 @@ export default function ReportPage() {
         const o = getOutput('4'); const s = getStep('4')
         children.push(subheading(lib, `1c. ${s?.title ?? 'Pain Points'}`))
         if (o && hasContent('4')) {
-          const pts = extractPainPoints(o.content)
+          const pts = extractPainPoints(o.content).filter(p => p.title || p.description)
           if (pts.length > 0) {
             pts.forEach((p, i) => {
               const label = p.title || `Pain Point ${i + 1}`
@@ -609,13 +630,15 @@ export default function ReportPage() {
 
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', paddingBottom: '80px' }}>
 
-        {/* Sticky header bar */}
+        {/* Fixed header bar */}
         <div
           className="no-print"
           style={{
-            position: 'sticky',
+            position: 'fixed',
             top: 0,
-            zIndex: 50,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
             backgroundColor: '#0A1628',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
             padding: '12px 32px',
@@ -624,32 +647,29 @@ export default function ReportPage() {
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Link
-              href="/dashboard/journeys"
-              style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', textDecoration: 'none' }}
-            >
-              ← Journeys
-            </Link>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>|</span>
-            <span style={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 600 }}>C3 Method Strategic Plan</span>
-          </div>
+          <Link
+            href="/dashboard/journeys"
+            style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', textDecoration: 'none', minHeight: '44px', display: 'flex', alignItems: 'center' }}
+          >
+            ← Back to Journeys
+          </Link>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
-              onClick={handlePrint}
+              onClick={() => { void handlePdf() }}
+              disabled={generatingPdf}
               style={{
                 minHeight: '44px',
                 padding: '0 20px',
-                backgroundColor: '#E8520A',
+                backgroundColor: generatingPdf ? 'rgba(232,82,10,0.5)' : '#E8520A',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: generatingPdf ? 'not-allowed' : 'pointer',
               }}
             >
-              Download PDF
+              {generatingPdf ? 'Generating PDF…' : 'Download PDF'}
             </button>
             <button
               onClick={() => { void handleDocx() }}
@@ -671,9 +691,10 @@ export default function ReportPage() {
           </div>
         </div>
 
-        {/* Document preview */}
-        <div style={{ padding: '40px 32px', display: 'flex', justifyContent: 'center' }}>
+        {/* Document preview — top padding accounts for fixed header */}
+        <div style={{ padding: '80px 32px 40px', display: 'flex', justifyContent: 'center' }}>
           <div
+            ref={reportRef}
             className="report-doc"
             style={{
               backgroundColor: '#FFFFFF',
@@ -735,7 +756,7 @@ export default function ReportPage() {
                 const o = getOutput('4')
                 const s = getStep('4')
                 if (!o || !hasContent('4')) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
-                const pts = extractPainPoints(o.content)
+                const pts = extractPainPoints(o.content).filter(p => p.title || p.description)
                 if (pts.length === 0) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
                 return (
                   <ol style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
