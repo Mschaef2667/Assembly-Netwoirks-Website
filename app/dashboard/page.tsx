@@ -14,23 +14,16 @@ function ProgressRing({ percent }: { percent: number }) {
   const radius = 24
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (percent / 100) * circumference
-
   return (
     <svg width="60" height="60" viewBox="0 0 60 60" aria-label={`${percent}% complete`}>
-      <circle cx="30" cy="30" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="4" />
+      <circle cx="30" cy="30" r={radius} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
       <circle
-        cx="30"
-        cy="30"
-        r={radius}
-        fill="none"
-        stroke="#E8520A"
-        strokeWidth="4"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform="rotate(-90 30 30)"
+        cx="30" cy="30" r={radius} fill="none"
+        stroke="#E8520A" strokeWidth="4"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        strokeLinecap="round" transform="rotate(-90 30 30)"
       />
-      <text x="30" y="35" textAnchor="middle" fontSize="12" fill="#0D0D0D" fontWeight="600">
+      <text x="30" y="35" textAnchor="middle" fontSize="12" fill="#FFFFFF" fontWeight="600">
         {percent}%
       </text>
     </svg>
@@ -39,6 +32,16 @@ function ProgressRing({ percent }: { percent: number }) {
 
 const GATES = [1, 2, 3, 4, 5] as const
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3'] as const
+
+const WIDGET: React.CSSProperties = {
+  borderRadius: '12px',
+  padding: '24px',
+  backgroundColor: '#0F2140',
+  borderTop: '1px solid rgba(255,255,255,0.1)',
+  borderRight: '1px solid rgba(255,255,255,0.1)',
+  borderBottom: '1px solid rgba(255,255,255,0.1)',
+  borderLeft: '3px solid #0EA5E9',
+}
 
 export default function DashboardPage() {
   const [elapsed, setElapsed] = useState(0)
@@ -49,70 +52,58 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F8F6F1' }}>
-      {/* Page header */}
-      <header className="px-8 py-6" style={{ backgroundColor: '#0A1628', paddingTop: '24px' }}>
-        <h1 className="text-white text-2xl font-semibold">Workspace Dashboard</h1>
+    <div style={{ minHeight: '100vh', backgroundColor: '#0A1628' }}>
+      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Workspace Dashboard</h1>
       </header>
 
-      <div className="p-8">
-        {/* Widget grid */}
-        <div className="grid grid-cols-2 gap-6">
+      <div style={{ padding: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+
           {/* TTFAJ Tracker */}
-          <div
-            className="rounded-xl p-6 bg-white"
-            style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Clock size={18} style={{ color: '#6B7280' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>
+          <div style={WIDGET}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Clock size={18} style={{ color: '#0EA5E9' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
                 TTFAJ Tracker
-              </h2>
+              </span>
             </div>
-            <p className="text-sm mb-3" style={{ color: '#6B7280' }}>Time to Activation</p>
-            <div className="font-mono text-4xl font-bold" style={{ color: '#0D0D0D' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 12px' }}>Time to Activation</p>
+            <div style={{ fontFamily: 'monospace', fontSize: '36px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.05em' }}>
               {formatDuration(elapsed)}
             </div>
-            <div
-              className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
-              style={{ backgroundColor: '#FEF3EE', color: '#E8520A' }}
-            >
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#E8520A' }} />
+            <div style={{
+              marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '4px 12px', borderRadius: '999px',
+              backgroundColor: 'rgba(232,82,10,0.2)', color: '#E8520A',
+              fontSize: '13px', fontWeight: 600,
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E8520A' }} />
               Onboarding in Progress
             </div>
           </div>
 
           {/* Gate Status */}
-          <div
-            className="rounded-xl p-6 bg-white"
-            style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Lock size={18} style={{ color: '#6B7280' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>
+          <div style={WIDGET}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Lock size={18} style={{ color: '#0EA5E9' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
                 Gate Status
-              </h2>
+              </span>
             </div>
-            <ul className="space-y-3">
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {GATES.map(gate => (
-                <li key={gate} className="flex items-center gap-3" style={{ minHeight: '44px' }}>
-                  <div
-                    className="flex items-center justify-center rounded-lg flex-shrink-0"
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      backgroundColor: '#F3F4F6',
-                    }}
-                  >
-                    <Lock size={14} style={{ color: '#6B7280' }} />
+                <li key={gate} style={{ display: 'flex', alignItems: 'center', gap: '12px', minHeight: '44px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0,
+                    backgroundColor: 'rgba(255,255,255,0.07)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Lock size={14} style={{ color: 'rgba(255,255,255,0.3)' }} />
                   </div>
                   <div>
-                    <span className="text-sm font-medium" style={{ color: '#0D0D0D' }}>
-                      Gate {gate}
-                    </span>
-                    <span className="ml-2 text-xs" style={{ color: '#6B7280' }}>
-                      Locked
-                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>Gate {gate}</span>
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Locked</span>
                   </div>
                 </li>
               ))}
@@ -120,87 +111,74 @@ export default function DashboardPage() {
           </div>
 
           {/* Step Completion */}
-          <div
-            className="rounded-xl p-6 bg-white"
-            style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Activity size={18} style={{ color: '#6B7280' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>
+          <div style={WIDGET}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Activity size={18} style={{ color: '#0EA5E9' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
                 Step Completion
-              </h2>
+              </span>
             </div>
-            <div className="flex items-center justify-around py-4">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '16px 0' }}>
               {PHASES.map(phase => (
-                <div key={phase} className="flex flex-col items-center gap-3">
+                <div key={phase} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                   <ProgressRing percent={0} />
-                  <span className="text-xs font-medium" style={{ color: '#6B7280' }}>
-                    {phase}
-                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>{phase}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Dependency Health */}
-          <div
-            className="rounded-xl p-6 bg-white"
-            style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <CheckCircle size={18} style={{ color: '#6B7280' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>
+          <div style={WIDGET}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <CheckCircle size={18} style={{ color: '#0EA5E9' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
                 Dependency Health
-              </h2>
+              </span>
             </div>
-            <div className="flex flex-col items-center justify-center py-6 gap-3">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: '12px' }}>
               <CheckCircle size={40} color="#22C55E" />
-              <p className="text-sm font-semibold" style={{ color: '#0D0D0D' }}>No flags</p>
-              <p className="text-xs text-center" style={{ color: '#6B7280' }}>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>No flags</p>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', margin: 0 }}>
                 All dependencies healthy. No upstream changes detected.
               </p>
             </div>
           </div>
 
           {/* Copilot Activity — full width */}
-          <div
-            className="col-span-2 rounded-xl p-6 bg-white"
-            style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Activity size={18} style={{ color: '#6B7280' }} />
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B7280' }}>
+          <div style={{ ...WIDGET, gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <Activity size={18} style={{ color: '#0EA5E9' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
                 Copilot Activity
-              </h2>
+              </span>
             </div>
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
-              <div
-                className="flex items-center justify-center rounded-full"
-                style={{ width: '48px', height: '48px', backgroundColor: '#F3F4F6' }}
-              >
-                <Activity size={22} style={{ color: '#6B7280' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: '12px' }}>
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.07)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Activity size={22} style={{ color: 'rgba(255,255,255,0.4)' }} />
               </div>
-              <p className="text-sm font-semibold" style={{ color: '#0D0D0D' }}>
-                No Copilot runs yet
-              </p>
-              <p className="text-xs" style={{ color: '#6B7280' }}>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>No Copilot runs yet</p>
+              <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
                 Copilot activity will appear here after your first run.
               </p>
             </div>
           </div>
+
         </div>
 
         {/* Primary CTA */}
-        <div className="mt-8 flex justify-center">
-          <button
-            className="rounded-lg text-white font-semibold text-base transition-opacity hover:opacity-90"
-            style={{
-              backgroundColor: '#E8520A',
-              minHeight: '44px',
-              minWidth: '44px',
-              padding: '0 2rem',
-            }}
-          >
+        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+          <button style={{
+            backgroundColor: '#E8520A', color: '#FFFFFF',
+            border: 'none', borderRadius: '8px',
+            fontSize: '15px', fontWeight: 600,
+            minHeight: '44px', minWidth: '44px', padding: '0 32px',
+            cursor: 'pointer',
+          }}>
             Start Phase 1
           </button>
         </div>

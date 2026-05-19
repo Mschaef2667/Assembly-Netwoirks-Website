@@ -124,10 +124,10 @@ function DepHealthIcon({ health }: { health: DepHealth }) {
 
 function StatusBadge({ status }: { status: StepStatus }) {
   const map: Record<StepStatus, { label: string; color: string; bg: string }> = {
-    approved:         { label: 'Approved',    color: '#15803D', bg: '#DCFCE7' },
-    pending_approval: { label: 'In Review',   color: '#92400E', bg: '#FEF3C7' },
-    draft:            { label: 'Draft',       color: '#1D4ED8', bg: '#DBEAFE' },
-    not_started:      { label: 'Not Started', color: '#6B7280', bg: '#F3F4F6' },
+    approved:         { label: 'Approved',    color: '#FFFFFF',              bg: '#0EA5E9'              },
+    pending_approval: { label: 'In Review',   color: '#FFFFFF',              bg: '#E8520A'              },
+    draft:            { label: 'Draft',       color: '#0EA5E9',              bg: 'rgba(14,165,233,0.2)' },
+    not_started:      { label: 'Not Started', color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.1)' },
   }
   const { label, color, bg } = map[status]
   return (
@@ -144,8 +144,8 @@ function StatusBadge({ status }: { status: StepStatus }) {
 
 function SectionStatusBadge({ status }: { status: SectionStatus }) {
   const map: Record<SectionStatus, { label: string; color: string; bg: string }> = {
-    complete:    { label: 'Complete',    color: '#15803D', bg: '#DCFCE7' },
-    in_progress: { label: 'In Progress', color: '#92400E', bg: '#FEF3C7' },
+    complete:    { label: 'Complete',    color: '#FFFFFF',              bg: '#0EA5E9'              },
+    in_progress: { label: 'In Progress', color: '#0EA5E9',              bg: 'rgba(14,165,233,0.2)' },
     not_started: { label: 'Not Started', color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.1)' },
   }
   const { label, color, bg } = map[status]
@@ -164,17 +164,17 @@ function SectionStatusBadge({ status }: { status: SectionStatus }) {
 function GateBanner({ label, state }: { label: string; state: GateState }) {
   const map: Record<GateState, { bg: string; border: string; color: string; icon: React.ReactNode; desc: string }> = {
     approved: {
-      bg: '#F0FDF4', border: '#86EFAC', color: '#15803D',
+      bg: 'rgba(14,165,233,0.08)', border: '#0EA5E9', color: '#0EA5E9',
       icon: <CheckCircle2 size={16} />,
       desc: 'All steps reviewed and approved. The next section is unlocked.',
     },
     pending: {
-      bg: '#FFFBEB', border: '#FCD34D', color: '#92400E',
+      bg: 'rgba(232,82,10,0.08)', border: '#E8520A', color: '#E8520A',
       icon: <Clock size={16} />,
       desc: 'Submitted for review. An Approver must sign off before the next section unlocks.',
     },
     locked: {
-      bg: '#F9FAFB', border: '#E5E7EB', color: '#6B7280',
+      bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.4)',
       icon: <Lock size={16} />,
       desc: 'Complete and approve all steps in this section to unlock the gate review.',
     },
@@ -198,9 +198,9 @@ function GateBanner({ label, state }: { label: string; state: GateState }) {
 function StartHereCard({ href, title, desc }: { href: string; title: string; desc: string }) {
   return (
     <Link href={href} style={{ textDecoration: 'none', flex: 1, minWidth: '180px' }}>
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '20px', height: '100%', boxSizing: 'border-box' }}>
-        <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: '0 0 6px' }}>{title}</p>
-        <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.55' }}>{desc}</p>
+      <div style={{ backgroundColor: '#0F2140', borderRadius: '10px', padding: '20px', height: '100%', boxSizing: 'border-box', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 6px' }}>{title}</p>
+        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: '1.55' }}>{desc}</p>
       </div>
     </Link>
   )
@@ -334,8 +334,8 @@ export default function JourneysPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
@@ -359,7 +359,7 @@ export default function JourneysPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '14px' }}>
           <div>
@@ -376,7 +376,7 @@ export default function JourneysPage() {
           <div style={{
             height: '100%',
             width: `${totalSteps > 0 ? (totalApproved / totalSteps) * 100 : 0}%`,
-            backgroundColor: '#E8520A',
+            backgroundColor: '#0EA5E9',
             borderRadius: '999px',
             transition: 'width 0.4s ease',
           }} />
@@ -410,10 +410,9 @@ export default function JourneysPage() {
 
               return (
                 <div key={`phase-${item.phase}`} style={{
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: '#0F2140',
                   borderRadius: '10px',
-                  border: '1px solid #E5E7EB',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
                   overflow: 'hidden',
                 }}>
                   {/* Navy card header — click to expand/collapse */}
@@ -428,7 +427,7 @@ export default function JourneysPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
                         width: '28px', height: '28px', borderRadius: '50%',
-                        backgroundColor: '#E8520A',
+                        backgroundColor: '#0EA5E9',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         flexShrink: 0,
                       }}>
@@ -448,7 +447,7 @@ export default function JourneysPage() {
                     <div style={{ marginTop: '10px', height: '3px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', width: `${progressPct}%`,
-                        backgroundColor: progressPct === 100 ? '#16A34A' : '#E8520A',
+                        backgroundColor: progressPct === 100 ? '#16A34A' : '#0EA5E9',
                         borderRadius: '999px', transition: 'width 0.3s ease',
                       }} />
                     </div>
@@ -470,18 +469,18 @@ export default function JourneysPage() {
                               width: '100%', minHeight: '52px',
                               display: 'flex', alignItems: 'center', gap: '8px',
                               padding: '8px 16px',
-                              backgroundColor: isContinue ? 'rgba(232,82,10,0.04)' : 'transparent',
+                              backgroundColor: isContinue ? 'rgba(14,165,233,0.08)' : 'transparent',
                               border: 'none',
-                              borderBottom: idx < phaseSteps.length - 1 ? '1px solid #F3F4F6' : 'none',
+                              borderBottom: idx < phaseSteps.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
                               cursor: 'pointer', textAlign: 'left',
                             }}
                           >
                             <DepHealthIcon health={health} />
-                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', minWidth: '22px', flexShrink: 0, textAlign: 'right' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', minWidth: '22px', flexShrink: 0, textAlign: 'right' }}>
                               {step.id}
                             </span>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: '13px', fontWeight: 600, color: '#0D0D0D', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {step.title}
                               </p>
                             </div>
@@ -496,13 +495,13 @@ export default function JourneysPage() {
                                 Continue
                               </span>
                             )}
-                            <ChevronRight size={13} style={{ color: '#D1D5DB', flexShrink: 0 }} />
+                            <ChevronRight size={13} style={{ color: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
                           </button>
                         )
                       })}
 
                       {nextInPhase && (
-                        <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F4F6' }}>
+                        <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                           <Link
                             href={`/dashboard/journeys/step/${nextInPhase.id}`}
                             style={{

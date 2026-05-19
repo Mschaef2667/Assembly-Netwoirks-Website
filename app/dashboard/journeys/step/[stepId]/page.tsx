@@ -85,16 +85,16 @@ const DEFAULT_PAIN_POINTS: PainPoint[] = [
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const PANEL_CARD: React.CSSProperties = {
-  backgroundColor: '#FFFFFF',
+  backgroundColor: '#0F2140',
   borderRadius: '12px',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+  border: '1px solid rgba(255,255,255,0.1)',
   padding: '20px',
 }
 
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: '11px',
   fontWeight: 700,
-  color: '#6B7280',
+  color: 'rgba(255,255,255,0.5)',
   textTransform: 'uppercase',
   letterSpacing: '0.07em',
   marginBottom: '6px',
@@ -268,7 +268,7 @@ function Step4Editor({
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '4px 12px', minHeight: '32px',
-                backgroundColor: '#0A1628', color: '#FFFFFF',
+                backgroundColor: '#0EA5E9', color: '#FFFFFF',
                 border: 'none', borderRadius: '6px',
                 fontSize: '12px', fontWeight: 600, cursor: 'pointer',
               }}
@@ -288,9 +288,9 @@ function Step4Editor({
             onClick={() => onTabChange(pp.index)}
             style={{
               padding: '6px 16px', minHeight: '36px',
-              backgroundColor: activeTab === pp.index ? '#E8520A' : '#FFFFFF',
-              color: activeTab === pp.index ? '#FFFFFF' : '#0D0D0D',
-              border: `1px solid ${activeTab === pp.index ? '#E8520A' : '#E5E7EB'}`,
+              backgroundColor: activeTab === pp.index ? '#E8520A' : 'rgba(255,255,255,0.06)',
+              color: activeTab === pp.index ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+              border: `1px solid ${activeTab === pp.index ? '#E8520A' : 'rgba(255,255,255,0.15)'}`,
               borderRadius: '6px',
               fontSize: '13px', fontWeight: 600,
               cursor: 'pointer',
@@ -403,7 +403,7 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
     return (
       <div style={{
         ...PANEL_CARD,
-        color: '#6B7280',
+        color: 'rgba(255,255,255,0.5)',
         fontSize: '14px',
       }}>
         No Stage 3 data found in your DCP analysis.
@@ -425,7 +425,7 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
       {/* Stage header card */}
       <div style={PANEL_CARD}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0D0D0D', margin: 0 }}>
+          <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
             Stage {stage.stage_number} — {stage.stage_name}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
@@ -438,7 +438,7 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
               {badgeLabel} confidence — {score}/100
             </span>
             {formattedDate && (
-              <span style={{ fontSize: '12px', color: '#6B7280' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
                 Updated {formattedDate}
               </span>
             )}
@@ -448,7 +448,7 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
         <p style={{
           fontSize: '14px',
           lineHeight: '1.7',
-          color: '#0D0D0D',
+          color: 'rgba(255,255,255,0.8)',
           margin: 0,
           whiteSpace: 'pre-wrap',
         }}>
@@ -457,7 +457,7 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
       </div>
 
       {/* Read-only notice */}
-      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>
+      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
         This data is pulled from your approved DCP analysis. To update it, re-run the analysis in the Intelligence section.
       </p>
     </div>
@@ -479,8 +479,8 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 32px',
-      borderTop: '1px solid #E5E7EB',
-      backgroundColor: '#FFFFFF',
+      borderTop: '1px solid rgba(255,255,255,0.1)',
+      backgroundColor: '#0F2140',
       height: '64px',
       flexShrink: 0,
     }}>
@@ -494,8 +494,9 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
               gap: '8px',
               minHeight: '44px',
               padding: '0 16px',
-              backgroundColor: '#F3F4F6',
-              color: '#0D0D0D',
+              backgroundColor: 'transparent',
+              color: '#0EA5E9',
+              border: '1px solid #0EA5E9',
               borderRadius: '8px',
               fontSize: '14px',
               fontWeight: 600,
@@ -506,7 +507,7 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
           </Link>
         ) : <span />}
       </div>
-      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>
+      <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
         {stepIndex >= 0 ? `Step ${stepIndex + 1} of ${total}` : `${total} steps`}
       </span>
       <div style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
@@ -994,8 +995,8 @@ export default function StepPage() {
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: '#6B7280' }} />
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
       </div>
     )
   }
@@ -1013,12 +1014,12 @@ export default function StepPage() {
   const header = (
     <header style={{ backgroundColor: '#0A1628', padding: '14px 32px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '12px' }}>
-        <Link href="/dashboard/journeys" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>
+        <Link href="/dashboard/journeys" style={{ color: '#0EA5E9', textDecoration: 'none' }}>
           Journeys
         </Link>
-        <span style={{ color: '#E8520A' }}>›</span>
-        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{stepDef?.section ?? ''}</span>
-        <span style={{ color: '#E8520A' }}>›</span>
+        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
+        <span style={{ color: '#0EA5E9' }}>{stepDef?.section ?? ''}</span>
+        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
         <span style={{ color: 'rgba(255,255,255,0.8)' }}>Step {stepId}</span>
       </div>
       <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
@@ -1037,7 +1038,7 @@ export default function StepPage() {
 
   if (stepId === '9') {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
           {step9Data
@@ -1054,7 +1055,7 @@ export default function StepPage() {
 
   if (stepId === '14' && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
@@ -1066,7 +1067,7 @@ export default function StepPage() {
 
   if (stepId === '21') {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', flex: 1 }}>
           <div style={{
@@ -1103,7 +1104,7 @@ export default function StepPage() {
               </span>
             </div>
             <div style={{ padding: '20px 24px' }}>
-              <p style={{ fontSize: '14px', color: '#0D0D0D', lineHeight: '1.65', margin: 0 }}>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.65', margin: 0 }}>
                 This step will allow you to evaluate whether your competitors can deliver on your Critical Success Formulas. Coming in Sprint 4.
               </p>
             </div>
@@ -1116,7 +1117,7 @@ export default function StepPage() {
 
   if (isPainPointStep && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <PainPointStepEditor
@@ -1133,7 +1134,7 @@ export default function StepPage() {
 
   if (isBlendStep && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
           <BlendEditor
@@ -1150,7 +1151,7 @@ export default function StepPage() {
 
   if (isActionPlanStep && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <ActionPlanEditor
@@ -1167,7 +1168,7 @@ export default function StepPage() {
 
   if (stepId === '38' && workspaceId) {
     return (
-      <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', flex: 1 }}>
           <DealScorecard
@@ -1181,7 +1182,7 @@ export default function StepPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {header}
 
       {/* Two-column layout (generic + Step 4 steps) */}
@@ -1306,10 +1307,10 @@ export default function StepPage() {
             <div style={{ ...PANEL_CARD, display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Loader2 size={16} className="animate-spin" style={{ color: '#E8520A', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 6px' }}>Generating…</p>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px' }}>Generating…</p>
                 <p style={{
                   fontSize: '12px',
-                  color: '#0D0D0D',
+                  color: 'rgba(255,255,255,0.7)',
                   fontFamily: 'monospace',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-all',
@@ -1363,9 +1364,9 @@ export default function StepPage() {
                 </p>
                 <div style={{
                   fontSize: '13px',
-                  color: '#0D0D0D',
+                  color: 'rgba(255,255,255,0.8)',
                   lineHeight: '1.6',
-                  backgroundColor: '#F8F6F1',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
                   borderRadius: '8px',
                   padding: '12px',
                   marginBottom: '12px',
@@ -1399,7 +1400,7 @@ export default function StepPage() {
                   <p style={LABEL_STYLE}>Sources used</p>
                   <ul style={{ margin: 0, paddingLeft: '16px' }}>
                     {copilotOutput.sources.map((s, i) => (
-                      <li key={i} style={{ fontSize: '12px', color: '#0D0D0D', marginBottom: '2px' }}>{s}</li>
+                      <li key={i} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>{s}</li>
                     ))}
                   </ul>
                 </div>
@@ -1411,7 +1412,7 @@ export default function StepPage() {
                   <p style={LABEL_STYLE}>Assumptions</p>
                   <ul style={{ margin: 0, paddingLeft: '16px' }}>
                     {copilotOutput.assumptions.map((a, i) => (
-                      <li key={i} style={{ fontSize: '12px', color: '#6B7280', marginBottom: '2px' }}>{a}</li>
+                      <li key={i} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '2px' }}>{a}</li>
                     ))}
                   </ul>
                 </div>
@@ -1423,7 +1424,7 @@ export default function StepPage() {
                   <p style={LABEL_STYLE}>Open questions</p>
                   <ul style={{ margin: 0, paddingLeft: '16px' }}>
                     {copilotOutput.open_questions.map((q, i) => (
-                      <li key={i} style={{ fontSize: '12px', color: '#0D0D0D', marginBottom: '2px' }}>{q}</li>
+                      <li key={i} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>{q}</li>
                     ))}
                   </ul>
                 </div>
@@ -1435,7 +1436,7 @@ export default function StepPage() {
                   <p style={LABEL_STYLE}>Verification checks</p>
                   <ul style={{ margin: 0, paddingLeft: '16px' }}>
                     {copilotOutput.verification_checks.map((v, i) => (
-                      <li key={i} style={{ fontSize: '12px', color: '#0D0D0D', marginBottom: '2px' }}>{v}</li>
+                      <li key={i} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginBottom: '2px' }}>{v}</li>
                     ))}
                   </ul>
                 </div>

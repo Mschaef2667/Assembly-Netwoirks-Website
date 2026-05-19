@@ -81,7 +81,7 @@ export default function Sidebar() {
       className="fixed left-0 top-0 h-screen w-64 flex flex-col z-50"
     >
       {/* Logo */}
-      <div className="px-6 py-8" style={{ borderBottom: '2px solid #E8520A' }}>
+      <div className="px-6 py-8" style={{ borderBottom: '2px solid #0EA5E9' }}>
         <Link href="/dashboard">
           {logoError ? (
             <span style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '16px' }}>Assembly AI</span>
@@ -108,9 +108,9 @@ export default function Sidebar() {
               href={href}
               style={{
                 minHeight: '44px',
-                color: isActive ? '#E8520A' : 'rgba(255,255,255,0.55)',
-                backgroundColor: isActive ? 'rgba(232,82,10,0.08)' : 'transparent',
-                borderLeft: `3px solid ${isActive ? '#E8520A' : 'transparent'}`,
+                color: isActive ? '#0EA5E9' : 'rgba(255,255,255,0.55)',
+                backgroundColor: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
+                borderLeft: `3px solid ${isActive ? '#0EA5E9' : 'transparent'}`,
               }}
               className="flex items-center gap-3 px-3 rounded-md text-sm font-medium transition-colors hover:bg-white/5 hover:text-white"
             >
@@ -131,7 +131,7 @@ export default function Sidebar() {
           }}>
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
-              backgroundColor: '#E8520A',
+              backgroundColor: '#0EA5E9',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}>
