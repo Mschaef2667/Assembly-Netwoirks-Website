@@ -1,13 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Lock, CheckCircle, Clock, Activity } from 'lucide-react'
+import { Lock, CheckCircle, Activity, TrendingUp } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+interface JourneyStats {
+  startDate: Date | null
+  daysActive: number
+  stepsWorkedOn: number
+  pacePerWeek: number | null
+  projectedCompletion: Date | null
+}
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function ProgressRing({ percent }: { percent: number }) {
@@ -44,11 +50,50 @@ const WIDGET: React.CSSProperties = {
 }
 
 export default function DashboardPage() {
-  const [elapsed, setElapsed] = useState(0)
+  const [journeyStats, setJourneyStats] = useState<JourneyStats | null>(null)
 
   useEffect(() => {
-    const id = setInterval(() => setElapsed(prev => prev + 1), 1000)
-    return () => clearInterval(id)
+    async function loadJourney() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: userRow } = await supabase
+          .from('users').select('org_id').eq('id', user.id).single()
+        if (!userRow) return
+        const orgId = (userRow as Record<string, unknown>)['org_id'] as string
+
+        const { data: rows } = await supabase
+          .from('step_output')
+          .select('step_id, created_at')
+          .eq('workspace_id', orgId)
+          .order('created_at', { ascending: true })
+
+        if (!rows || rows.length === 0) {
+          setJourneyStats({ startDate: null, daysActive: 0, stepsWorkedOn: 0, pacePerWeek: null, projectedCompletion: null })
+          return
+        }
+
+        const typed = rows as Array<{ step_id: string; created_at: string }>
+        const stepIds = new Set(typed.map(r => r.step_id))
+        const stepsWorkedOn = stepIds.size
+        const startDate = new Date(typed[0].created_at)
+        const now = new Date()
+        const daysActive = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / 86_400_000))
+        const weeksActive = daysActive / 7
+        const pacePerWeek = stepsWorkedOn / weeksActive
+        const stepsRemaining = 38 - stepsWorkedOn
+        let projectedCompletion: Date | null = null
+        if (stepsRemaining <= 0) {
+          projectedCompletion = now
+        } else if (pacePerWeek > 0) {
+          projectedCompletion = new Date(now.getTime() + (stepsRemaining / pacePerWeek) * 7 * 86_400_000)
+        }
+        setJourneyStats({ startDate, daysActive, stepsWorkedOn, pacePerWeek, projectedCompletion })
+      } catch {
+        // non-fatal
+      }
+    }
+    void loadJourney()
   }, [])
 
   return (
@@ -60,27 +105,58 @@ export default function DashboardPage() {
       <div style={{ padding: '32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
 
-          {/* TTFAJ Tracker */}
+          {/* Journey Overview */}
           <div style={WIDGET}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Clock size={18} style={{ color: '#0EA5E9' }} />
+              <TrendingUp size={18} style={{ color: '#0EA5E9' }} />
               <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.5)' }}>
-                TTFAJ Tracker
+                Journey Overview
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 12px' }}>Time to Activation</p>
-            <div style={{ fontFamily: 'monospace', fontSize: '36px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.05em' }}>
-              {formatDuration(elapsed)}
-            </div>
-            <div style={{
-              marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px',
-              padding: '4px 12px', borderRadius: '999px',
-              backgroundColor: 'rgba(232,82,10,0.2)', color: '#E8520A',
-              fontSize: '13px', fontWeight: 600,
-            }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E8520A' }} />
-              Onboarding in Progress
-            </div>
+            {!journeyStats || journeyStats.startDate === null ? (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', margin: 0, paddingTop: '8px' }}>
+                Start your journey to see progress
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Started</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
+                    {fmtDate(journeyStats.startDate)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Days active</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
+                    {journeyStats.daysActive}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Steps completed</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
+                    {journeyStats.stepsWorkedOn} / 38
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Current pace</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#0EA5E9' }}>
+                    {journeyStats.pacePerWeek !== null
+                      ? `${journeyStats.pacePerWeek.toFixed(1)} steps / week`
+                      : '—'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Projected completion</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: journeyStats.stepsWorkedOn >= 38 ? '#16A34A' : '#FFFFFF' }}>
+                    {journeyStats.stepsWorkedOn >= 38
+                      ? 'Complete!'
+                      : journeyStats.projectedCompletion
+                        ? fmtDate(journeyStats.projectedCompletion)
+                        : '—'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Gate Status */}
