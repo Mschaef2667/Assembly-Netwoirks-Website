@@ -149,6 +149,7 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 - [ ] Performance Score benchmarking — "You rank in the top X% of Assembly AI clients" — requires anonymized aggregate scoring
 - [ ] Performance Score leaderboard — opt-in ranking among clients, appeals to competitive nature
 - [ ] Daily words of encouragement on Dashboard — personalized to user's current progress stage (just started / halfway / nearly complete)
+- [ ] Copilot Assistant widget on Dashboard — text input where users can ask marketing questions or request term definitions. Two modes: (1) Term definitions — explains C3 Method concepts in context, e.g. "What is a core competency?"; (2) Contextual coaching — analyzes user's actual journey data and gives specific improvement advice, e.g. "How do I improve my CVP?" pulls their Step 11 content and critiques it.
 
 ### Workspace Personalization
 - [ ] Client logo upload — stored in Supabase storage, displayed in sidebar alongside Assembly AI logo
