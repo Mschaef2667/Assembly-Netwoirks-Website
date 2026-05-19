@@ -10,8 +10,9 @@ Repo: Mschaef2667/Assembly-AI
 Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, Claude API
 
 ## Brand Tokens (use exactly)
-- Assembly Navy: #0A1628 (sidebar, headers)
-- Signal Orange: #E8520A (CTAs, active states, approve buttons)
+- Assembly Navy: #0A1628 (sidebar, headers, card headers, dark panels)
+- Signal Orange: #E8520A (CTAs, active states, approve buttons, progress fills)
+- Assembly Blue: #0EA5E9 (highlights, active nav, links, hover states — hover darkens to #0284C7)
 - Paper White: #F8F6F1 (content backgrounds, cards)
 - Logic Grey: #6B7280 (secondary text, inactive, locked states)
 - Rich Black: #0D0D0D (body copy)
