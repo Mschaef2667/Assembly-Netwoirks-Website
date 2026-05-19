@@ -113,12 +113,22 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 
 ### Prospecting Mod
 
-## Sprint 5 — UX, Intelligence & Reporting (IN PROGRESS)
-- [ ] Empty state on Journeys index with "Start Here" guidance
-- [ ] Confidence decay indicators on Journeys index page
-- [ ] Competitive Discovery on Step 17 (web search powered)
-- [ ] C3 Method Output Report (PDF/Word export of all approved steps)
+## Sprint 5 — UX, Intelligence & Reporting — COMPLETE as of 2026-05-19
+- [x] Empty state on Journeys index with "Start Here" guidance
+- [x] Confidence decay indicators on Journeys index page
+- [x] Competitive Discovery on Step 17 (web search powered)
+- [x] C3 Method Output Report (PDF/Word export of all approved steps)
+- [x] Dark Navy theme across all pages
+- [x] Dashboard rebuilt with 4 new widgets (Journey Progress, What's Next, Gate Status, Performance Score)
+- [x] Strategic Plan rename from Action Plan (migration + client-side normalisation)
+
+## Sprint 6 — Activation, Gates & Polish (IN PROGRESS)
+- [ ] Activation Playbook (/dashboard/activation/playbook)
 - [ ] Gate enforcement (configurable per org)
+- [ ] Company logo upload at setup
+- [ ] Copilot Assistant widget on Dashboard
+- [ ] Beta test and content quality pass
+- [ ] Acid Test system (Sprint 4 carry-forward)
 
 ## Product Improvements Backlog
 
