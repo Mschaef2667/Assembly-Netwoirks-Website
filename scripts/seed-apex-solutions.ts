@@ -7,10 +7,10 @@
  * Requires SUPABASE_SERVICE_ROLE_KEY in .env.local to bypass RLS.
  */
 
-import * as path from 'path'
 import * as dotenv from 'dotenv'
+import * as path from 'path'
 
-dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 import { createClient } from '@supabase/supabase-js'
 
