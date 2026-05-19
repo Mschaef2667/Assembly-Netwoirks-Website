@@ -3,16 +3,19 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, CheckCircle2, AlertTriangle, Lock, ChevronRight, Clock, ArrowRight } from 'lucide-react'
+import {
+  Loader2, CheckCircle2, AlertTriangle, Lock, ChevronRight,
+  Clock, ArrowRight, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
-import ConfidenceBar from '@/components/copilot/ConfidenceBar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type StepStatus = 'approved' | 'pending_approval' | 'draft' | 'not_started'
 type DepHealth = 'healthy' | 'warning' | 'locked'
 type GateState = 'locked' | 'pending' | 'approved'
+type SectionStatus = 'complete' | 'in_progress' | 'not_started'
 
 interface StepDef {
   id: string
@@ -32,6 +35,10 @@ interface StepOutputRow {
   last_reviewed_at: string | null
   created_at: string
 }
+
+type RenderItem =
+  | { kind: 'phase'; phase: number; section: string }
+  | { kind: 'gate'; afterPhase: number; label: string; gateStepId: string }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -89,19 +96,31 @@ function getContinueStepId(
   return null
 }
 
-// ── Dep health icon ───────────────────────────────────────────────────────────
-
-function DepHealthIcon({ health }: { health: DepHealth }) {
-  if (health === 'healthy') {
-    return <CheckCircle2 size={15} style={{ color: '#16A34A', flexShrink: 0 }} />
-  }
-  if (health === 'warning') {
-    return <AlertTriangle size={15} style={{ color: '#DC2626', flexShrink: 0 }} />
-  }
-  return <Lock size={15} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+function getSectionStatus(phaseSteps: StepDef[], outputMap: Map<string, StepOutputRow>): SectionStatus {
+  const total = phaseSteps.length
+  if (total === 0) return 'not_started'
+  const approved = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
+  const started = phaseSteps.filter(s => outputMap.has(s.id)).length
+  if (approved === total) return 'complete'
+  if (started > 0) return 'in_progress'
+  return 'not_started'
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+function getNextStepInPhase(phaseSteps: StepDef[], outputMap: Map<string, StepOutputRow>): StepDef | null {
+  const sorted = [...phaseSteps].sort((a, b) => numericId(a.id) - numericId(b.id))
+  for (const step of sorted) {
+    if ((outputMap.get(step.id)?.status ?? 'not_started') !== 'approved') return step
+  }
+  return null
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function DepHealthIcon({ health }: { health: DepHealth }) {
+  if (health === 'healthy') return <CheckCircle2 size={14} style={{ color: '#16A34A', flexShrink: 0 }} />
+  if (health === 'warning') return <AlertTriangle size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
+  return <Lock size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+}
 
 function StatusBadge({ status }: { status: StepStatus }) {
   const map: Record<StepStatus, { label: string; color: string; bg: string }> = {
@@ -114,8 +133,8 @@ function StatusBadge({ status }: { status: StepStatus }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '2px 9px', borderRadius: '999px',
-      backgroundColor: bg, color, fontSize: '11px', fontWeight: 700,
+      padding: '2px 8px', borderRadius: '999px',
+      backgroundColor: bg, color, fontSize: '10px', fontWeight: 700,
       whiteSpace: 'nowrap', flexShrink: 0,
     }}>
       {label}
@@ -123,7 +142,24 @@ function StatusBadge({ status }: { status: StepStatus }) {
   )
 }
 
-// ── Gate banner ───────────────────────────────────────────────────────────────
+function SectionStatusBadge({ status }: { status: SectionStatus }) {
+  const map: Record<SectionStatus, { label: string; color: string; bg: string }> = {
+    complete:    { label: 'Complete',    color: '#15803D', bg: '#DCFCE7' },
+    in_progress: { label: 'In Progress', color: '#92400E', bg: '#FEF3C7' },
+    not_started: { label: 'Not Started', color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.1)' },
+  }
+  const { label, color, bg } = map[status]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 8px', borderRadius: '999px',
+      backgroundColor: bg, color, fontSize: '10px', fontWeight: 700,
+      whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      {label}
+    </span>
+  )
+}
 
 function GateBanner({ label, state }: { label: string; state: GateState }) {
   const map: Record<GateState, { bg: string; border: string; color: string; icon: React.ReactNode; desc: string }> = {
@@ -146,7 +182,6 @@ function GateBanner({ label, state }: { label: string; state: GateState }) {
   const { bg, border, color, icon, desc } = map[state]
   return (
     <div style={{
-      margin: '10px 0 4px',
       padding: '14px 18px',
       backgroundColor: bg, border: `1px solid ${border}`, borderRadius: '10px',
       display: 'flex', gap: '12px', alignItems: 'flex-start',
@@ -160,24 +195,12 @@ function GateBanner({ label, state }: { label: string; state: GateState }) {
   )
 }
 
-// ── Start Here Banner ─────────────────────────────────────────────────────────
-
 function StartHereCard({ href, title, desc }: { href: string; title: string; desc: string }) {
   return (
     <Link href={href} style={{ textDecoration: 'none', flex: 1, minWidth: '180px' }}>
-      <div style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: '10px',
-        padding: '20px',
-        height: '100%',
-        boxSizing: 'border-box',
-      }}>
-        <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: '0 0 6px' }}>
-          {title}
-        </p>
-        <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.55' }}>
-          {desc}
-        </p>
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '20px', height: '100%', boxSizing: 'border-box' }}>
+        <p style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: '0 0 6px' }}>{title}</p>
+        <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.55' }}>{desc}</p>
       </div>
     </Link>
   )
@@ -185,12 +208,7 @@ function StartHereCard({ href, title, desc }: { href: string; title: string; des
 
 function StartHereBanner() {
   return (
-    <div style={{
-      backgroundColor: '#0A1628',
-      borderRadius: '14px',
-      padding: '32px',
-      marginBottom: '32px',
-    }}>
+    <div style={{ backgroundColor: '#0A1628', borderRadius: '14px', padding: '32px', marginBottom: '32px' }}>
       <h2 style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 700, margin: '0 0 6px' }}>
         Welcome to your C3 Method Journey
       </h2>
@@ -198,23 +216,11 @@ function StartHereBanner() {
         Complete these sections in order to build your strategic messaging framework
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <StartHereCard
-          href="/dashboard/company-profile"
-          title="Company Foundation"
-          desc="Start with your company profile and buying center"
-        />
+        <StartHereCard href="/dashboard/company-profile" title="Company Foundation" desc="Start with your company profile and buying center" />
         <ArrowRight size={20} style={{ color: '#E8520A', flexShrink: 0 }} />
-        <StartHereCard
-          href="/dashboard/intelligence"
-          title="Intelligence"
-          desc="Run your Decision Clarity Process survey"
-        />
+        <StartHereCard href="/dashboard/intelligence" title="Intelligence" desc="Run your Decision Clarity Process survey" />
         <ArrowRight size={20} style={{ color: '#E8520A', flexShrink: 0 }} />
-        <StartHereCard
-          href="/dashboard/journeys/step/1"
-          title="Begin Journey"
-          desc="Start Step 1 of your C3 Method journey"
-        />
+        <StartHereCard href="/dashboard/journeys/step/1" title="Begin Journey" desc="Start Step 1 of your C3 Method journey" />
       </div>
     </div>
   )
@@ -229,7 +235,15 @@ export default function JourneysPage() {
   const [outputMap, setOutputMap] = useState<Map<string, StepOutputRow>>(new Map())
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
   const [continueStepId, setContinueStepId] = useState<string | null>(null)
-  const [decayMap, setDecayMap] = useState<Map<string, number | null>>(new Map())
+  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]))
+
+  function togglePhase(phase: number) {
+    setExpandedPhases(prev => {
+      const s = new Set(prev)
+      if (s.has(phase)) s.delete(phase); else s.add(phase)
+      return s
+    })
+  }
 
   useEffect(() => {
     async function load() {
@@ -252,7 +266,6 @@ export default function JourneysPage() {
             .order('version', { ascending: false }),
         ])
 
-        // Parse step definitions
         const parsedSteps: StepDef[] = ((defsRes.data ?? []) as Array<Record<string, unknown>>).map(r => ({
           id: String(r['id'] ?? ''),
           title: String(r['title'] ?? ''),
@@ -261,7 +274,6 @@ export default function JourneysPage() {
         }))
         setSteps(parsedSteps)
 
-        // Build depsMap: step_id → prerequisite_step_ids[]
         const rawDeps = (depsRes.data ?? []) as StepDep[]
         const dm = new Map<string, string[]>()
         for (const dep of rawDeps) {
@@ -271,7 +283,6 @@ export default function JourneysPage() {
         }
         setDepsMap(dm)
 
-        // Build outputMap: step_id → StepOutputRow (latest version = first since ordered DESC)
         const om = new Map<string, StepOutputRow>()
         for (const row of ((outputsRes.data ?? []) as Array<Record<string, unknown>>)) {
           const sid = String(row['step_id'] ?? '')
@@ -286,8 +297,7 @@ export default function JourneysPage() {
         }
         setOutputMap(om)
 
-        // Compute confidence decay for approved/draft steps
-        const decayDm = new Map<string, number | null>()
+        // Compute and log confidence decay — fire-and-forget, non-blocking
         for (const [sid, row] of om.entries()) {
           if (row.status !== 'approved' && row.status !== 'draft') continue
           const decayed = calculateDecayedConfidence({
@@ -296,9 +306,6 @@ export default function JourneysPage() {
             last_reviewed_at: row.last_reviewed_at,
             created_at: row.created_at,
           })
-          decayDm.set(sid, decayed)
-
-          // Fire-and-forget decay log when score has changed — non-fatal
           if (decayed !== null && decayed !== row.original_confidence) {
             const refDate = row.last_reviewed_at ?? row.created_at
             const decayDays = Math.max(0, Math.floor(
@@ -314,7 +321,6 @@ export default function JourneysPage() {
             }).then(() => {}, () => {})
           }
         }
-        setDecayMap(decayDm)
 
         setContinueStepId(getContinueStepId(parsedSteps, dm, om))
       } catch {
@@ -334,7 +340,6 @@ export default function JourneysPage() {
     )
   }
 
-  // Group steps by phase, sorted numerically within each phase
   const stepsByPhase = new Map<number, StepDef[]>()
   for (const step of steps) {
     const arr = stepsByPhase.get(step.phase) ?? []
@@ -346,152 +351,180 @@ export default function JourneysPage() {
   const totalApproved = steps.filter(s => outputMap.get(s.id)?.status === 'approved').length
   const hasAnyProgress = outputMap.size > 0
 
+  const renderList: RenderItem[] = []
+  for (const { phase, section } of PHASES) {
+    renderList.push({ kind: 'phase', phase, section })
+    const gate = GATES.find(g => g.afterPhase === phase)
+    if (gate) renderList.push({ kind: 'gate', afterPhase: phase, label: gate.label, gateStepId: gate.gateStepId })
+  }
+
   return (
     <div style={{ backgroundColor: '#F8F6F1', minHeight: '100vh' }}>
-      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '14px' }}>
           <div>
             <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Journeys</h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
               Complete all 38 C3 Method steps to build your go-to-market operating system.
             </p>
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0, flexShrink: 0 }}>
             {totalApproved} / {totalSteps} steps approved
           </p>
         </div>
+        <div style={{ height: '4px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${totalSteps > 0 ? (totalApproved / totalSteps) * 100 : 0}%`,
+            backgroundColor: '#E8520A',
+            borderRadius: '999px',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
       </header>
 
-      <div style={{ padding: '24px 32px', maxWidth: '900px' }}>
+      <div style={{ padding: '24px 32px' }}>
 
-        {/* Empty state — shown only when no steps have been started */}
         {!hasAnyProgress && <StartHereBanner />}
 
-        {/* Step list — shown only when any step has been started */}
-        {hasAnyProgress && PHASES.map(({ phase, section }) => {
-          const phaseSteps = (stepsByPhase.get(phase) ?? [])
-            .sort((a, b) => numericId(a.id) - numericId(b.id))
-          if (phaseSteps.length === 0) return null
+        {hasAnyProgress && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', alignItems: 'start' }}>
+            {renderList.map((item) => {
+              if (item.kind === 'gate') {
+                return (
+                  <div key={`gate-${item.afterPhase}`} style={{ gridColumn: '1 / -1' }}>
+                    <GateBanner label={item.label} state={getGateState(item.gateStepId, outputMap)} />
+                  </div>
+                )
+              }
 
-          const approvedCount = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
-          const progressPct = (approvedCount / phaseSteps.length) * 100
-          const gate = GATES.find(g => g.afterPhase === phase)
+              const phaseSteps = (stepsByPhase.get(item.phase) ?? [])
+                .sort((a, b) => numericId(a.id) - numericId(b.id))
+              if (phaseSteps.length === 0) return null
 
-          return (
-            <div key={phase} style={{ marginBottom: '28px' }}>
+              const approvedCount = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
+              const progressPct = (approvedCount / phaseSteps.length) * 100
+              const secStatus = getSectionStatus(phaseSteps, outputMap)
+              const nextInPhase = getNextStepInPhase(phaseSteps, outputMap)
+              const isExpanded = expandedPhases.has(item.phase)
 
-              {/* Phase header */}
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
-                  <span style={{
-                    fontSize: '11px', fontWeight: 700, color: '#E8520A',
-                    textTransform: 'uppercase', letterSpacing: '0.07em', flexShrink: 0,
-                  }}>
-                    Stage {phase}
-                  </span>
-                  <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0D0D0D', margin: 0, flex: 1 }}>
-                    {section}
-                  </h2>
-                  <span style={{ fontSize: '12px', color: '#6B7280', flexShrink: 0 }}>
-                    {approvedCount} of {phaseSteps.length} approved
-                  </span>
-                </div>
-                <div style={{ height: '4px', backgroundColor: '#E5E7EB', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', width: `${progressPct}%`,
-                    backgroundColor: progressPct === 100 ? '#16A34A' : '#E8520A',
-                    borderRadius: '999px',
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-              </div>
-
-              {/* Step rows */}
-              <div style={{
-                backgroundColor: '#FFFFFF', borderRadius: '10px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden',
-              }}>
-                {phaseSteps.map((step, idx) => {
-                  const outputRow = outputMap.get(step.id)
-                  const status = outputRow?.status ?? 'not_started'
-                  const health = getDepHealth(step.id, depsMap, outputMap)
-                  const isContinue = step.id === continueStepId
-                  const decayedConfidence = decayMap.get(step.id) ?? null
-
-                  return (
-                    <button
-                      key={step.id}
-                      onClick={() => router.push(`/dashboard/journeys/step/${step.id}`)}
-                      style={{
-                        width: '100%', minHeight: '60px',
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        padding: '10px 16px',
-                        backgroundColor: isContinue ? 'rgba(232,82,10,0.04)' : 'transparent',
-                        border: 'none',
-                        borderBottom: idx < phaseSteps.length - 1 ? '1px solid #F3F4F6' : 'none',
-                        cursor: 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <DepHealthIcon health={health} />
-
-                      <span style={{
-                        fontSize: '12px', fontWeight: 700, color: '#9CA3AF',
-                        minWidth: '28px', flexShrink: 0, textAlign: 'right',
+              return (
+                <div key={`phase-${item.phase}`} style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '10px',
+                  border: '1px solid #E5E7EB',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  overflow: 'hidden',
+                }}>
+                  {/* Navy card header — click to expand/collapse */}
+                  <button
+                    onClick={() => togglePhase(item.phase)}
+                    style={{
+                      width: '100%', border: 'none', cursor: 'pointer',
+                      backgroundColor: '#0A1628', padding: '16px 20px',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        backgroundColor: '#E8520A',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
                       }}>
-                        {step.id}
-                      </span>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{
-                          fontSize: '14px', fontWeight: 600, color: '#0D0D0D',
-                          margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {step.title}
-                        </p>
-                        {step.description && (
-                          <p style={{
-                            fontSize: '12px', color: '#6B7280',
-                            margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>
-                            {step.description}
-                          </p>
-                        )}
+                        <span style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 700 }}>{item.phase}</span>
                       </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <p style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 700, margin: 0 }}>{item.section}</p>
+                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', margin: '2px 0 0' }}>
+                          {approvedCount} of {phaseSteps.length} approved
+                        </p>
+                      </div>
+                      <SectionStatusBadge status={secStatus} />
+                      {isExpanded
+                        ? <ChevronUp size={14} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                        : <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />}
+                    </div>
+                    <div style={{ marginTop: '10px', height: '3px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${progressPct}%`,
+                        backgroundColor: progressPct === 100 ? '#16A34A' : '#E8520A',
+                        borderRadius: '999px', transition: 'width 0.3s ease',
+                      }} />
+                    </div>
+                  </button>
 
-                      <StatusBadge status={status} />
+                  {isExpanded && (
+                    <div>
+                      {phaseSteps.map((step, idx) => {
+                        const outputRow = outputMap.get(step.id)
+                        const status = outputRow?.status ?? 'not_started'
+                        const health = getDepHealth(step.id, depsMap, outputMap)
+                        const isContinue = step.id === continueStepId
 
-                      {/* Confidence decay — only for steps with an output record */}
-                      {outputRow !== undefined && decayedConfidence !== null && (
-                        <div style={{ width: '170px', flexShrink: 0 }}>
-                          <ConfidenceBar score={decayedConfidence} />
+                        return (
+                          <button
+                            key={step.id}
+                            onClick={() => router.push(`/dashboard/journeys/step/${step.id}`)}
+                            style={{
+                              width: '100%', minHeight: '52px',
+                              display: 'flex', alignItems: 'center', gap: '8px',
+                              padding: '8px 16px',
+                              backgroundColor: isContinue ? 'rgba(232,82,10,0.04)' : 'transparent',
+                              border: 'none',
+                              borderBottom: idx < phaseSteps.length - 1 ? '1px solid #F3F4F6' : 'none',
+                              cursor: 'pointer', textAlign: 'left',
+                            }}
+                          >
+                            <DepHealthIcon health={health} />
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', minWidth: '22px', flexShrink: 0, textAlign: 'right' }}>
+                              {step.id}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: '13px', fontWeight: 600, color: '#0D0D0D', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {step.title}
+                              </p>
+                            </div>
+                            <StatusBadge status={status} />
+                            {isContinue && (
+                              <span style={{
+                                minHeight: '28px', padding: '0 10px',
+                                display: 'inline-flex', alignItems: 'center',
+                                backgroundColor: '#E8520A', color: '#FFFFFF',
+                                borderRadius: '5px', fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                              }}>
+                                Continue
+                              </span>
+                            )}
+                            <ChevronRight size={13} style={{ color: '#D1D5DB', flexShrink: 0 }} />
+                          </button>
+                        )
+                      })}
+
+                      {nextInPhase && (
+                        <div style={{ padding: '10px 16px', borderTop: '1px solid #F3F4F6' }}>
+                          <Link
+                            href={`/dashboard/journeys/step/${nextInPhase.id}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px',
+                              padding: '6px 14px', minHeight: '36px',
+                              backgroundColor: '#E8520A', color: '#FFFFFF',
+                              borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <ChevronRight size={13} />
+                            {`Continue: ${nextInPhase.title.length > 28 ? nextInPhase.title.slice(0, 28) + '…' : nextInPhase.title}`}
+                          </Link>
                         </div>
                       )}
-
-                      {isContinue && (
-                        <span style={{
-                          minHeight: '32px', padding: '0 12px',
-                          display: 'inline-flex', alignItems: 'center',
-                          backgroundColor: '#E8520A', color: '#FFFFFF',
-                          borderRadius: '6px', fontSize: '12px', fontWeight: 700,
-                          flexShrink: 0,
-                        }}>
-                          Continue
-                        </span>
-                      )}
-
-                      <ChevronRight size={15} style={{ color: '#D1D5DB', flexShrink: 0 }} />
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Gate banner after this phase */}
-              {gate && (
-                <GateBanner label={gate.label} state={getGateState(gate.gateStepId, outputMap)} />
-              )}
-            </div>
-          )
-        })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

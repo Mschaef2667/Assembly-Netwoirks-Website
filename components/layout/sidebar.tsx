@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Building2,
   Brain,
@@ -20,22 +20,55 @@ import {
 import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
-  { label: 'Workspace',      href: '/dashboard',                   icon: Building2 },
-  { label: 'Intelligence',   href: '/dashboard/intelligence',      icon: Brain     },
-  { label: 'Target Markets', href: '/dashboard/target-markets',    icon: Target    },
-  { label: 'Journeys',       href: '/dashboard/journeys',          icon: Route     },
-  { label: 'Activation',     href: '/dashboard/activation',        icon: Zap       },
-  { label: 'Assets Studio',  href: '/dashboard/assets',            icon: Layers    },
-  { label: 'Performance',    href: '/dashboard/performance',       icon: BarChart2 },
-  { label: 'Integrations',   href: '/dashboard/integrations',      icon: Plug      },
-  { label: 'Administration', href: '/dashboard/administration',    icon: Settings  },
-  { label: 'Support',        href: 'mailto:support@assemblyai.com', icon: LifeBuoy },
+  { label: 'Workspace',      href: '/dashboard',                    icon: Building2 },
+  { label: 'Intelligence',   href: '/dashboard/intelligence',       icon: Brain     },
+  { label: 'Target Markets', href: '/dashboard/target-markets',     icon: Target    },
+  { label: 'Journeys',       href: '/dashboard/journeys',           icon: Route     },
+  { label: 'Activation',     href: '/dashboard/activation',         icon: Zap       },
+  { label: 'Assets Studio',  href: '/dashboard/assets',             icon: Layers    },
+  { label: 'Performance',    href: '/dashboard/performance',        icon: BarChart2 },
+  { label: 'Integrations',   href: '/dashboard/integrations',       icon: Plug      },
+  { label: 'Administration', href: '/dashboard/administration',     icon: Settings  },
+  { label: 'Support',        href: 'mailto:support@assemblyai.com', icon: LifeBuoy  },
 ]
+
+function formatRole(role: string): string {
+  return role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [logoError, setLogoError] = useState(false)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [userInitial, setUserInitial] = useState<string>('')
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data } = await supabase
+          .from('users')
+          .select('first_name, last_name, role')
+          .eq('id', user.id)
+          .single()
+        if (data) {
+          const row = data as Record<string, unknown>
+          const first = String(row['first_name'] ?? '')
+          const last = String(row['last_name'] ?? '')
+          const full = [first, last].filter(Boolean).join(' ')
+          setUserName(full || null)
+          setUserInitial(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'))
+          setUserRole(String(row['role'] ?? ''))
+        } else if (user.email) {
+          setUserInitial(user.email[0].toUpperCase())
+        }
+      } catch { /* non-fatal */ }
+    }
+    void loadUser()
+  }, [])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -48,7 +81,7 @@ export default function Sidebar() {
       className="fixed left-0 top-0 h-screen w-64 flex flex-col z-50"
     >
       {/* Logo */}
-      <div className="px-6 py-8 border-b border-white/10">
+      <div className="px-6 py-8" style={{ borderBottom: '2px solid #E8520A' }}>
         <Link href="/dashboard">
           {logoError ? (
             <span style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '16px' }}>Assembly AI</span>
@@ -75,8 +108,9 @@ export default function Sidebar() {
               href={href}
               style={{
                 minHeight: '44px',
-                color: isActive ? '#E8520A' : '#6B7280',
-                backgroundColor: isActive ? 'rgba(232,82,10,0.1)' : 'transparent',
+                color: isActive ? '#E8520A' : 'rgba(255,255,255,0.55)',
+                backgroundColor: isActive ? 'rgba(232,82,10,0.08)' : 'transparent',
+                borderLeft: `3px solid ${isActive ? '#E8520A' : 'transparent'}`,
               }}
               className="flex items-center gap-3 px-3 rounded-md text-sm font-medium transition-colors hover:bg-white/5 hover:text-white"
             >
@@ -89,25 +123,48 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
-        <p className="px-3 text-xs mb-2" style={{ color: '#6B7280' }}>C3 Method OS</p>
+        {/* User avatar */}
+        {userInitial && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '8px 12px', marginBottom: '4px',
+          }}>
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              backgroundColor: '#E8520A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <span style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 700 }}>{userInitial}</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {userName && (
+                <p style={{
+                  color: '#FFFFFF', fontSize: '13px', fontWeight: 600, margin: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {userName}
+                </p>
+              )}
+              {userRole && (
+                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', margin: 0 }}>
+                  {formatRole(userRole)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <p className="px-3 text-xs" style={{ color: '#6B7280' }}>C3 Method OS</p>
         <button
           onClick={handleLogout}
           style={{
-            minHeight: '44px',
-            minWidth: '44px',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+            minHeight: '44px', minWidth: '44px', width: '100%',
+            display: 'flex', alignItems: 'center', gap: '10px',
             padding: '0 12px',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderRadius: '6px',
-            color: '#6B7280',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            textAlign: 'left',
+            backgroundColor: 'transparent', border: 'none', borderRadius: '6px',
+            color: 'rgba(255,255,255,0.45)', fontSize: '14px', fontWeight: 500,
+            cursor: 'pointer', textAlign: 'left',
           }}
         >
           <LogOut size={16} strokeWidth={1.8} />

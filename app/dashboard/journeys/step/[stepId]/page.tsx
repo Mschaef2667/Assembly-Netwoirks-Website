@@ -133,13 +133,38 @@ function ActionButton({
   onClick,
   disabled,
   active,
+  dark = false,
 }: {
   icon: React.ElementType
   label: string
   onClick: () => void
   disabled: boolean
   active: boolean
+  dark?: boolean
 }) {
+  if (dark) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '0 14px', minHeight: '44px',
+          backgroundColor: active ? 'rgba(232,82,10,0.18)' : disabled ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.06)',
+          color: disabled ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
+          border: 'none',
+          borderLeft: `3px solid ${active ? '#E8520A' : 'transparent'}`,
+          borderRadius: '8px',
+          fontSize: '14px', fontWeight: 600,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          width: '100%',
+        }}
+      >
+        <Icon size={16} />
+        {label}
+      </button>
+    )
+  }
   return (
     <button
       onClick={onClick}
@@ -991,9 +1016,9 @@ export default function StepPage() {
         <Link href="/dashboard/journeys" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>
           Journeys
         </Link>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
+        <span style={{ color: '#E8520A' }}>›</span>
         <span style={{ color: 'rgba(255,255,255,0.5)' }}>{stepDef?.section ?? ''}</span>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>›</span>
+        <span style={{ color: '#E8520A' }}>›</span>
         <span style={{ color: 'rgba(255,255,255,0.8)' }}>Step {stepId}</span>
       </div>
       <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
@@ -1238,10 +1263,11 @@ export default function StepPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Action buttons */}
-          <div style={PANEL_CARD}>
-            <p style={LABEL_STYLE}>Copilot Actions</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ backgroundColor: '#0A1628', borderRadius: '12px', padding: '20px' }}>
+            <p style={{ ...LABEL_STYLE, color: 'rgba(255,255,255,0.55)' }}>Copilot Actions</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <ActionButton
+                dark
                 icon={Wand2}
                 label="Draft"
                 onClick={() => void runCopilot('draft')}
@@ -1249,6 +1275,7 @@ export default function StepPage() {
                 active={activeAction === 'draft' && copilotStreaming}
               />
               <ActionButton
+                dark
                 icon={ShieldCheck}
                 label="Verify"
                 onClick={() => void runCopilot('verify')}
@@ -1256,6 +1283,7 @@ export default function StepPage() {
                 active={activeAction === 'verify' && copilotStreaming}
               />
               <ActionButton
+                dark
                 icon={Sparkles}
                 label="Improve"
                 onClick={() => void runCopilot('improve')}
@@ -1263,6 +1291,7 @@ export default function StepPage() {
                 active={activeAction === 'improve' && copilotStreaming}
               />
               <ActionButton
+                dark
                 icon={HelpCircle}
                 label="Explain"
                 onClick={() => void runCopilot('explain')}
