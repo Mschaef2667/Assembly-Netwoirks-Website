@@ -123,12 +123,25 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 - [x] Strategic Plan rename from Action Plan (migration + client-side normalisation)
 
 ## Sprint 6 — Activation, Gates & Polish (IN PROGRESS)
+- [x] Beta test with Apex Solutions workspace
+- [x] Dark theme applied to auth pages
+- [x] Assembly AI logo committed to repo
+- [x] assemblyai.net live on Vercel with custom domain
+- [x] Supabase auth configured for live domain
+- [x] Strategic Plan report fully populated (all sections)
+- [x] Step 26 fix in report (by_pain_point content detection)
+- [x] Org name showing in sidebar footer
 - [ ] Activation Playbook (/dashboard/activation/playbook)
 - [ ] Gate enforcement (configurable per org)
 - [ ] Company logo upload at setup
 - [ ] Copilot Assistant widget on Dashboard
-- [ ] Beta test and content quality pass
 - [ ] Acid Test system (Sprint 4 carry-forward)
+- [ ] Navattic interactive demo build
+- [ ] Assembly Networks client run-through
+- [ ] Loom demo recording
+- [ ] Beta client recruitment (3-4 clients)
+- [ ] Vercel Pro upgrade for production
+- [ ] PostHog analytics verification on live domain
 
 ## Product Improvements Backlog
 
