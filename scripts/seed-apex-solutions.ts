@@ -106,9 +106,9 @@ const steps: StepRecord[] = [
     step_id: '1',
     content: {
       whatDoYouSell:
-        'Apex Solutions is a Revenue Intelligence platform that helps B2B sales and marketing teams identify accounts showing buying intent before they ever fill out a form. Using AI and behavioral signal tracking, Apex reveals which companies are actively researching solutions like yours, where they are in the buying journey, and which contacts to engage first.',
+        'Apex Solutions is a Revenue Intelligence platform that helps B2B sales and marketing teams identify in-market buyers before they ever fill out a form. Using AI and behavioral signal tracking, we reveal which companies are actively researching solutions like yours, where they are in the buying journey, and which contacts to engage first.',
       primaryUseCase:
-        'Shorter sales cycles and higher win rates by helping teams focus on accounts that are actually ready to buy instead of cold outreach to unqualified lists.',
+        'Shorter sales cycles and higher win rates by helping revenue teams focus on accounts that are actually ready to buy — eliminating wasted outreach to unqualified lists.',
       keyIndustries:
         'B2B SaaS, Professional Services, Financial Technology, HR Technology, Marketing Technology',
     },
@@ -608,6 +608,76 @@ async function main(): Promise<void> {
     console.error(`  ✗ ICP: ${icpError.message}`)
   } else {
     console.log('  ✓ ICP — Mid-Market B2B SaaS')
+  }
+
+  // ── dcp_analysis upsert ───────────────────────────────────────────────────
+  const { error: dcpError } = await supabase
+    .from('dcp_analysis')
+    .upsert(
+      {
+        org_id: workspaceId,
+        status: 'approved',
+        overall_confidence: 78,
+        approved_at: now,
+        stage_summaries: [
+          {
+            stage_number: 1,
+            stage_name: 'Need Recognition',
+            summary:
+              'Buyers recognize the need for revenue intelligence when they experience a pattern of lost deals they did not see coming, declining SDR productivity despite increased activity, and growing tension between sales and marketing over lead quality. The trigger is typically a missed quarterly forecast that forces leadership to examine why deals are stalling. Organizations in the 50-500 employee range hit this inflection point when their manual processes — spreadsheets, intuition-based prioritization, and ad-hoc qualification — break down under volume and competitive pressure.',
+            confidence_score: 82,
+          },
+          {
+            stage_number: 2,
+            stage_name: 'Information Search',
+            summary:
+              'Buyers research revenue intelligence solutions primarily through peer communities — RevOps Slack groups, Pavilion forums, and G2 reviews are the top three sources. They search terms like intent data platform, account-based marketing software, and sales intelligence tools. The buying team typically includes VP Sales, VP Marketing, and a RevOps lead. Research phases last 4-8 weeks before a shortlist is formed. LinkedIn is used heavily for social proof — buyers look for peers at similar companies who have implemented solutions and post about results.',
+            confidence_score: 76,
+          },
+          {
+            stage_number: 3,
+            stage_name: 'Evaluation of Alternatives',
+            summary:
+              'The evaluation process centers on three criteria: time to first value, integration with existing CRM stack, and total cost of ownership. Enterprise platforms like 6sense and Demandbase are evaluated and rejected by mid-market buyers due to implementation complexity and pricing. The shortlist typically narrows to 2-3 vendors who offer a self-serve pilot with the buyer\'s own target account list. Reference calls with similar-sized companies are required before a decision. The RevOps lead owns the technical evaluation while VP Sales owns the business case.',
+            confidence_score: 74,
+          },
+          {
+            stage_number: 4,
+            stage_name: 'Purchase Decision',
+            summary:
+              'Purchase decisions require alignment between VP Sales and VP Marketing — both must agree on the platform before the CRO approves budget. The decision timeline from shortlist to signature averages 45 days. Key purchase criteria in order: HubSpot or Salesforce integration, transparent pricing with no hidden overages, proof-of-concept with real account data, and dedicated onboarding support. Legal review of data privacy practices is required at all companies over 100 employees. Multi-year contracts are resisted — buyers strongly prefer annual with renewal options.',
+            confidence_score: 81,
+          },
+          {
+            stage_number: 5,
+            stage_name: 'Purchase',
+            summary:
+              'Successful purchases follow a consistent pattern: a 2-week pilot using the buyer\'s actual ICP and target account list, a joint readout with sales and marketing leadership showing first intent signals, and a clear 30-day onboarding plan before contract signature. Deals stall when the pilot is generic rather than account-specific, when only one team participates in the evaluation, or when pricing requires a multi-year commitment before value is proven. The fastest deals close when the RevOps champion has executive sponsorship from the CRO before the pilot begins.',
+            confidence_score: 79,
+          },
+          {
+            stage_number: 6,
+            stage_name: 'Post-Purchase Evaluation',
+            summary:
+              'Success is measured at 30, 60, and 90 days. Leading indicators at 30 days: SDR reply rate improvement and number of intent-flagged accounts added to active sequences. At 60 days: first meetings booked from intent-sourced accounts and sales-marketing account list agreement percentage. At 90 days: pipeline sourced from intent data and win rate on monitored deals vs unmonitored deals. Customers who achieve strong 90-day results renew and expand. Customers who struggle typically failed to get sales and marketing operating from the same account list in the first 30 days.',
+            confidence_score: 77,
+          },
+          {
+            stage_number: 7,
+            stage_name: 'Repeat Purchase and Loyalty',
+            summary:
+              'Loyal customers exhibit three behaviors: they expand seat count to include the full BDR and AE team, they become internal advocates by presenting results at QBRs and referring peer companies, and they use the platform for competitive intelligence beyond prospecting. The strongest retention indicator is whether the platform becomes the system of record for the weekly sales-marketing alignment meeting. When both teams open Apex at the start of every Monday meeting, churn risk drops to near zero. NPS is highest among customers who implemented within the first 48 hours of contract.',
+            confidence_score: 80,
+          },
+        ],
+      },
+      { onConflict: 'org_id' },
+    )
+
+  if (dcpError) {
+    console.error(`  ✗ DCP analysis: ${dcpError.message}`)
+  } else {
+    console.log('  ✓ DCP analysis — 7 stages, approved, confidence 78')
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
