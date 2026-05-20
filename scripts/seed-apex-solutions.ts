@@ -82,6 +82,61 @@ const steps: StepRecord[] = [
     },
   },
 
+  // ── Step 2 — Top 3 Target Market Segments ────────────────────────────────
+  {
+    step_id: '2',
+    content: {
+      segments: [
+        {
+          name: 'Mid-Market B2B SaaS',
+          description:
+            'Software companies with 50-500 employees selling to other businesses with a dedicated sales team of 5-25 reps. They have outgrown basic CRM reporting but cannot justify enterprise ABM platform pricing.',
+        },
+        {
+          name: 'B2B Professional Services',
+          description:
+            'Consulting, staffing, and managed services firms with 50-300 employees that rely heavily on relationship-based selling but struggle to scale beyond referrals.',
+        },
+        {
+          name: 'Growth-Stage FinTech and HRTech',
+          description:
+            'Venture-backed or bootstrapped technology companies scaling their GTM motion from founder-led sales to a repeatable revenue process.',
+        },
+      ],
+    },
+  },
+
+  // ── Step 3 — Key Decision Makers Per Segment ─────────────────────────────
+  {
+    step_id: '3',
+    content: {
+      segments: [
+        {
+          name: 'Mid-Market B2B SaaS',
+          roles: [
+            { title: 'VP of Sales', influence: 'high', concern: 'Pipeline coverage and rep productivity' },
+            { title: 'VP of Marketing', influence: 'high', concern: 'MQL quality and campaign ROI' },
+            { title: 'Revenue Operations Manager', influence: 'medium', concern: 'Tool integration and data accuracy' },
+          ],
+        },
+        {
+          name: 'B2B Professional Services',
+          roles: [
+            { title: 'Chief Revenue Officer', influence: 'high', concern: 'Scaling beyond referral-based pipeline' },
+            { title: 'Director of Business Development', influence: 'high', concern: 'Finding net-new opportunities' },
+          ],
+        },
+        {
+          name: 'Growth-Stage FinTech and HRTech',
+          roles: [
+            { title: 'VP of Sales', influence: 'high', concern: 'Building a repeatable outbound motion' },
+            { title: 'Head of Growth', influence: 'high', concern: 'Efficient customer acquisition' },
+          ],
+        },
+      ],
+    },
+  },
+
   // ── Step 4 — Pain Points ──────────────────────────────────────────────────
   {
     step_id: '4',
