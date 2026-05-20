@@ -222,14 +222,14 @@ function extractDraft(raw: string): string {
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null
   if (state === 'saving') return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#6B7280' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
       <Loader2 size={12} className="animate-spin" /> Saving…
     </span>
   )
   if (state === 'saved') return (
-    <span style={{ fontSize: '12px', color: '#16A34A' }}>Saved</span>
+    <span style={{ fontSize: '12px', color: '#34D399' }}>Saved</span>
   )
-  return <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>
+  return <span style={{ fontSize: '12px', color: '#F87171' }}>Save failed</span>
 }
 
 // ── Step 4 Editor ─────────────────────────────────────────────────────────────
@@ -1264,7 +1264,7 @@ export default function StepPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Action buttons */}
-          <div style={{ backgroundColor: '#0A1628', borderRadius: '12px', padding: '20px' }}>
+          <div style={PANEL_CARD}>
             <p style={{ ...LABEL_STYLE, color: 'rgba(255,255,255,0.55)' }}>Copilot Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <ActionButton
@@ -1325,13 +1325,13 @@ export default function StepPage() {
           )}
 
           {copilotError && (
-            <div style={{ ...PANEL_CARD, border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2' }}>
-              <p style={{ fontSize: '13px', color: '#991B1B', margin: '0 0 8px' }}>{copilotError}</p>
+            <div style={{ ...PANEL_CARD, border: '1px solid rgba(248,113,113,0.35)', backgroundColor: 'rgba(239,68,68,0.1)' }}>
+              <p style={{ fontSize: '13px', color: '#FCA5A5', margin: '0 0 8px' }}>{copilotError}</p>
               <a
                 href="https://status.anthropic.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: '12px', color: '#991B1B', textDecoration: 'underline' }}
+                style={{ fontSize: '12px', color: '#FCA5A5', textDecoration: 'underline' }}
               >
                 Check AI Status ↗
               </a>
