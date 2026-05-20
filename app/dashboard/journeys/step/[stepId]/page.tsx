@@ -214,6 +214,73 @@ function extractReadableContent(content: unknown): string {
   return ''
 }
 
+function extractSegments(content: unknown): string {
+  if (typeof content !== 'object' || content === null) return ''
+  const c = content as Record<string, unknown>
+  if (!Array.isArray(c['segments'])) return ''
+  return (c['segments'] as Array<Record<string, unknown>>)
+    .filter(s => typeof s['name'] === 'string' && (s['name'] as string).trim())
+    .map((s, i) => {
+      const name = String(s['name'] ?? '')
+      const desc = String(s['description'] ?? '')
+      return desc.trim() ? `Segment ${i + 1}: ${name}\n${desc}` : `Segment ${i + 1}: ${name}`
+    })
+    .join('\n\n')
+}
+
+function extractDecisionMakers(content: unknown): string {
+  if (typeof content !== 'object' || content === null) return ''
+  const c = content as Record<string, unknown>
+  const segs = Array.isArray(c['segments'])
+    ? (c['segments'] as Array<Record<string, unknown>>)
+    : Array.isArray(c['roles'])
+      ? [{ name: '', roles: c['roles'] }]
+      : []
+  return segs
+    .map(s => {
+      const segName = String(s['name'] ?? '')
+      const roles = Array.isArray(s['roles']) ? (s['roles'] as Array<Record<string, unknown>>) : []
+      const roleLines = roles
+        .filter(r => typeof r['title'] === 'string' && (r['title'] as string).trim())
+        .map(r => {
+          const title = String(r['title'] ?? '')
+          const influence = String(r['influence'] ?? r['primaryConcern'] !== undefined ? r['influence'] ?? '' : '')
+          const concern = String(r['concern'] ?? r['primaryConcern'] ?? '')
+          return influence ? `- ${title} — ${influence} influence — ${concern}` : `- ${title} — ${concern}`
+        })
+        .join('\n')
+      return segName ? `${segName}\n${roleLines}` : roleLines
+    })
+    .filter(s => s.trim())
+    .join('\n\n')
+}
+
+function extractBuyingCenter(content: unknown): string {
+  if (typeof content !== 'object' || content === null) return ''
+  const c = content as Record<string, unknown>
+  // Content may be flat or nested under 'buyingCenter'
+  const bc = (typeof c['buyingCenter'] === 'object' && c['buyingCenter'] !== null)
+    ? (c['buyingCenter'] as Record<string, unknown>)
+    : c
+  const lines: string[] = []
+  if (bc['stakeholderMin'] !== undefined || bc['stakeholderMax'] !== undefined) {
+    lines.push(`Stakeholder Count: ${bc['stakeholderMin'] ?? ''}–${bc['stakeholderMax'] ?? ''}`)
+  } else if (bc['stakeholderCount'] !== undefined) {
+    lines.push(`Stakeholder Count: ${String(bc['stakeholderCount'])}`)
+  }
+  if (bc['decisionStyle'] !== undefined) lines.push(`Decision Style: ${String(bc['decisionStyle'])}`)
+  if (bc['salesCycle'] !== undefined) lines.push(`Sales Cycle: ${String(bc['salesCycle'])}`)
+  if (bc['acvRange'] !== undefined) lines.push(`ACV Range: ${String(bc['acvRange'])}`)
+  return lines.join('\n')
+}
+
+function extractStepContent(sid: string, content: unknown): string {
+  if (sid === '2') return extractSegments(content)
+  if (sid === '3') return extractDecisionMakers(content)
+  if (sid === '3.5') return extractBuyingCenter(content)
+  return extractReadableContent(content)
+}
+
 function extractDraft(raw: string): string {
   const stripped = raw
     .replace(/^```json\s*/i, '')
@@ -662,7 +729,7 @@ export default function StepPage() {
               setActiveCount(Math.max(1, Math.min(4, Number(c?.['active_count'] ?? parsed.length))))
             }
           } else if (stepId === '1' || stepId === '2' || stepId === '3' || stepId === '3.5') {
-            setContent(extractReadableContent(c))
+            setContent(extractStepContent(stepId, c))
           } else {
             setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
           }
