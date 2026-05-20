@@ -43,6 +43,7 @@ export default function Sidebar() {
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userInitial, setUserInitial] = useState<string>('')
+  const [orgName, setOrgName] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadUser() {
@@ -51,7 +52,7 @@ export default function Sidebar() {
         if (!user) return
         const { data } = await supabase
           .from('users')
-          .select('first_name, last_name, role')
+          .select('first_name, last_name, role, org_id')
           .eq('id', user.id)
           .single()
         if (data) {
@@ -62,6 +63,19 @@ export default function Sidebar() {
           setUserName(full || null)
           setUserInitial(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'))
           setUserRole(String(row['role'] ?? ''))
+
+          const orgId = String(row['org_id'] ?? '')
+          if (orgId) {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', orgId)
+              .single()
+            if (orgData) {
+              const orgRow = orgData as Record<string, unknown>
+              setOrgName(String(orgRow['name'] ?? ''))
+            }
+          }
         } else if (user.email) {
           setUserInitial(user.email[0].toUpperCase())
         }
@@ -155,7 +169,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        <p className="px-3 text-xs" style={{ color: '#6B7280' }}>C3 Method OS</p>
+        <p className="px-3 text-xs" style={{ color: '#6B7280' }}>{orgName ?? 'C3 Method OS'}</p>
         <button
           onClick={handleLogout}
           style={{
