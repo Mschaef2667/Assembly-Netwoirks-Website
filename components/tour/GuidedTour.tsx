@@ -79,9 +79,9 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     page: '/dashboard/journeys/step/11',
-    targetId: 'copilot-output',
+    targetId: 'step-cvp-copilot-panel',
     title: 'Messaging That Knows Your Buyer',
-    body: 'The AI is working with your DCP research your ICP profile your pain points and your competitive landscape. This is not ChatGPT with a blank prompt. This is AI navigating a map.',
+    body: 'See the Copilot panel on the right — click Draft for Invisible Pipeline Risk and watch Assembly AI write messaging specific to this buyer, this pain point, and this company. Not generic. Not interchangeable.',
     position: 'top',
   },
   {

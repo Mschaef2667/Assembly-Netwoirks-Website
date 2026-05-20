@@ -1343,7 +1343,7 @@ export default function StepPage() {
         </div>
 
         {/* ── Right: Copilot panel ──────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div id="step-cvp-copilot-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Action buttons */}
           <div style={PANEL_CARD}>
