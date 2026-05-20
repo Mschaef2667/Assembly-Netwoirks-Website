@@ -169,7 +169,15 @@ export default function IntelligencePage() {
         {/* Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
           {cards.map(({ icon: Icon, title, description, href, done, step }) => (
-            <div key={href} style={CARD}>
+            <div
+              key={href}
+              id={
+                href === '/dashboard/intelligence/survey' ? 'intelligence-survey' :
+                href === '/dashboard/intelligence/dcp-map' ? 'intelligence-dcp' :
+                undefined
+              }
+              style={CARD}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '10px',

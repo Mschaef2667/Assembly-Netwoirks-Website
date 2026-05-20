@@ -1198,7 +1198,10 @@ export default function StepPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+        <div
+          id={stepId === '11' ? 'step-cvp' : undefined}
+          style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}
+        >
           <PainPointStepEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -1270,7 +1273,7 @@ export default function StepPage() {
         {/* ── Left: Editor ─────────────────────────────────────────────────── */}
         <div>
           {isStep4 ? (
-            <div style={PANEL_CARD}>
+            <div id="step-pain-points" style={PANEL_CARD}>
               <Step4Editor
                 painPoints={painPoints}
                 activeCount={activeCount}

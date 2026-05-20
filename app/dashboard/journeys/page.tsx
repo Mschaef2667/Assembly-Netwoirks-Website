@@ -374,6 +374,7 @@ export default function JourneysPage() {
               {totalApproved} / {totalSteps} steps approved
             </p>
             <Link
+              id="journey-report-btn"
               href="/dashboard/journeys/report"
               style={{
                 display: 'inline-flex',

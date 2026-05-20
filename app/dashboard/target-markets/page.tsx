@@ -908,7 +908,7 @@ export default function TargetMarketsPage() {
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', maxWidth: '960px' }}>
         {tab === 'markets' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div id="target-markets-segments" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {segments.map((seg, i) => (
               <div key={i} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#0F2140' }}>
                 {/* Accordion header */}

@@ -383,7 +383,7 @@ export default function DashboardPage() {
       <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
         {/* ── Widget 1: Journey Progress (full width) ─────────────────────── */}
-        <div style={CARD}>
+        <div id="widget-journey" style={CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <p style={{ ...CARD_HDR, margin: 0 }}>Journey Progress</p>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#0EA5E9' }}>
@@ -432,7 +432,7 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '4fr 3fr 3fr', gap: '24px', alignItems: 'start' }}>
 
           {/* Widget 2 — What's Next */}
-          <div style={CARD}>
+          <div id="widget-next" style={CARD}>
             <p style={CARD_HDR}>What&apos;s Next</p>
             {journeyNotStarted ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Widget 3 — Gate Status */}
-          <div style={CARD}>
+          <div id="widget-gates" style={CARD}>
             <p style={CARD_HDR}>Gate Status</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <GateRow n={1} label="Decision Clarity Profile Approved" status={gate1} />
@@ -512,7 +512,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Widget 4 — Performance Score */}
-          <div style={CARD}>
+          <div id="widget-score" style={CARD}>
             <p style={CARD_HDR}>Performance Score</p>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
               {/* Ring + overlaid number + grade */}

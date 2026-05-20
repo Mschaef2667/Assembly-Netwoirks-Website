@@ -719,7 +719,7 @@ export default function PainPointStepEditor({
     <>
     {/* ── Step 17: Competitive Discovery ─────────────────────────────────── */}
     {stepId === '17' && (
-      <div style={{ marginBottom: '24px' }}>
+      <div id="step-competitive" style={{ marginBottom: '24px' }}>
         <button
           onClick={() => void runDiscovery()}
           disabled={discoveryLoading}
