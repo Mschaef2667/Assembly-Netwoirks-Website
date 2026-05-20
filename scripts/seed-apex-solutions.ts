@@ -285,6 +285,26 @@ const steps: StepRecord[] = [
       'Unlike Demandbase which is built primarily for marketing with sales as an afterthought, Apex is designed from the ground up for both teams to operate from the same interface with role-specific views.',
     ),
   },
+
+  // ── Step 19 — Competitive Advantages ─────────────────────────────────────
+  {
+    step_id: '19',
+    content: byPainPoint(
+      'Deploys in 48 hours vs 3-6 months for 6sense. No dedicated RevOps team required. Plain language alerts instead of complex dashboards. Transparent pricing starting at $1,500 per month vs $60K-$200K enterprise contracts.',
+      'Dynamic daily action list vs static contact databases. Captures intent from 40,000 plus external B2B content sites vs website visitors only. Re-ranks automatically as signals change. Average reply rate improvement from 1.8% to 9.4% in first 60 days.',
+      'Built for both sales and marketing from the ground up vs marketing-first platforms with sales as afterthought. Shared account dashboard eliminates data exports and manual reconciliation. Role-specific views for each team.',
+    ),
+  },
+
+  // ── Step 20 — Competitive Threats ────────────────────────────────────────
+  {
+    step_id: '20',
+    content: byPainPoint(
+      '6sense investing heavily in mid-market with simplified onboarding. Clari-Salesloft merger creates a combined forecasting and engagement platform that could expand into intent data. Enterprise vendors reducing minimum contract sizes.',
+      'Warmly growing rapidly with $10K entry point and person-level identification. Apollo adding intent signals to their 210M contact database. ZoomInfo acquiring intent data capabilities through partnerships.',
+      'HubSpot and Salesforce building native intent signal features into their CRM platforms. If CRMs solve alignment natively the need for a standalone tool diminishes. Free tiers from competitors lowering switching costs.',
+    ),
+  },
 ]
 
 // ─── ICP seed ─────────────────────────────────────────────────────────────────
