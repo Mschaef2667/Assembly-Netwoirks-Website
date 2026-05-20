@@ -548,13 +548,9 @@ export default function ReportPage() {
         const o = getOutput('26'); const s = getStep('26')
         children.push(subheading(lib, s?.title ?? 'Step 26'))
         if (o && hasContent('26')) {
-          const b = extractBlend(o.content)
-          if (b.mode === 'blended' && b.blended) children.push(para(lib, b.blended))
-          else if (b.entries.length) b.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
-          else {
-            const fallback = extractReadableContent(o.content)
-            children.push(para(lib, fallback || ''))
-          }
+          extractByPainPoint(o, step4PainPoints).forEach(e =>
+            children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
+          )
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
       }
 
@@ -872,7 +868,7 @@ export default function ReportPage() {
             </div>
 
             {/* Body */}
-            <div style={{ padding: '48px' }}>
+            <div style={{ padding: '48px 48px 20px' }}>
 
               {/* ── Section 1: Company Foundation ── */}
               <h2 style={sectionHeadStyle}>1. Company Foundation</h2>
@@ -995,11 +991,11 @@ export default function ReportPage() {
               </div>
 
               {/* ── Section 5: Development & Partnership ── */}
-              <div data-empty={sec5Empty ? 'true' : undefined}>
+              <div data-empty={sec5Empty ? 'true' : undefined} style={{ pageBreakInside: 'avoid' }}>
                 <div style={{ ...dividerStyle, margin: '40px 0' }} />
                 <h2 style={sectionHeadStyle}>5. Development &amp; Partnership</h2>
                 <p style={subheadStyle}>{getStep('26')?.title ?? 'Step 26'}</p>
-                <BlendContent id="26" />
+                <ByPainPointContent id="26" />
               </div>
 
               {/* Footer */}
