@@ -929,7 +929,7 @@ export default function PainPointStepEditor({
       </div>
 
       {/* ── Right: Copilot ────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div id="step-cvp-copilot-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
         {/* Draft button */}
         <div style={PANEL_CARD}>

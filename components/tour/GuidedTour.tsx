@@ -9,6 +9,7 @@ interface TourStep {
   title: string
   body: string
   position: 'top' | 'right' | 'bottom' | 'left'
+  skipOnTimeout?: boolean
 }
 
 interface SpotlightRect {
@@ -55,6 +56,7 @@ const TOUR_STEPS: TourStep[] = [
     title: 'The Buyer Map',
     body: 'Assembly AI analyzes every response across all seven buying stages and builds a behavioral map of your buyer. Gate 1 must be approved before strategy begins — because if the foundation is wrong everything built on it is wrong.',
     position: 'top',
+    skipOnTimeout: true,
   },
   {
     page: '/dashboard/journeys',
@@ -226,6 +228,9 @@ function useGuidedTour() {
   activeRef.current = active
   stepIndexRef.current = stepIndex
 
+  const pollGenRef = useRef(0)
+  const nextRef = useRef<() => void>(() => {})
+
   const CARD_W = 320
   const CARD_H = 200
   const GAP = 18
@@ -270,8 +275,10 @@ function useGuidedTour() {
     console.log(`[Tour] showStepWhenReady(${index}): target=${step.targetId} page=${step.page}`)
     setCardVisible(false)
 
+    const gen = ++pollGenRef.current
     let attempts = 0
     const tryShow = () => {
+      if (gen !== pollGenRef.current) return
       if (computePositions(step)) {
         console.log(`[Tour] Element found: ${step.targetId} (attempt ${attempts + 1})`)
         setTimeout(() => setCardVisible(true), 80)
@@ -282,6 +289,10 @@ function useGuidedTour() {
         setTimeout(tryShow, 150)
       } else {
         console.log(`[Tour] TIMEOUT: Element not found: ${step.targetId} after ${attempts} attempts`)
+        if (step.skipOnTimeout) {
+          console.log(`[Tour] skipOnTimeout: advancing to next step`)
+          nextRef.current()
+        }
       }
     }
     setTimeout(tryShow, 200)
@@ -376,6 +387,8 @@ function useGuidedTour() {
       router.push(nextStep.page)
     }
   }, [pathname, router, end, showStepWhenReady])
+
+  nextRef.current = next
 
   return { active, start, next, end, stepIndex, spotlightRect, cardPos, cardVisible }
 }
