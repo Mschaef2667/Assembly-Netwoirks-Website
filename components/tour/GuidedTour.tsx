@@ -267,16 +267,22 @@ function useGuidedTour() {
   const showStepWhenReady = useCallback((index: number) => {
     const step = TOUR_STEPS[index]
     if (!step) return
+    console.log(`[Tour] showStepWhenReady(${index}): target=${step.targetId} page=${step.page}`)
     setCardVisible(false)
 
     let attempts = 0
     const tryShow = () => {
       if (computePositions(step)) {
+        console.log(`[Tour] Element found: ${step.targetId} (attempt ${attempts + 1})`)
         setTimeout(() => setCardVisible(true), 80)
         return
       }
       attempts++
-      if (attempts < 30) setTimeout(tryShow, 100)
+      if (attempts < 60) {
+        setTimeout(tryShow, 150)
+      } else {
+        console.log(`[Tour] TIMEOUT: Element not found: ${step.targetId} after ${attempts} attempts`)
+      }
     }
     setTimeout(tryShow, 200)
   }, [computePositions])
@@ -321,6 +327,7 @@ function useGuidedTour() {
     if (!activeRef.current) return
     const idx = stepIndexRef.current
     const step = TOUR_STEPS[idx]
+    console.log(`[Tour] pathname → ${pathname}, stepIndex=${idx}, step.page=${step?.page}`)
     if (!step || pathname !== step.page) return
     showStepWhenReady(idx)
   }, [pathname, showStepWhenReady])
@@ -345,19 +352,27 @@ function useGuidedTour() {
   }, [])
 
   const next = useCallback(() => {
-    const nextIndex = stepIndexRef.current + 1
+    const current = stepIndexRef.current
+    const nextIndex = current + 1
+    console.log(`[Tour] next() called: current=${current} → next=${nextIndex} (pathname=${pathname})`)
     if (nextIndex >= TOUR_STEPS.length) {
+      console.log('[Tour] Tour complete, ending.')
       end()
       return
     }
     const nextStep = TOUR_STEPS[nextIndex]
+    // Update ref immediately so the pathname effect reads the correct index
+    // even if it fires before the React re-render commits the new stepIndex state.
+    stepIndexRef.current = nextIndex
     setStepIndex(nextIndex)
     persistState(nextIndex)
+    console.log(`[Tour] Step ${nextIndex}: page=${nextStep.page}, target=${nextStep.targetId}`)
     if (nextStep.page === pathname) {
       showStepWhenReady(nextIndex)
     } else {
       setCardVisible(false)
       setSpotlightRect(null)
+      console.log(`[Tour] Navigating from ${pathname} → ${nextStep.page}`)
       router.push(nextStep.page)
     }
   }, [pathname, router, end, showStepWhenReady])
