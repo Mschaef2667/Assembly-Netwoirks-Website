@@ -107,6 +107,33 @@ interface PainPointItem {
   description: string
 }
 
+interface KeyDecisionMakerRole {
+  title: string
+  influence: string
+  concern: string
+}
+
+interface KeyDecisionMakerSegment {
+  segment: string
+  roles: KeyDecisionMakerRole[]
+}
+
+function extractKeyDecisionMakers(output: StepOutput | undefined): KeyDecisionMakerSegment[] {
+  if (!output?.content) return []
+  const c = output.content
+  if (!Array.isArray(c['segments'])) return []
+  return (c['segments'] as Array<Record<string, unknown>>).map((s) => ({
+    segment: String(s['name'] ?? ''),
+    roles: Array.isArray(s['roles'])
+      ? (s['roles'] as Array<Record<string, unknown>>).map((r) => ({
+          title: String(r['title'] ?? ''),
+          influence: String(r['influence'] ?? ''),
+          concern: String(r['concern'] ?? ''),
+        }))
+      : [],
+  }))
+}
+
 function extractPainPoints(content: Record<string, unknown>): PainPointItem[] {
   const raw = content['pain_points']
   const activeCount = typeof content['active_count'] === 'number' ? content['active_count'] : undefined
@@ -280,6 +307,11 @@ export default function ReportPage() {
     if (!o) return false
     const c = o.content
     if (!c) return false
+    if (Array.isArray(c['segments'])) {
+      return (c['segments'] as Array<Record<string, unknown>>).some(
+        (s) => typeof s['name'] === 'string' && (s['name'] as string).trim().length > 0
+      )
+    }
     if (Array.isArray(c['by_pain_point'])) {
       return (c['by_pain_point'] as Array<Record<string, unknown>>).some(
         (p) => typeof p['content'] === 'string' && (p['content'] as string).trim().length > 0
@@ -374,9 +406,19 @@ export default function ReportPage() {
       // 1b Step 3
       {
         const o = getOutput('3'); const s = getStep('3')
-        children.push(subheading(lib, `1b. ${s?.title ?? 'Target Market Segments'}`))
-        if (o && hasContent('3')) children.push(para(lib, extractReadableContent(o.content)))
-        else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+        children.push(subheading(lib, `1b. ${s?.title ?? 'Key Decision Makers'}`))
+        if (o && hasContent('3')) {
+          extractKeyDecisionMakers(o).forEach(seg => {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: seg.segment, bold: true, size: 22, color: '0EA5E9' })],
+              spacing: { before: 160, after: 80 },
+            }))
+            seg.roles.forEach(r => {
+              const influence = r.influence.charAt(0).toUpperCase() + r.influence.slice(1)
+              children.push(para(lib, `${r.title} — ${influence} influence — ${r.concern}`, false, true))
+            })
+          })
+        } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
 
@@ -622,6 +664,32 @@ export default function ReportPage() {
     return o ? extractPainPoints(o.content) : []
   })()
 
+  function KeyDecisionMakersContent({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const segments = extractKeyDecisionMakers(o)
+    if (segments.length === 0) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    return (
+      <div style={{ marginTop: '4px' }}>
+        {segments.map((seg, i) => (
+          <div key={i} style={{ marginBottom: '12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0EA5E9', margin: '0 0 4px' }}>
+              {seg.segment}
+            </p>
+            <ul style={{ paddingLeft: '20px', margin: 0 }}>
+              {seg.roles.map((r, j) => (
+                <li key={j} style={bodyStyle}>
+                  {r.title} — {r.influence.charAt(0).toUpperCase() + r.influence.slice(1)} influence — {r.concern}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   function ByPainPointContent({ id }: { id: string }) {
     const o = getOutput(id)
     const s = getStep(id)
@@ -814,8 +882,8 @@ export default function ReportPage() {
 
               <div style={dividerStyle} />
 
-              <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Target Market Segments'}</p>
-              <StepContent id="3" />
+              <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Key Decision Makers'}</p>
+              <KeyDecisionMakersContent id="3" />
 
               <div style={dividerStyle} />
 
