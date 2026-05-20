@@ -244,7 +244,7 @@ export default function CopilotOutput({
   const isInteractive = !isImproving && !streaming
 
   return (
-    <div style={{
+    <div id="copilot-output" style={{
       backgroundColor: '#FFFFFF',
       borderRadius: '12px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',

@@ -409,7 +409,7 @@ export default function JourneysPage() {
         {!hasAnyProgress && <StartHereBanner />}
 
         {hasAnyProgress && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', alignItems: 'start' }}>
+          <div id="journey-sections" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', alignItems: 'start' }}>
             {renderList.map((item) => {
               if (item.kind === 'gate') {
                 return (

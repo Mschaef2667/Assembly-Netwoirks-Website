@@ -21,9 +21,9 @@ import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
   { label: 'Workspace',      href: '/dashboard',                    icon: Building2 },
-  { label: 'Intelligence',   href: '/dashboard/intelligence',       icon: Brain     },
-  { label: 'Target Markets', href: '/dashboard/target-markets',     icon: Target    },
-  { label: 'Journeys',       href: '/dashboard/journeys',           icon: Route     },
+  { label: 'Intelligence',   href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
+  { label: 'Target Markets', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
+  { label: 'Journeys',       href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },
   { label: 'Activation',     href: '/dashboard/activation',         icon: Zap       },
   { label: 'Assets Studio',  href: '/dashboard/assets',             icon: Layers    },
   { label: 'Performance',    href: '/dashboard/performance',        icon: BarChart2 },
@@ -114,11 +114,12 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-        {navItems.map(({ label, href, icon: Icon }) => {
+        {navItems.map(({ label, href, icon: Icon, id }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
+              id={id}
               href={href}
               style={{
                 minHeight: '44px',
