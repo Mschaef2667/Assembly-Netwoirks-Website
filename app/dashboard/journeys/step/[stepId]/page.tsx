@@ -204,6 +204,16 @@ function copilotErrorMessage(code: number | string): string {
   return 'Copilot encountered an unexpected error. Please try again.'
 }
 
+function extractReadableContent(content: unknown): string {
+  if (typeof content === 'string') return content.trim()
+  if (typeof content === 'object' && content !== null) {
+    return Object.values(content as Record<string, unknown>)
+      .filter(v => typeof v === 'string' && (v as string).trim() !== '')
+      .join('\n\n')
+  }
+  return ''
+}
+
 function extractDraft(raw: string): string {
   const stripped = raw
     .replace(/^```json\s*/i, '')
@@ -651,6 +661,8 @@ export default function StepPage() {
               setPainPoints(merged)
               setActiveCount(Math.max(1, Math.min(4, Number(c?.['active_count'] ?? parsed.length))))
             }
+          } else if (stepId === '1' || stepId === '2' || stepId === '3' || stepId === '3.5') {
+            setContent(extractReadableContent(c))
           } else {
             setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
           }
