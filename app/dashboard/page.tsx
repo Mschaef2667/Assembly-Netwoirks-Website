@@ -504,7 +504,7 @@ export default function DashboardPage() {
           <div style={CARD}>
             <p style={CARD_HDR}>Gate Status</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <GateRow n={1} label="DCP Map Approved"     status={gate1} />
+              <GateRow n={1} label="Decision Clarity Profile Approved" status={gate1} />
               <GateRow n={2} label="Company Formulas"     status={gate2} />
               <GateRow n={3} label="Competitive Analysis" status={gate3} />
               <GateRow n={4} label="Strategic Messages"   status={gate4} />
@@ -541,7 +541,7 @@ export default function DashboardPage() {
                 {([
                   { label: 'Step completion',  pts: score.stepPts,    max: 40 },
                   { label: 'ICP completeness', pts: score.icpPts,     max: 20 },
-                  { label: 'DCP confidence',   pts: score.dcpPts,     max: 20 },
+                  { label: 'Decision Clarity confidence', pts: score.dcpPts, max: 20 },
                   { label: 'Content quality',  pts: score.qualityPts, max: 20 },
                 ] as const).map(({ label, pts, max }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

@@ -260,9 +260,9 @@ export default function DcpMapPage() {
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>DCP Map</h1>
+            <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Decision Clarity Profile</h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-              Decision Criteria Profile — analyzed across 7 buying journey stages.
+              Decision Clarity Profile — analyzed across 7 buying journey stages.
             </p>
           </div>
           <button
@@ -400,11 +400,11 @@ export default function DcpMapPage() {
               ? <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
               : <Lock size={20} style={{ color: 'rgba(255,255,255,0.5)' }} />
             }
-            <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Gate 1 — DCP Map Approval</p>
+            <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Gate 1 — Decision Clarity Profile Approval</p>
           </div>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px' }}>
             Gate 1 approval by an Approver or Admin unlocks Phase 2 (Steps 4–38).
-            Submit when your DCP Map accurately reflects your buyer research.
+            Submit when your Decision Clarity Profile accurately reflects your buyer research.
           </p>
 
           {mapStatus === 'approved' && (

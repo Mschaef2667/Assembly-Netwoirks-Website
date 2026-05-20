@@ -224,7 +224,7 @@ export default function SurveyBuilderPage() {
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Survey Builder</h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-          Select and customize DCP questions for your buyer survey.
+          Select and customize Decision Clarity Process questions for your buyer survey.
         </p>
       </header>
 

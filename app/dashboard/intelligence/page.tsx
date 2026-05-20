@@ -125,7 +125,7 @@ export default function IntelligencePage() {
     {
       icon: ClipboardList,
       title: 'Survey Builder',
-      description: 'Select and customize DCP questions across 7 buying journey stages. Export as a Google Forms-ready CSV.',
+      description: 'Select and customize Decision Clarity Process questions across 7 buying journey stages. Export as a Google Forms-ready CSV.',
       href: '/dashboard/intelligence/survey',
       done: status.surveyBuilt,
       step: 1,
@@ -133,15 +133,15 @@ export default function IntelligencePage() {
     {
       icon: Upload,
       title: 'Response Import',
-      description: 'Import completed survey responses via Google Sheets URL or CSV upload. Responses fuel the DCP Map analysis.',
+      description: 'Import completed survey responses via Google Sheets URL or CSV upload. Responses fuel the Decision Clarity Profile analysis.',
       href: '/dashboard/intelligence/responses',
       done: status.responsesImported,
       step: 2,
     },
     {
       icon: Map,
-      title: 'DCP Map',
-      description: 'Copilot analyzes responses across all 7 stages and generates your Decision Criteria Profile. Submit for Gate 1 approval to unlock Phase 2.',
+      title: 'Decision Clarity Profile',
+      description: 'Copilot analyzes responses across all 7 stages and generates your Decision Clarity Profile. Submit for Gate 1 approval to unlock Phase 2.',
       href: '/dashboard/intelligence/dcp-map',
       done: status.dcpMapGenerated,
       step: 3,

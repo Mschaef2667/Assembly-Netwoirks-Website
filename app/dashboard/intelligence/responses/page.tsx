@@ -277,7 +277,7 @@ export default function ResponseImportPage() {
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Response Import</h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-          Import completed survey responses to generate your DCP Map.
+          Import completed survey responses to generate your Decision Clarity Profile.
         </p>
       </header>
 
@@ -370,7 +370,7 @@ export default function ResponseImportPage() {
                 </p>
                 {mappedCount > 0 && (
                   <p style={{ fontSize: '12px', color: '#0EA5E9', margin: '2px 0 0' }}>
-                    {mappedCount} column{mappedCount !== 1 ? 's' : ''} auto-mapped to DCP stages
+                    {mappedCount} column{mappedCount !== 1 ? 's' : ''} auto-mapped to Decision Clarity stages
                   </p>
                 )}
               </div>

@@ -47,13 +47,13 @@ Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, 
 
 ## Sprint 2 — COMPLETE
 - [x] Build resolveContextPacket() in lib/context/resolveContextPacket.ts
-- [x] Intelligence section: survey builder, response import, DCP map + Gate 1 (app/dashboard/intelligence/)
+- [x] Intelligence section: survey builder, response import, Decision Clarity Profile + Gate 1 (app/dashboard/intelligence/)
 - [x] AI model selector in Administration page (org_admin only, stored in organizations.preferred_model)
 - [x] Stage label export: survey CSV prefixes questions with [Stage X - Stage Name] for auto-mapping
 - [x] Stage auto-mapping on import: extractStageMappings() detects prefix in response column headers
 - [x] Cumulative response imports: dcp_imports.batches jsonb array, append-on-save, import history UI
-- [x] DCP re-analysis versioning: dcp_analysis.analysis_version increments on each re-run
-- [x] Step 4 Copilot prompt rewrite: drafts directly from DCP Stage 1 + company profile, no qualifying questions
+- [x] Decision Clarity Profile re-analysis versioning: dcp_analysis.analysis_version increments on each re-run
+- [x] Step 4 Copilot prompt rewrite: drafts directly from Decision Clarity Stage 1 + company profile, no qualifying questions
 - [x] Wire copilot_run Supabase writes after every Claude API call
 - [x] Build Step 4 Copilot integration in app/dashboard/journeys/step/[stepId]/page.tsx
 - [x] Journeys index page (app/dashboard/journeys/page.tsx) — lists all 38 steps by section
@@ -186,7 +186,7 @@ Acid Test 3 — ICP Alignment (after Step 25, before Strategic Messages)
 - /dashboard/intelligence → Intelligence hub (done)
 - /dashboard/intelligence/survey → Survey Builder (done)
 - /dashboard/intelligence/responses → Response Import (done)
-- /dashboard/intelligence/dcp-map → DCP Map + Gate 1 (done)
+- /dashboard/intelligence/dcp-map → Decision Clarity Profile + Gate 1 (done)
 - /dashboard/playbooks → Playbooks
 - /dashboard/journeys → Journeys
 - /dashboard/assets → Assets Studio
