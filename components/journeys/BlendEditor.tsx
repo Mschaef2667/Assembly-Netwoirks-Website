@@ -748,24 +748,27 @@ export default function BlendEditor({
           <>
             {activePainPoints.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {activePainPoints.map(pp => (
-                  <button
-                    key={pp.index}
-                    onClick={() => handleTabChange(pp.index)}
-                    style={{
-                      padding: '6px 14px', minHeight: '36px',
-                      maxWidth: '200px', overflow: 'hidden',
-                      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      backgroundColor: activeTab === pp.index ? '#E8520A' : '#FFFFFF',
-                      color: activeTab === pp.index ? '#FFFFFF' : '#0D0D0D',
-                      border: `1px solid ${activeTab === pp.index ? '#E8520A' : '#E5E7EB'}`,
-                      borderRadius: '6px', fontSize: '13px', fontWeight: 600,
-                      cursor: 'pointer', transition: 'background-color 0.15s, color 0.15s',
-                    }}
-                  >
-                    {pp.title?.trim() || `Pain Point ${pp.index}`}
-                  </button>
-                ))}
+                {activePainPoints.map(pp => {
+                  const fullLabel = pp.title?.trim() || `Pain Point ${pp.index}`
+                  const displayLabel = fullLabel.length > 20 ? fullLabel.slice(0, 20) + '…' : fullLabel
+                  return (
+                    <button
+                      key={pp.index}
+                      onClick={() => handleTabChange(pp.index)}
+                      title={fullLabel}
+                      style={{
+                        padding: '6px 14px', minHeight: '36px',
+                        backgroundColor: activeTab === pp.index ? '#E8520A' : '#FFFFFF',
+                        color: activeTab === pp.index ? '#FFFFFF' : '#0D0D0D',
+                        border: `1px solid ${activeTab === pp.index ? '#E8520A' : '#E5E7EB'}`,
+                        borderRadius: '6px', fontSize: '13px', fontWeight: 600,
+                        cursor: 'pointer', transition: 'background-color 0.15s, color 0.15s',
+                      }}
+                    >
+                      {displayLabel}
+                    </button>
+                  )
+                })}
               </div>
             )}
 

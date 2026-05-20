@@ -865,7 +865,8 @@ export default function PainPointStepEditor({
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {[1, 2, 3, 4].map(idx => {
             const pp = painPoints.find(p => p.index === idx)
-            const label = pp?.title?.trim() || `Pain Point ${idx}`
+            const fullLabel = pp?.title?.trim() || `Pain Point ${idx}`
+            const label = fullLabel.length > 20 ? fullLabel.slice(0, 20) + '…' : fullLabel
             const isActive = idx === activeTab
             const isEnabled = idx <= activeCount
             return (
@@ -873,7 +874,7 @@ export default function PainPointStepEditor({
                 key={idx}
                 onClick={() => { if (isEnabled) handleTabChange(idx) }}
                 disabled={!isEnabled}
-                title={!isEnabled ? 'This pain point is not active in Step 4' : undefined}
+                title={!isEnabled ? 'This pain point is not active in Step 4' : fullLabel}
                 style={{
                   padding: '6px 14px',
                   minHeight: '36px',
