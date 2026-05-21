@@ -392,3 +392,6 @@ Model: claude-sonnet-4-5
 Max tokens: 1500
 Never hardcode API key
 Always write to copilot_run after every call
+
+## Parking Lot / Future Features
+- Activation Module (removed from nav May 2026): Originally a placeholder for a future module that bridges C3 Method completion and market deployment. Concept: take approved Strategic Plan outputs and convert them into executable GTM assets — email sequences, sales scripts, campaign briefs, social content. Overlaps with Assets Studio and Lead Generation. Should be revisited when both of those modules are built. Do not rebuild as a standalone nav item — fold into Assets Studio or Lead Generation workflow instead.

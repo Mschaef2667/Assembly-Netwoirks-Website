@@ -9,7 +9,7 @@ import {
   Brain,
   Target,
   Route,
-  Zap,
+  Search,
   Layers,
   BarChart2,
   Plug,
@@ -20,16 +20,16 @@ import {
 import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
-  { label: 'Workspace',      href: '/dashboard',                    icon: Building2 },
-  { label: 'Intelligence',   href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
-  { label: 'Target Markets', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
-  { label: 'Journeys',       href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },
-  { label: 'Activation',     href: '/dashboard/activation',         icon: Zap       },
-  { label: 'Assets Studio',  href: '/dashboard/assets',             icon: Layers    },
-  { label: 'Performance',    href: '/dashboard/performance',        icon: BarChart2 },
-  { label: 'Integrations',   href: '/dashboard/integrations',       icon: Plug      },
-  { label: 'Administration', href: '/dashboard/administration',     icon: Settings  },
-  { label: 'Support',        href: 'mailto:support@assemblyai.com', icon: LifeBuoy  },
+  { label: 'Workspace',       href: '/dashboard',                    icon: Building2 },
+  { label: 'Intelligence',    href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
+  { label: 'Target Markets',  href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
+  { label: 'Journeys',        href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },
+  { label: 'Lead Generation', href: '/dashboard/lead-generation',    icon: Search    },
+  { label: 'Assets Studio',   href: '/dashboard/assets',             icon: Layers    },
+  { label: 'Integrations',    href: '/dashboard/integrations',       icon: Plug      },
+  { label: 'Performance',     href: '/dashboard/performance',        icon: BarChart2 },
+  { label: 'Administration',  href: '/dashboard/administration',     icon: Settings  },
+  { label: 'Support',         href: 'mailto:support@assemblyai.com', icon: LifeBuoy  },
 ]
 
 function formatRole(role: string): string {
