@@ -129,6 +129,7 @@ export default function IntelligencePage() {
       href: '/dashboard/intelligence/survey',
       done: status.surveyBuilt,
       step: 1,
+      domId: 'intelligence-survey',
     },
     {
       icon: Upload,
@@ -137,6 +138,7 @@ export default function IntelligencePage() {
       href: '/dashboard/intelligence/responses',
       done: status.responsesImported,
       step: 2,
+      domId: undefined,
     },
     {
       icon: Map,
@@ -145,6 +147,7 @@ export default function IntelligencePage() {
       href: '/dashboard/intelligence/dcp-map',
       done: status.dcpMapGenerated,
       step: 3,
+      domId: 'intelligence-dcp',
     },
   ]
 
@@ -168,14 +171,10 @@ export default function IntelligencePage() {
 
         {/* Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          {cards.map(({ icon: Icon, title, description, href, done, step }) => (
+          {cards.map(({ icon: Icon, title, description, href, done, step, domId }) => (
             <div
               key={href}
-              id={
-                href === '/dashboard/intelligence/survey' ? 'intelligence-survey' :
-                href === '/dashboard/intelligence/dcp-map' ? 'intelligence-dcp' :
-                undefined
-              }
+              id={domId}
               style={CARD}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
