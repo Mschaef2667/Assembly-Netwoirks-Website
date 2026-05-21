@@ -51,8 +51,8 @@ const TOUR_STEPS: TourStep[] = [
     position: 'bottom',
   },
   {
-    page: '/dashboard/intelligence',
-    targetId: 'intelligence-dcp',
+    page: '/dashboard/intelligence/dcp-map',
+    targetId: 'dcp-map-content',
     title: 'The Buyer Map',
     body: 'Assembly AI analyzes every response across all seven buying stages and builds a behavioral map of your buyer. Gate 1 must be approved before strategy begins — because if the foundation is wrong everything built on it is wrong.',
     position: 'top',

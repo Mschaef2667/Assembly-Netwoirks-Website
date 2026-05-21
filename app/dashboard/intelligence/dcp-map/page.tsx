@@ -256,7 +256,7 @@ export default function DcpMapPage() {
   const mapStatus = dcpMap?.status ?? null
 
   return (
-    <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
+    <div id="dcp-map-content" style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
