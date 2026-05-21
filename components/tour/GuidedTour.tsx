@@ -230,6 +230,8 @@ function useGuidedTour() {
 
   const pollGenRef = useRef(0)
   const nextRef = useRef<() => void>(() => {})
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname
 
   const CARD_W = 320
   const CARD_H = 200
@@ -269,7 +271,7 @@ function useGuidedTour() {
   }, [])
 
   // Retry-based show: pages may need time to load data before target elements appear
-  const showStepWhenReady = useCallback((index: number) => {
+  const showStepWhenReady = useCallback((index: number, initialDelay = 200) => {
     const step = TOUR_STEPS[index]
     if (!step) return
     console.log(`[Tour] showStepWhenReady(${index}): target=${step.targetId} page=${step.page}`)
@@ -295,7 +297,7 @@ function useGuidedTour() {
         }
       }
     }
-    setTimeout(tryShow, 200)
+    setTimeout(tryShow, initialDelay)
   }, [computePositions])
 
   function persistState(idx: number) {
@@ -340,7 +342,7 @@ function useGuidedTour() {
     const step = TOUR_STEPS[idx]
     console.log(`[Tour] pathname → ${pathname}, stepIndex=${idx}, step.page=${step?.page}`)
     if (!step || pathname !== step.page) return
-    showStepWhenReady(idx)
+    showStepWhenReady(idx, 500)
   }, [pathname, showStepWhenReady])
 
   const start = useCallback(() => {
@@ -378,15 +380,15 @@ function useGuidedTour() {
     setStepIndex(nextIndex)
     persistState(nextIndex)
     console.log(`[Tour] Step ${nextIndex}: page=${nextStep.page}, target=${nextStep.targetId}`)
-    if (nextStep.page === pathname) {
+    if (nextStep.page === pathnameRef.current) {
       showStepWhenReady(nextIndex)
     } else {
       setCardVisible(false)
       setSpotlightRect(null)
-      console.log(`[Tour] Navigating from ${pathname} → ${nextStep.page}`)
+      console.log(`[Tour] Navigating from ${pathnameRef.current} → ${nextStep.page}`)
       router.push(nextStep.page)
     }
-  }, [pathname, router, end, showStepWhenReady])
+  }, [router, end, showStepWhenReady])
 
   nextRef.current = next
 
