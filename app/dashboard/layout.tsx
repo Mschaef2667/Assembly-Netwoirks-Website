@@ -1,5 +1,4 @@
 import Sidebar from '@/components/layout/sidebar'
-import GuidedTour from '@/components/tour/GuidedTour'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +7,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="ml-64 flex-1 min-h-screen" style={{ backgroundColor: '#F8F6F1' }}>
         {children}
       </main>
-      <GuidedTour />
     </div>
   )
 }
