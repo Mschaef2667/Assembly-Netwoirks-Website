@@ -29,7 +29,7 @@ const navItems = [
   { label: 'Integrations',    href: '/dashboard/integrations',       icon: Plug      },
   { label: 'Performance',     href: '/dashboard/performance',        icon: BarChart2 },
   { label: 'Administration',  href: '/dashboard/administration',     icon: Settings  },
-  { label: 'Support',         href: 'mailto:support@assemblyai.com', icon: LifeBuoy  },
+  { label: 'Support',         href: '/dashboard/support',            icon: LifeBuoy  },
 ]
 
 function formatRole(role: string): string {
