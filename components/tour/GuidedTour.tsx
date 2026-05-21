@@ -342,7 +342,7 @@ function useGuidedTour() {
     const step = TOUR_STEPS[idx]
     console.log(`[Tour] pathname → ${pathname}, stepIndex=${idx}, step.page=${step?.page}`)
     if (!step || pathname !== step.page) return
-    showStepWhenReady(idx, 500)
+    showStepWhenReady(idx, 1500)
   }, [pathname, showStepWhenReady])
 
   const start = useCallback(() => {
