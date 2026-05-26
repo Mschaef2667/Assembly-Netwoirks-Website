@@ -34,6 +34,7 @@ interface CopilotOutput {
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+type SaveStatus = 'idle' | 'editing' | 'saving' | 'saved' | 'error'
 
 // Step 4 types
 interface PainPoint {
@@ -388,15 +389,18 @@ function extractDraft(raw: string): string {
 
 // ── Save indicator ────────────────────────────────────────────────────────────
 
-function SaveIndicator({ state }: { state: SaveState }) {
+function SaveIndicator({ state }: { state: SaveState | SaveStatus }) {
   if (state === 'idle') return null
+  if (state === 'editing') return (
+    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>Editing...</span>
+  )
   if (state === 'saving') return (
     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
       <Loader2 size={12} className="animate-spin" /> Saving…
     </span>
   )
   if (state === 'saved') return (
-    <span style={{ fontSize: '12px', color: '#34D399' }}>Saved</span>
+    <span style={{ fontSize: '12px', color: '#34D399' }}>✓ Saved</span>
   )
   return <span style={{ fontSize: '12px', color: '#F87171' }}>Save failed</span>
 }
@@ -719,17 +723,31 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
 
 interface Step2EditorProps {
   segments: Segment[]
-  saveState: SaveState
+  saveStatus: SaveStatus
   onChange: (idx: number, field: keyof Segment, value: string) => void
   onBlur: () => void
 }
 
-function Step2Editor({ segments, saveState, onChange, onBlur }: Step2EditorProps) {
+const DROPDOWN_STYLE: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: '6px',
+  fontSize: '13px',
+  color: '#FFFFFF',
+  backgroundColor: '#0F2140',
+  boxSizing: 'border-box',
+  fontFamily: 'inherit',
+  outline: 'none',
+  cursor: 'pointer',
+}
+
+function Step2Editor({ segments, saveStatus, onChange, onBlur }: Step2EditorProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
         <label style={LABEL_STYLE}>Target Market Segments</label>
-        <SaveIndicator state={saveState} />
+        <SaveIndicator state={saveStatus} />
       </div>
       {segments.map((seg, i) => (
         <div key={i} style={PANEL_CARD}>
@@ -772,36 +790,54 @@ function Step2Editor({ segments, saveState, onChange, onBlur }: Step2EditorProps
             </div>
             <div>
               <label style={{ ...LABEL_STYLE, display: 'block' }}>Industry</label>
-              <input
-                type="text"
+              <select
                 value={seg.industry}
                 onChange={e => onChange(i, 'industry', e.target.value)}
                 onBlur={onBlur}
-                placeholder="e.g. Technology, Healthcare"
-                style={FIELD_INPUT}
-              />
+                style={DROPDOWN_STYLE}
+              >
+                <option value="">Select an industry</option>
+                <option value="Enterprise Technology & SaaS">Enterprise Technology &amp; SaaS</option>
+                <option value="Healthcare & Life Sciences">Healthcare &amp; Life Sciences</option>
+                <option value="Professional Services">Professional Services</option>
+                <option value="Financial Services & Fintech">Financial Services &amp; Fintech</option>
+                <option value="Non-Profit & Fundraising">Non-Profit &amp; Fundraising</option>
+                <option value="Manufacturing & Industrial">Manufacturing &amp; Industrial</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div>
               <label style={{ ...LABEL_STYLE, display: 'block' }}>Company Size</label>
-              <input
-                type="text"
+              <select
                 value={seg.company_size}
                 onChange={e => onChange(i, 'company_size', e.target.value)}
                 onBlur={onBlur}
-                placeholder="e.g. 50–500 employees"
-                style={FIELD_INPUT}
-              />
+                style={DROPDOWN_STYLE}
+              >
+                <option value="">Select company size</option>
+                <option value="1-10 employees">1-10 employees</option>
+                <option value="11-50 employees">11-50 employees</option>
+                <option value="51-200 employees">51-200 employees</option>
+                <option value="201-500 employees">201-500 employees</option>
+                <option value="501-1,000 employees">501-1,000 employees</option>
+                <option value="1,000+ employees">1,000+ employees</option>
+              </select>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ ...LABEL_STYLE, display: 'block' }}>Geography</label>
-              <input
-                type="text"
+              <select
                 value={seg.geography}
                 onChange={e => onChange(i, 'geography', e.target.value)}
                 onBlur={onBlur}
-                placeholder="e.g. North America, EMEA"
-                style={FIELD_INPUT}
-              />
+                style={DROPDOWN_STYLE}
+              >
+                <option value="">Select geography</option>
+                <option value="Local (single city/region)">Local (single city/region)</option>
+                <option value="Regional (multi-state)">Regional (multi-state)</option>
+                <option value="National (US)">National (US)</option>
+                <option value="North America">North America</option>
+                <option value="Global">Global</option>
+              </select>
             </div>
           </div>
         </div>
@@ -816,13 +852,13 @@ interface Step3EditorProps {
   segmentNames: string[]
   dms: Record<string, DecisionMaker[]>
   activeTab: number
-  saveState: SaveState
+  saveStatus: SaveStatus
   onTabChange: (tab: number) => void
   onChange: (segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) => void
   onBlur: () => void
 }
 
-function Step3Editor({ segmentNames, dms, activeTab, saveState, onTabChange, onChange, onBlur }: Step3EditorProps) {
+function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, onChange, onBlur }: Step3EditorProps) {
   const activeKey = SEG_KEYS[activeTab]
   const activeDMs = dms[activeKey] ?? makeDMs()
 
@@ -830,7 +866,7 @@ function Step3Editor({ segmentNames, dms, activeTab, saveState, onTabChange, onC
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <label style={LABEL_STYLE}>Key Decision Makers</label>
-        <SaveIndicator state={saveState} />
+        <SaveIndicator state={saveStatus} />
       </div>
 
       {/* Segment tabs */}
@@ -937,7 +973,7 @@ interface Step35EditorProps {
   segmentNames: string[]
   buyingCenter: Record<string, BuyingCenterSegment>
   activeTab: number
-  saveState: SaveState
+  saveStatus: SaveStatus
   onTabChange: (tab: number) => void
   onChange: (segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) => void
   onBlur: () => void
@@ -950,7 +986,7 @@ const BC_ROLES: Array<{ key: keyof BuyingCenterSegment; label: string; optional?
   { key: 'blocker', label: 'Blocker', optional: true },
 ]
 
-function Step35Editor({ segmentNames, buyingCenter, activeTab, saveState, onTabChange, onChange, onBlur }: Step35EditorProps) {
+function Step35Editor({ segmentNames, buyingCenter, activeTab, saveStatus, onTabChange, onChange, onBlur }: Step35EditorProps) {
   const activeKey = SEG_KEYS[activeTab]
   const activeSeg = buyingCenter[activeKey] ?? makeBCSegment()
 
@@ -958,7 +994,7 @@ function Step35Editor({ segmentNames, buyingCenter, activeTab, saveState, onTabC
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <label style={LABEL_STYLE}>Buying Center Evaluation</label>
-        <SaveIndicator state={saveState} />
+        <SaveIndicator state={saveStatus} />
       </div>
 
       {/* Segment tabs */}
@@ -1055,6 +1091,7 @@ export default function StepPage() {
   const [outputId, setOutputId] = useState<string | null>(null)
   const [outputVersion, setOutputVersion] = useState(1)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [loading, setLoading] = useState(true)
 
   // Step 9 state
@@ -1205,6 +1242,7 @@ export default function StepPage() {
               }))
               setStep2Segments([0, 1, 2].map(i => parsed[i] ?? { ...DEFAULT_SEGMENT }))
             }
+            setSaveStatus('saved')
           } else if (stepId === '3') {
             const dmsRaw = c?.['decision_makers'] as Record<string, unknown> | undefined
             if (dmsRaw) {
@@ -1224,6 +1262,7 @@ export default function StepPage() {
               })
               setStep3DMs(loaded)
             }
+            setSaveStatus('saved')
           } else if (stepId === '3.5') {
             const bcRaw = c?.['buying_center'] as Record<string, unknown> | undefined
             if (bcRaw) {
@@ -1247,6 +1286,7 @@ export default function StepPage() {
               })
               setStep35BC(loaded)
             }
+            setSaveStatus('saved')
           } else if (stepId === '1') {
             setContent(extractStepContent(stepId, c))
           } else {
@@ -1469,7 +1509,7 @@ export default function StepPage() {
   // ── Auto-save (Step 2) ──────────────────────────────────────────────────────
 
   const persistStep2Content = useCallback(async (segs: Segment[], wsId: string) => {
-    setSaveState('saving')
+    setSaveStatus('saving')
     try {
       const contentPayload = { segments: segs }
       const now = new Date().toISOString()
@@ -1497,17 +1537,16 @@ export default function StepPage() {
         if (error) throw error
         if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
       }
-      setSaveState('saved')
-      setTimeout(() => setSaveState('idle'), 2500)
+      setSaveStatus('saved')
     } catch {
-      setSaveState('error')
+      setSaveStatus('error')
     }
   }, [outputId, outputVersion, stepId])
 
   // ── Auto-save (Step 3) ──────────────────────────────────────────────────────
 
   const persistStep3Content = useCallback(async (dms: Record<string, DecisionMaker[]>, wsId: string) => {
-    setSaveState('saving')
+    setSaveStatus('saving')
     try {
       const contentPayload = { decision_makers: dms }
       const now = new Date().toISOString()
@@ -1535,17 +1574,16 @@ export default function StepPage() {
         if (error) throw error
         if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
       }
-      setSaveState('saved')
-      setTimeout(() => setSaveState('idle'), 2500)
+      setSaveStatus('saved')
     } catch {
-      setSaveState('error')
+      setSaveStatus('error')
     }
   }, [outputId, outputVersion, stepId])
 
   // ── Auto-save (Step 3.5) ────────────────────────────────────────────────────
 
   const persistStep35Content = useCallback(async (bc: Record<string, BuyingCenterSegment>, wsId: string) => {
-    setSaveState('saving')
+    setSaveStatus('saving')
     try {
       const contentPayload = { buying_center: bc }
       const now = new Date().toISOString()
@@ -1573,10 +1611,9 @@ export default function StepPage() {
         if (error) throw error
         if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
       }
-      setSaveState('saved')
-      setTimeout(() => setSaveState('idle'), 2500)
+      setSaveStatus('saved')
     } catch {
-      setSaveState('error')
+      setSaveStatus('error')
     }
   }, [outputId, outputVersion, stepId])
 
@@ -1649,6 +1686,7 @@ export default function StepPage() {
   }
 
   function handleStep2Change(idx: number, field: keyof Segment, value: string) {
+    setSaveStatus('editing')
     setStep2Segments(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
     scheduleStep2Save()
   }
@@ -1659,6 +1697,7 @@ export default function StepPage() {
   }
 
   function handleStep3Change(segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) {
+    setSaveStatus('editing')
     setStep3DMs(prev => ({
       ...prev,
       [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => i === dmIdx ? { ...dm, [field]: value } : dm),
@@ -1672,6 +1711,7 @@ export default function StepPage() {
   }
 
   function handleStep35Change(segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) {
+    setSaveStatus('editing')
     setStep35BC(prev => ({
       ...prev,
       [segKey]: { ...(prev[segKey] ?? makeBCSegment()), [role]: { ...(prev[segKey] ?? makeBCSegment())[role], [field]: value } },
@@ -1951,7 +1991,7 @@ export default function StepPage() {
         <div style={{ padding: '28px 32px', maxWidth: '860px', flex: 1 }}>
           <Step2Editor
             segments={step2Segments}
-            saveState={saveState}
+            saveStatus={saveStatus}
             onChange={handleStep2Change}
             onBlur={handleStep2Blur}
           />
@@ -1970,7 +2010,7 @@ export default function StepPage() {
             segmentNames={segmentNames}
             dms={step3DMs}
             activeTab={step3ActiveTab}
-            saveState={saveState}
+            saveStatus={saveStatus}
             onTabChange={setStep3ActiveTab}
             onChange={handleStep3Change}
             onBlur={handleStep3Blur}
@@ -1990,7 +2030,7 @@ export default function StepPage() {
             segmentNames={segmentNames}
             buyingCenter={step35BC}
             activeTab={step35ActiveTab}
-            saveState={saveState}
+            saveStatus={saveStatus}
             onTabChange={setStep35ActiveTab}
             onChange={handleStep35Change}
             onBlur={handleStep35Blur}
