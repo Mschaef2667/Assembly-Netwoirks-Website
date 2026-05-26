@@ -10,8 +10,26 @@ import { captureEvent } from '@/lib/posthog'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-type InfluenceLevel = 'High' | 'Medium' | 'Low'
+type SaveState = 'idle' | 'editing' | 'saving' | 'saved' | 'error'
+type RoleCategory =
+  | ''
+  | 'C-Suite (CEO, COO, CFO)'
+  | 'Chief Revenue Officer / VP Sales'
+  | 'Chief Marketing Officer / VP Marketing'
+  | 'Revenue Operations'
+  | 'VP / Director of Business Development'
+  | 'IT / Technology Leader'
+  | 'Legal / Compliance'
+  | 'Finance / Procurement'
+  | 'Board Member / Investor'
+  | 'Other'
+type InfluenceLevel =
+  | ''
+  | 'Final Decision Maker'
+  | 'Strong Influence'
+  | 'Evaluator'
+  | 'Gatekeeper / Blocker'
+  | 'Low Influence'
 type DecisionStyle = 'Consensus' | 'Champion-led' | 'Committee'
 type SalesCycle = '1-3 months' | '3-6 months' | '3-9 months' | '6-12 months' | '12+ months'
 type ACVRange = '$1k-$10k' | '$10k-$100k' | '$100k-$500k' | '$500k+'
@@ -24,9 +42,10 @@ interface Segment {
 
 interface BuyingRole {
   id: string
-  title: string
-  influence: InfluenceLevel
-  primaryConcern: string
+  role_category: RoleCategory
+  specific_title: string
+  influence_level: InfluenceLevel
+  primary_concern: string
 }
 
 interface Step1Data {
@@ -48,6 +67,42 @@ interface BuyingCenterData {
 const DECISION_STYLES: DecisionStyle[] = ['Consensus', 'Champion-led', 'Committee']
 const SALES_CYCLES: SalesCycle[] = ['1-3 months', '3-6 months', '3-9 months', '6-12 months', '12+ months']
 const ACV_RANGES: ACVRange[] = ['$1k-$10k', '$10k-$100k', '$100k-$500k', '$500k+']
+
+const ROLE_CATEGORIES: RoleCategory[] = [
+  '',
+  'C-Suite (CEO, COO, CFO)',
+  'Chief Revenue Officer / VP Sales',
+  'Chief Marketing Officer / VP Marketing',
+  'Revenue Operations',
+  'VP / Director of Business Development',
+  'IT / Technology Leader',
+  'Legal / Compliance',
+  'Finance / Procurement',
+  'Board Member / Investor',
+  'Other',
+]
+
+const INFLUENCE_LEVELS: InfluenceLevel[] = [
+  '',
+  'Final Decision Maker',
+  'Strong Influence',
+  'Evaluator',
+  'Gatekeeper / Blocker',
+  'Low Influence',
+]
+
+const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string>> = {
+  'C-Suite (CEO, COO, CFO)': 'Revenue growth and competitive positioning',
+  'Chief Revenue Officer / VP Sales': 'Pipeline predictability and quota attainment',
+  'Chief Marketing Officer / VP Marketing': 'Lead quality and marketing-attributed revenue',
+  'Revenue Operations': 'Tool consolidation and data accuracy',
+  'VP / Director of Business Development': 'New market entry and partnership revenue',
+  'IT / Technology Leader': 'Security, integration, and implementation complexity',
+  'Legal / Compliance': 'Data privacy and vendor risk management',
+  'Finance / Procurement': 'ROI justification and contract terms',
+  'Board Member / Investor': 'Return on investment and market share growth',
+  'Other': '',
+}
 
 const STEP_LABELS = [
   'Product / Service Profile',
@@ -82,6 +137,20 @@ const LABEL: CSSProperties = {
   marginBottom: '6px',
 }
 
+const DROPDOWN: CSSProperties = {
+  backgroundColor: '#0F2140',
+  color: '#FFFFFF',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: '6px',
+  padding: '10px 12px',
+  fontSize: '13px',
+  width: '100%',
+  minHeight: '44px',
+  boxSizing: 'border-box',
+  outline: 'none',
+  cursor: 'pointer',
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function uid(): string {
@@ -89,7 +158,7 @@ function uid(): string {
 }
 
 function makeRole(): BuyingRole {
-  return { id: uid(), title: '', influence: 'High', primaryConcern: '' }
+  return { id: uid(), role_category: '', specific_title: '', influence_level: '', primary_concern: '' }
 }
 
 function makeSegment(): Segment {
@@ -100,6 +169,13 @@ function makeSegment(): Segment {
 
 function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') return null
+  if (state === 'editing') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs" style={{ color: '#E8520A' }}>
+        <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#E8520A' }} /> Editing
+      </span>
+    )
+  }
   if (state === 'saving') {
     return (
       <span className="flex items-center gap-1.5 text-xs" style={{ color: '#6B7280' }}>
@@ -267,7 +343,11 @@ function Step3Form({ activeSegments, roles, onChange, onBlur }: Step3FormProps) 
 
   function patchRole(segId: string, roleId: string, patch: Partial<BuyingRole>) {
     const list = roles[segId] ?? []
-    onChange({ ...roles, [segId]: list.map(r => r.id === roleId ? { ...r, ...patch } : r) })
+    const fullPatch: Partial<BuyingRole> = { ...patch }
+    if (patch.role_category !== undefined && patch.role_category !== '') {
+      fullPatch.primary_concern = PRIMARY_CONCERN_MAP[patch.role_category] ?? ''
+    }
+    onChange({ ...roles, [segId]: list.map(r => r.id === roleId ? { ...r, ...fullPatch } : r) })
   }
 
   return (
@@ -289,75 +369,98 @@ function Step3Form({ activeSegments, roles, onChange, onBlur }: Step3FormProps) 
               {segRoles.map((role, ri) => (
                 <div key={role.id} className="rounded-lg p-4" style={{ border: '1px solid #E5E7EB' }}>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium" style={{ color: '#6B7280' }}>Role {ri + 1}</span>
-                    {segRoles.length > 1 && (
-                      <button
-                        onClick={() =>
-                          onChange({ ...roles, [seg.id]: segRoles.filter(r => r.id !== role.id) })
-                        }
-                        aria-label="Remove role"
-                        style={{
-                          minHeight: '44px', minWidth: '44px', border: 'none',
-                          background: 'none', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        <Trash2 size={14} color="#EF4444" />
-                      </button>
-                    )}
+                    <span className="text-xs font-semibold" style={{ color: '#0A1628' }}>
+                      Decision Maker {ri + 1}
+                    </span>
+                    <button
+                      onClick={() => onChange({ ...roles, [seg.id]: segRoles.filter(r => r.id !== role.id) })}
+                      aria-label="Remove decision maker"
+                      style={{
+                        minHeight: '44px', minWidth: '44px', border: 'none',
+                        background: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <Trash2 size={14} color="#EF4444" />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label style={LABEL}>Title</label>
-                      <input
-                        type="text"
-                        value={role.title}
-                        onChange={e => patchRole(seg.id, role.id, { title: e.target.value })}
-                        onBlur={onBlur}
-                        placeholder="e.g. VP Sales"
-                        style={INPUT}
-                      />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label style={LABEL}>Role Category</label>
+                        <select
+                          value={role.role_category}
+                          onChange={e => {
+                            patchRole(seg.id, role.id, { role_category: e.target.value as RoleCategory })
+                            onBlur()
+                          }}
+                          style={DROPDOWN}
+                        >
+                          {ROLE_CATEGORIES.map(cat => (
+                            <option key={cat} value={cat} style={{ backgroundColor: '#0F2140' }}>
+                              {cat === '' ? 'Select a role' : cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={LABEL}>Specific Title</label>
+                        <input
+                          type="text"
+                          value={role.specific_title}
+                          onChange={e => patchRole(seg.id, role.id, { specific_title: e.target.value })}
+                          onBlur={onBlur}
+                          placeholder="e.g. VP of Sales"
+                          style={{ ...INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF' }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label style={LABEL}>Influence level</label>
-                      <select
-                        value={role.influence}
-                        onChange={e => {
-                          patchRole(seg.id, role.id, { influence: e.target.value as InfluenceLevel })
-                          onBlur()
-                        }}
-                        style={INPUT}
-                      >
-                        {(['High', 'Medium', 'Low'] as const).map(l => (
-                          <option key={l} value={l}>{l}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={LABEL}>Primary concern</label>
-                      <input
-                        type="text"
-                        value={role.primaryConcern}
-                        onChange={e => patchRole(seg.id, role.id, { primaryConcern: e.target.value })}
-                        onBlur={onBlur}
-                        placeholder="e.g. Revenue risk"
-                        style={INPUT}
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label style={LABEL}>Influence Level</label>
+                        <select
+                          value={role.influence_level}
+                          onChange={e => {
+                            patchRole(seg.id, role.id, { influence_level: e.target.value as InfluenceLevel })
+                            onBlur()
+                          }}
+                          style={DROPDOWN}
+                        >
+                          {INFLUENCE_LEVELS.map(lvl => (
+                            <option key={lvl} value={lvl} style={{ backgroundColor: '#0F2140' }}>
+                              {lvl === '' ? 'Select influence level' : lvl}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={LABEL}>Primary Concern</label>
+                        <input
+                          type="text"
+                          value={role.primary_concern}
+                          onChange={e => patchRole(seg.id, role.id, { primary_concern: e.target.value })}
+                          onBlur={onBlur}
+                          placeholder="e.g. Revenue risk"
+                          style={{ ...INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
-              <button
-                onClick={() => onChange({ ...roles, [seg.id]: [...segRoles, makeRole()] })}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  width: '100%', minHeight: '44px', padding: '0 16px',
-                  border: '1.5px dashed #D1D5DB', borderRadius: '8px',
-                  backgroundColor: 'transparent', color: '#6B7280', fontSize: '13px', cursor: 'pointer',
-                }}
-              >
-                <Plus size={15} /> Add role for {seg.name}
-              </button>
+              {segRoles.length < 4 && (
+                <button
+                  onClick={() => onChange({ ...roles, [seg.id]: [...segRoles, makeRole()] })}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    width: '100%', minHeight: '44px', padding: '0 16px',
+                    border: '1.5px dashed #D1D5DB', borderRadius: '8px',
+                    backgroundColor: 'transparent', color: '#6B7280', fontSize: '13px', cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={15} /> Add decision maker for {seg.name}
+                </button>
+              )}
             </div>
           </div>
         )
@@ -496,7 +599,19 @@ export default function CompanyProfilePage() {
     let content: Record<string, unknown>
     if (step === 1) content = { smartGoals: step1.smartGoals, whatDoYouSell: step1.whatDoYouSell, productUrl: step1.productUrl }
     else if (step === 2) content = { segments }
-    else if (step === 3) content = { roles }
+    else if (step === 3) {
+      const dmSegments = segments.filter(s => s.name.trim())
+      const dm: Record<string, unknown[]> = {}
+      dmSegments.forEach((seg, i) => {
+        dm[`segment_${i + 1}`] = (roles[seg.id] ?? []).map(r => ({
+          role_category: r.role_category,
+          specific_title: r.specific_title,
+          influence_level: r.influence_level,
+          primary_concern: r.primary_concern,
+        }))
+      })
+      content = { decision_makers: dm }
+    }
     else content = { buyingCenter }
 
     setSaveStates(prev => ({ ...prev, [step]: 'saving' }))
@@ -626,16 +741,53 @@ export default function CompanyProfilePage() {
           setStep1({ smartGoals: c.smartGoals ?? '', whatDoYouSell: c.whatDoYouSell ?? '', productUrl: c.productUrl ?? '' })
         }
 
+        let loadedSegments: Segment[] = []
         const s2 = latest['2']
         if (s2) {
           const c = s2.content as { segments?: Segment[] }
-          if (c.segments?.length) setSegments(c.segments)
+          if (c.segments?.length) {
+            loadedSegments = c.segments
+            setSegments(c.segments)
+          }
         }
 
         const s3 = latest['3']
         if (s3) {
-          const c = s3.content as { roles?: Record<string, BuyingRole[]> }
-          if (c.roles) setRoles(c.roles)
+          type OldRole = { id?: string; title?: string; influence?: string; primaryConcern?: string }
+          type NewDM = { role_category?: string; specific_title?: string; influence_level?: string; primary_concern?: string }
+          const c = s3.content as {
+            roles?: Record<string, OldRole[]>
+            decision_makers?: Record<string, NewDM[]>
+          }
+          if (c.decision_makers && loadedSegments.length > 0) {
+            const rolesMap: Record<string, BuyingRole[]> = {}
+            loadedSegments.forEach((seg, i) => {
+              const key = `segment_${i + 1}`
+              const dms = c.decision_makers![key]
+              if (dms) {
+                rolesMap[seg.id] = dms.map(dm => ({
+                  id: uid(),
+                  role_category: (dm.role_category ?? '') as RoleCategory,
+                  specific_title: dm.specific_title ?? '',
+                  influence_level: (dm.influence_level ?? '') as InfluenceLevel,
+                  primary_concern: dm.primary_concern ?? '',
+                }))
+              }
+            })
+            setRoles(rolesMap)
+          } else if (c.roles) {
+            const rolesMap: Record<string, BuyingRole[]> = {}
+            for (const [segId, roleList] of Object.entries(c.roles)) {
+              rolesMap[segId] = roleList.map(r => ({
+                id: r.id ?? uid(),
+                role_category: '' as RoleCategory,
+                specific_title: r.title ?? '',
+                influence_level: '' as InfluenceLevel,
+                primary_concern: r.primaryConcern ?? '',
+              }))
+            }
+            setRoles(rolesMap)
+          }
         }
 
         const s35 = latest['3.5']
@@ -657,7 +809,7 @@ export default function CompanyProfilePage() {
     if (currentStep === 2) return segments.some(s => s.name.trim().length > 0)
     if (currentStep === 3) {
       const active = segments.filter(s => s.name.trim())
-      return active.length > 0 && active.every(s => (roles[s.id] ?? []).some(r => r.title.trim()))
+      return active.length > 0 && active.every(s => (roles[s.id] ?? []).some(r => r.specific_title.trim() || r.role_category !== ''))
     }
     return true
   }
@@ -700,7 +852,7 @@ export default function CompanyProfilePage() {
       setRoles(prev => {
         const updated = { ...prev }
         for (const seg of segments.filter(s => s.name.trim())) {
-          if (!updated[seg.id]?.length) updated[seg.id] = [makeRole()]
+          if (!updated[seg.id]?.length) updated[seg.id] = [makeRole(), makeRole(), makeRole(), makeRole()]
         }
         return updated
       })
@@ -837,7 +989,10 @@ export default function CompanyProfilePage() {
                       <Step3Form
                         activeSegments={activeSegments}
                         roles={roles}
-                        onChange={setRoles}
+                        onChange={r => {
+                          setRoles(r)
+                          setSaveStates(prev => ({ ...prev, 3: 'editing' }))
+                        }}
                         onBlur={() => triggerSave(3)}
                       />
                     )}
