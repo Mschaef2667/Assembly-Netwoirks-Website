@@ -162,7 +162,7 @@ Return ONLY valid JSON (no markdown fences, no prose) with this exact shape:
 
   } else if (stepId === '1') {
     const searchInstruction = orgName
-      ? `Use web search to find the company website and product information. Search for "${orgName}" to find their product description, key features, and target market. Use this to draft a complete company profile.`
+      ? `Use web search to find the company website and product information. Search for "${orgName}" to find their product description, key features, target market, and differentiators. Use this to draft a complete company profile.`
       : `Use web search to find company and product information based on the current content below. Use this to draft a complete company profile.`
 
     systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist.
@@ -171,16 +171,22 @@ ${searchInstruction}
 
 Your task: Write Step 1 — Product/Service Profile — for this workspace.
 
-The profile should cover:
-1. What the company sells (3-5 sentences)
-2. Primary use case or outcome delivered
-3. Key industries served
+After searching the web, write a 2-3 paragraph company profile covering:
+- What the company sells
+- Who they sell to (target buyers and industries)
+- Their primary use case or outcome delivered
+- Key industries served
+- What makes them different from alternatives
 
-OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+Be specific and use language directly from the company's website. Do not use generic phrases.
+
+OUTPUT FORMAT: Return ONLY valid JSON with no markdown fences, no prose, no preamble. The response must start with { and end with }.
+
+Use this exact shape:
 {
-  "draft": "<product/service profile as plain prose, 3-5 sentences>",
+  "draft": "<2-3 paragraph company profile as plain prose>",
   "confidence": <integer 0-100>,
-  "sources": ["<sources used>"],
+  "sources": ["<URL or source used>"],
   "assumptions": ["<assumption made>"],
   "open_questions": ["<question the user should verify>"],
   "verification_checks": ["<factual claim to verify>"]
@@ -188,9 +194,10 @@ OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exa
 
 RULES:
 - Write from the company's perspective, describing what they sell and who they sell to.
-- Be specific about the product/service, use case, and target industries.
+- Be specific about the product/service, use case, and target industries. Use language from the website.
 - Do not use generic phrases. Ground every sentence in what you find about the actual company.
-- Do not output any text before the JSON. Use web search first, then output only the JSON.
+- Do not output any text before or after the JSON object. The first character must be { and the last must be }.
+- Confidence scoring: 71-100 if the company website was found with specific product details; 41-70 if only partial information was found; 0-40 if the company could not be found online.
 
 ${currentContent ? `CURRENT CONTENT (refine if present):\n${currentContent}` : '(no existing content — generate a first draft)'}`
 
