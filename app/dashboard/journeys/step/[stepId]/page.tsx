@@ -637,6 +637,7 @@ export default function StepPage() {
   const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
   const [activeCount, setActiveCount] = useState(1)
   const [activeTab, setActiveTab] = useState(1)
+  const [draftApplied, setDraftApplied] = useState(false)
 
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [activeAction, setActiveAction] = useState<CopilotAction | null>(null)
@@ -820,6 +821,10 @@ export default function StepPage() {
     void load()
   }, [stepId])
 
+  useEffect(() => {
+    setDraftApplied(false)
+  }, [activeTab])
+
   // ── Auto-save (generic steps) ───────────────────────────────────────────────
 
   const persistContent = useCallback(async (text: string, wsId: string) => {
@@ -987,6 +992,7 @@ export default function StepPage() {
       originalContentRef.current = content
       preApplyContentRef.current = content
       preApplyPainPointsRef.current = painPoints.map(pp => ({ ...pp }))
+      setDraftApplied(false)
     }
 
     try {
@@ -1072,11 +1078,15 @@ export default function StepPage() {
       )
       setPainPoints(newPoints)
       scheduleStep4Save()
+      setDraftApplied(true)
+      setCopilotOutput(null)
       return
     }
 
     setContent(copilotOutput.draft)
     scheduleSave()
+    setDraftApplied(true)
+    setCopilotOutput(null)
   }
 
   function revertToOriginal() {
@@ -1367,14 +1377,57 @@ export default function StepPage() {
           <div style={PANEL_CARD}>
             <p style={{ ...LABEL_STYLE, color: 'rgba(255,255,255,0.55)' }}>Copilot Actions</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <ActionButton
-                dark
-                icon={Wand2}
-                label="Draft"
-                onClick={() => void runCopilot('draft')}
-                disabled={copilotStreaming}
-                active={activeAction === 'draft' && copilotStreaming}
-              />
+              {isStep4 ? (
+                draftApplied ? (
+                  <button
+                    onClick={() => { revertToOriginal(); setDraftApplied(false) }}
+                    disabled={copilotStreaming}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '0 14px', minHeight: '44px',
+                      backgroundColor: '#0A1628',
+                      color: '#FFFFFF',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '8px',
+                      fontSize: '14px', fontWeight: 600,
+                      cursor: copilotStreaming ? 'not-allowed' : 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    <Wand2 size={16} />
+                    Revert
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void runCopilot('draft')}
+                    disabled={copilotStreaming}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '0 14px', minHeight: '44px',
+                      backgroundColor: copilotStreaming ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px', fontWeight: 600,
+                      cursor: copilotStreaming ? 'not-allowed' : 'pointer',
+                      width: '100%',
+                      opacity: copilotStreaming ? 0.6 : 1,
+                    }}
+                  >
+                    <Wand2 size={16} />
+                    {`Draft for ${painPoints.find(pp => pp.index === activeTab)?.title || `Pain Point ${activeTab}`}`}
+                  </button>
+                )
+              ) : (
+                <ActionButton
+                  dark
+                  icon={Wand2}
+                  label="Draft"
+                  onClick={() => void runCopilot('draft')}
+                  disabled={copilotStreaming}
+                  active={activeAction === 'draft' && copilotStreaming}
+                />
+              )}
               <ActionButton
                 dark
                 icon={ShieldCheck}
