@@ -822,8 +822,16 @@ export default function StepPage() {
   }, [stepId])
 
   useEffect(() => {
+    if (!workspaceId) return
+    setDraftApplied(localStorage.getItem(`copilot_applied_${workspaceId}_${stepId}`) === '1')
+  }, [workspaceId, stepId])
+
+  useEffect(() => {
+    if (workspaceId) {
+      localStorage.removeItem(`copilot_applied_${workspaceId}_${stepId}`)
+    }
     setDraftApplied(false)
-  }, [activeTab])
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Auto-save (generic steps) ───────────────────────────────────────────────
 
@@ -992,6 +1000,7 @@ export default function StepPage() {
       originalContentRef.current = content
       preApplyContentRef.current = content
       preApplyPainPointsRef.current = painPoints.map(pp => ({ ...pp }))
+      localStorage.removeItem(`copilot_applied_${workspaceId}_${stepId}`)
       setDraftApplied(false)
     }
 
@@ -1078,6 +1087,7 @@ export default function StepPage() {
       )
       setPainPoints(newPoints)
       scheduleStep4Save()
+      if (workspaceId) localStorage.setItem(`copilot_applied_${workspaceId}_${stepId}`, '1')
       setDraftApplied(true)
       setCopilotOutput(null)
       return
@@ -1085,6 +1095,7 @@ export default function StepPage() {
 
     setContent(copilotOutput.draft)
     scheduleSave()
+    if (workspaceId) localStorage.setItem(`copilot_applied_${workspaceId}_${stepId}`, '1')
     setDraftApplied(true)
     setCopilotOutput(null)
   }
@@ -1380,7 +1391,7 @@ export default function StepPage() {
               {isStep4 ? (
                 draftApplied ? (
                   <button
-                    onClick={() => { revertToOriginal(); setDraftApplied(false) }}
+                    onClick={() => { revertToOriginal(); if (workspaceId) localStorage.removeItem(`copilot_applied_${workspaceId}_${stepId}`); setDraftApplied(false) }}
                     disabled={copilotStreaming}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
@@ -1421,7 +1432,7 @@ export default function StepPage() {
               ) : (
                 draftApplied ? (
                   <button
-                    onClick={() => { revertToOriginal(); setDraftApplied(false) }}
+                    onClick={() => { revertToOriginal(); if (workspaceId) localStorage.removeItem(`copilot_applied_${workspaceId}_${stepId}`); setDraftApplied(false) }}
                     disabled={copilotStreaming}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
