@@ -498,8 +498,17 @@ export default function PainPointStepEditor({
       }
 
       try {
-        const parsed = JSON.parse(accumulated) as CopilotResult
-        setCopilotOutput({ ...parsed, draft: extractDraft(parsed.draft) })
+        const strippedForParse = accumulated
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/```\s*$/i, '')
+          .trim()
+        const parsed = JSON.parse(strippedForParse) as CopilotResult
+        setCopilotOutput({
+          ...parsed,
+          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : Number(parsed.confidence ?? 0),
+          draft: extractDraft(parsed.draft),
+        })
       } catch {
         setCopilotOutput({
           draft: extractDraft(accumulated),

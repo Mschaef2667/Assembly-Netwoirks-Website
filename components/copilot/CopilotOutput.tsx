@@ -22,6 +22,7 @@ export interface CopilotOutputProps {
   stepId: string
   painPointIndex?: number
   existingContent?: string
+  originalContent?: string
   onApply: (content: string) => void
   onDismiss: () => void
 }
@@ -94,6 +95,7 @@ export default function CopilotOutput({
   stepId,
   painPointIndex,
   existingContent,
+  originalContent,
   onApply,
   onDismiss,
 }: CopilotOutputProps) {
@@ -433,6 +435,32 @@ export default function CopilotOutput({
         padding: '12px 16px',
         borderTop: '1px solid #F3F4F6',
       }}>
+        {/* Keep original */}
+        {originalContent !== undefined && (
+          <button
+            onClick={() => onApply(originalContent)}
+            disabled={!isInteractive}
+            style={{
+              flex: 1,
+              minHeight: '44px',
+              backgroundColor: '#FFFFFF',
+              color: isInteractive ? '#0D0D0D' : '#9CA3AF',
+              border: `1px solid ${isInteractive ? '#0D0D0D' : '#E5E7EB'}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: isInteractive ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+          >
+            Keep original
+          </button>
+        )}
+
         {/* Apply */}
         <button
           onClick={() => onApply(displayContent)}
