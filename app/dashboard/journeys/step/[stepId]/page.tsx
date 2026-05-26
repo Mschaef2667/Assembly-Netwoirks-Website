@@ -80,16 +80,74 @@ const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geo
 
 // ── Step 3 types ──────────────────────────────────────────────────────────────
 
+type RoleCategory =
+  | ''
+  | 'C-Suite (CEO, COO, CFO)'
+  | 'Chief Revenue Officer / VP Sales'
+  | 'Chief Marketing Officer / VP Marketing'
+  | 'Revenue Operations'
+  | 'VP / Director of Business Development'
+  | 'IT / Technology Leader'
+  | 'Legal / Compliance'
+  | 'Finance / Procurement'
+  | 'Board Member / Investor'
+  | 'Other'
+
+type InfluenceLevel =
+  | ''
+  | 'Final Decision Maker'
+  | 'Strong Influence'
+  | 'Evaluator'
+  | 'Gatekeeper / Blocker'
+  | 'Low Influence'
+
 interface DecisionMaker {
-  title: string
-  influence: string
+  role_category: RoleCategory
+  specific_title: string
+  influence: InfluenceLevel
   primary_concern: string
 }
 
-const DEFAULT_DM: DecisionMaker = { title: '', influence: '', primary_concern: '' }
+const ROLE_CATEGORIES: RoleCategory[] = [
+  '',
+  'C-Suite (CEO, COO, CFO)',
+  'Chief Revenue Officer / VP Sales',
+  'Chief Marketing Officer / VP Marketing',
+  'Revenue Operations',
+  'VP / Director of Business Development',
+  'IT / Technology Leader',
+  'Legal / Compliance',
+  'Finance / Procurement',
+  'Board Member / Investor',
+  'Other',
+]
+
+const INFLUENCE_LEVELS: InfluenceLevel[] = [
+  '',
+  'Final Decision Maker',
+  'Strong Influence',
+  'Evaluator',
+  'Gatekeeper / Blocker',
+  'Low Influence',
+]
+
+const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string>> = {
+  'C-Suite (CEO, COO, CFO)': 'Revenue growth and competitive positioning',
+  'Chief Revenue Officer / VP Sales': 'Pipeline predictability and quota attainment',
+  'Chief Marketing Officer / VP Marketing': 'Lead quality and marketing-attributed revenue',
+  'Revenue Operations': 'Tool consolidation and data accuracy',
+  'VP / Director of Business Development': 'New market entry and partnership revenue',
+  'IT / Technology Leader': 'Security, integration, and implementation complexity',
+  'Legal / Compliance': 'Data privacy and vendor risk management',
+  'Finance / Procurement': 'ROI justification and contract terms',
+  'Board Member / Investor': 'Return on investment and market share growth',
+  'Other': '',
+}
+
+const DEFAULT_DM: DecisionMaker = { role_category: '', specific_title: '', influence: '', primary_concern: '' }
 
 function makeDMs(): DecisionMaker[] {
-  return [{ ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }]
+  return [{ ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }]
 }
 
 // ── Step 3.5 types ────────────────────────────────────────────────────────────
@@ -922,16 +980,31 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                 Decision Maker {dmIdx + 1}
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ ...LABEL_STYLE, display: 'block' }}>Title</label>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Role Category</label>
+                <select
+                  value={dm.role_category}
+                  onChange={e => onChange(activeKey, dmIdx, 'role_category', e.target.value)}
+                  onBlur={onBlur}
+                  style={{ ...FIELD_INPUT, cursor: 'pointer' }}
+                >
+                  {ROLE_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat} style={{ backgroundColor: '#0F2140' }}>
+                      {cat === '' ? 'Select a role' : cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Specific Title</label>
                 <input
                   type="text"
-                  value={dm.title}
-                  onChange={e => onChange(activeKey, dmIdx, 'title', e.target.value)}
+                  value={dm.specific_title}
+                  onChange={e => onChange(activeKey, dmIdx, 'specific_title', e.target.value)}
                   onBlur={onBlur}
                   placeholder="e.g. VP of Sales"
-                  style={FIELD_INPUT}
+                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF' }}
                 />
               </div>
               <div>
@@ -942,10 +1015,11 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                   onBlur={onBlur}
                   style={{ ...FIELD_INPUT, cursor: 'pointer' }}
                 >
-                  <option value="">Select…</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
+                  {INFLUENCE_LEVELS.map(lvl => (
+                    <option key={lvl} value={lvl} style={{ backgroundColor: '#0F2140' }}>
+                      {lvl === '' ? 'Select influence level' : lvl}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -956,7 +1030,7 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                   onChange={e => onChange(activeKey, dmIdx, 'primary_concern', e.target.value)}
                   onBlur={onBlur}
                   placeholder="e.g. Revenue predictability"
-                  style={FIELD_INPUT}
+                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF' }}
                 />
               </div>
             </div>
@@ -1253,11 +1327,12 @@ export default function StepPage() {
                 const arr = dmsRaw[key]
                 if (Array.isArray(arr)) {
                   const parsed = (arr as Array<Record<string, unknown>>).map(dm => ({
-                    title: String(dm['title'] ?? ''),
-                    influence: String(dm['influence'] ?? ''),
+                    role_category: (dm['role_category'] ?? '') as RoleCategory,
+                    specific_title: String(dm['specific_title'] ?? dm['title'] ?? ''),
+                    influence: (dm['influence'] ?? '') as InfluenceLevel,
                     primary_concern: String(dm['primary_concern'] ?? ''),
                   }))
-                  loaded[key] = [0, 1, 2].map(i => parsed[i] ?? { ...DEFAULT_DM })
+                  loaded[key] = [0, 1, 2, 3].map(i => parsed[i] ?? { ...DEFAULT_DM })
                 }
               })
               setStep3DMs(loaded)
@@ -1700,7 +1775,14 @@ export default function StepPage() {
     setSaveStatus('editing')
     setStep3DMs(prev => ({
       ...prev,
-      [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => i === dmIdx ? { ...dm, [field]: value } : dm),
+      [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => {
+        if (i !== dmIdx) return dm
+        const updated = { ...dm, [field]: value }
+        if (field === 'role_category' && value !== '') {
+          updated.primary_concern = PRIMARY_CONCERN_MAP[value as RoleCategory] ?? dm.primary_concern
+        }
+        return updated
+      }),
     }))
     scheduleStep3Save()
   }
