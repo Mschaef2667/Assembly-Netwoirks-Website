@@ -65,6 +65,7 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   }
 
   const { stepId, workspaceId, stepTitle, stepDescription, currentContent, preferredModel, extraContext } = body
+  const isImprove = typeof extraContext === 'string' && extraContext.includes('Improve this draft')
   if (!stepId || !workspaceId) {
     return NextResponse.json({ error: 'stepId and workspaceId are required' }, { status: 400 })
   }
@@ -126,11 +127,74 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     } catch { /* non-fatal — proceed with lower confidence */ }
   }
 
+  // ── Step 1: fetch company name for web search ────────────────────────────────
+  let orgName = ''
+  if (stepId === '1' && !isImprove) {
+    try {
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', workspaceId)
+        .maybeSingle()
+      if (orgRow) orgName = String((orgRow as Record<string, unknown>)['name'] ?? '')
+    } catch { /* non-fatal */ }
+  }
+
   // ── Build system prompt ───────────────────────────────────────────────────────
 
   let systemPrompt: string
 
-  if (stepId === '4') {
+  if (isImprove) {
+    systemPrompt = `You are Assembly AI Copilot. Your task is to improve the following draft — make it more specific, more compelling, and tighter. Do not change the core meaning or add new claims not supported by the context. Remove generic language. Strengthen the buyer outcome. Keep the same length or shorter. Return the same JSON format with an improved draft field.
+
+DRAFT TO IMPROVE:
+${currentContent || '(empty — nothing to improve)'}
+
+Return ONLY valid JSON (no markdown fences, no prose) with this exact shape:
+{
+  "draft": "<improved draft>",
+  "confidence": <integer 0-100>,
+  "sources": [],
+  "assumptions": [],
+  "open_questions": [],
+  "verification_checks": []
+}`
+
+  } else if (stepId === '1') {
+    const searchInstruction = orgName
+      ? `Use web search to find the company website and product information. Search for "${orgName}" to find their product description, key features, and target market. Use this to draft a complete company profile.`
+      : `Use web search to find company and product information based on the current content below. Use this to draft a complete company profile.`
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist.
+
+${searchInstruction}
+
+Your task: Write Step 1 — Product/Service Profile — for this workspace.
+
+The profile should cover:
+1. What the company sells (3-5 sentences)
+2. Primary use case or outcome delivered
+3. Key industries served
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<product/service profile as plain prose, 3-5 sentences>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should verify>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+RULES:
+- Write from the company's perspective, describing what they sell and who they sell to.
+- Be specific about the product/service, use case, and target industries.
+- Do not use generic phrases. Ground every sentence in what you find about the actual company.
+- Do not output any text before the JSON. Use web search first, then output only the JSON.
+
+${currentContent ? `CURRENT CONTENT (refine if present):\n${currentContent}` : '(no existing content — generate a first draft)'}`
+
+  } else if (stepId === '4') {
     // Extract Step 1 and Step 3 content from prerequisites
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
     const step3 = contextPacket.prerequisites.find(p => p.step_id === '3')
@@ -450,6 +514,11 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
     async start(controller) {
       const encoder = new TextEncoder()
 
+      const step1Tool: Anthropic.Messages.WebSearchTool20250305 | undefined =
+        stepId === '1' && !isImprove
+          ? { type: 'web_search_20250305', name: 'web_search', max_uses: 3 }
+          : undefined
+
       outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const claudeStream = anthropic.messages.stream({
@@ -457,6 +526,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
             max_tokens: 1500,
             messages: [{ role: 'user', content: 'Generate the draft now.' }],
             system: systemPrompt,
+            ...(step1Tool ? { tools: [step1Tool] } : {}),
           })
 
           for await (const chunk of claudeStream) {

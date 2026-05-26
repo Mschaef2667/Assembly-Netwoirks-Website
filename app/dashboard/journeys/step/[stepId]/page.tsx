@@ -1688,7 +1688,7 @@ export default function StepPage() {
           stepDescription: stepDef?.description ?? '',
           currentContent,
           preferredModel,
-          actionHint: actionPrompts[action],
+          ...(action === 'improve' ? { extraContext: 'Improve this draft' } : {}),
         }),
       })
 
@@ -2190,14 +2190,16 @@ export default function StepPage() {
                   />
                 )
               )}
-              <ActionButton
-                dark
-                icon={ShieldCheck}
-                label="Verify"
-                onClick={() => void runCopilot('verify')}
-                disabled={copilotStreaming}
-                active={activeAction === 'verify' && copilotStreaming}
-              />
+              {false && (
+                <ActionButton
+                  dark
+                  icon={ShieldCheck}
+                  label="Verify"
+                  onClick={() => void runCopilot('verify')}
+                  disabled={copilotStreaming}
+                  active={activeAction === 'verify' && copilotStreaming}
+                />
+              )}
               <ActionButton
                 dark
                 icon={Sparkles}
@@ -2206,14 +2208,16 @@ export default function StepPage() {
                 disabled={copilotStreaming}
                 active={activeAction === 'improve' && copilotStreaming}
               />
-              <ActionButton
-                dark
-                icon={HelpCircle}
-                label="Explain"
-                onClick={() => void runCopilot('explain')}
-                disabled={copilotStreaming}
-                active={activeAction === 'explain' && copilotStreaming}
-              />
+              {false && (
+                <ActionButton
+                  dark
+                  icon={HelpCircle}
+                  label="Explain"
+                  onClick={() => void runCopilot('explain')}
+                  disabled={copilotStreaming}
+                  active={activeAction === 'explain' && copilotStreaming}
+                />
+              )}
             </div>
           </div>
 
