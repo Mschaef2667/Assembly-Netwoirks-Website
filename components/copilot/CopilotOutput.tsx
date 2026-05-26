@@ -25,6 +25,7 @@ export interface CopilotOutputProps {
   originalContent?: string
   onApply: (content: string) => void
   onDismiss: () => void
+  onRevert?: () => void
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export default function CopilotOutput({
   originalContent,
   onApply,
   onDismiss,
+  onRevert,
 }: CopilotOutputProps) {
   const [runMeta, setRunMeta] = useState<CopilotRunMeta | null>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
@@ -435,17 +437,40 @@ export default function CopilotOutput({
         padding: '12px 16px',
         borderTop: '1px solid #F3F4F6',
       }}>
-        {/* Keep original */}
-        {originalContent !== undefined && (
+        {/* Apply column (Keep Original stacked above Apply) */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Keep Original — only when a proposed draft is showing */}
+          {originalContent !== undefined && (
+            <button
+              onClick={() => onRevert?.()}
+              disabled={!isInteractive}
+              style={{
+                width: '100%',
+                minHeight: '44px',
+                backgroundColor: 'transparent',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: isInteractive ? 'pointer' : 'not-allowed',
+                marginBottom: '8px',
+              }}
+            >
+              Keep Original
+            </button>
+          )}
+
+          {/* Apply */}
           <button
-            onClick={() => onApply(originalContent)}
+            onClick={() => onApply(displayContent)}
             disabled={!isInteractive}
             style={{
-              flex: 1,
+              width: '100%',
               minHeight: '44px',
-              backgroundColor: '#FFFFFF',
-              color: isInteractive ? '#0D0D0D' : '#9CA3AF',
-              border: `1px solid ${isInteractive ? '#0D0D0D' : '#E5E7EB'}`,
+              backgroundColor: isInteractive ? '#E8520A' : '#F3F4F6',
+              color: isInteractive ? '#FFFFFF' : '#9CA3AF',
+              border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
               fontWeight: 600,
@@ -454,37 +479,13 @@ export default function CopilotOutput({
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
-              transition: 'border-color 0.15s, color 0.15s',
+              transition: 'background-color 0.15s',
             }}
           >
-            Keep original
+            <Check size={15} />
+            Apply
           </button>
-        )}
-
-        {/* Apply */}
-        <button
-          onClick={() => onApply(displayContent)}
-          disabled={!isInteractive}
-          style={{
-            flex: 1,
-            minHeight: '44px',
-            backgroundColor: isInteractive ? '#E8520A' : '#F3F4F6',
-            color: isInteractive ? '#FFFFFF' : '#9CA3AF',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: isInteractive ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            transition: 'background-color 0.15s',
-          }}
-        >
-          <Check size={15} />
-          Apply
-        </button>
+        </div>
 
         {/* Improve */}
         <button

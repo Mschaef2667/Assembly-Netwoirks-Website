@@ -651,6 +651,8 @@ export default function StepPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const step4SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const step4SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const preApplyContentRef = useRef<string>('')
+  const preApplyPainPointsRef = useRef<PainPoint[]>([])
 
   // ── Data load ───────────────────────────────────────────────────────────────
 
@@ -980,6 +982,11 @@ export default function StepPage() {
           .join('\n\n')
       : content
 
+    if (action === 'draft') {
+      preApplyContentRef.current = content
+      preApplyPainPointsRef.current = painPoints.map(pp => ({ ...pp }))
+    }
+
     try {
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
@@ -1068,6 +1075,15 @@ export default function StepPage() {
 
     setContent(copilotOutput.draft)
     scheduleSave()
+  }
+
+  function revertToOriginal() {
+    if (stepId === '4') {
+      setPainPoints(preApplyPainPointsRef.current)
+    } else {
+      setContent(preApplyContentRef.current)
+    }
+    setCopilotOutput(null)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -1458,6 +1474,23 @@ export default function StepPage() {
                 }}>
                   {copilotOutput.draft}
                 </div>
+                <button
+                  onClick={revertToOriginal}
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    backgroundColor: 'transparent',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: '8px',
+                  }}
+                >
+                  Keep Original
+                </button>
                 <button
                   onClick={applyDraft}
                   style={{
