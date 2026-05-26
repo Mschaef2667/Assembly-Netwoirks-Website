@@ -241,9 +241,10 @@ export default function DashboardPage() {
           if (!ex || r.version > ex.version) outMap.set(r.step_id, r)
         }
 
-        // Redirect workspaces that are truly just getting started (no approved steps and fewer than 3 step outputs)
-        const totalApprovedEarly = Array.from(outMap.values()).filter(r => r.status === 'approved').length
-        if (totalApprovedEarly === 0 && outMap.size < 3) {
+        // Redirect until all 4 Company Foundation steps are approved
+        const FOUNDATION_STEPS = ['1', '2', '3', '3.5']
+        const foundationApproved = FOUNDATION_STEPS.filter(id => outMap.get(id)?.status === 'approved').length
+        if (foundationApproved < 4) {
           redirecting = true
           router.push('/dashboard/onboarding')
           return

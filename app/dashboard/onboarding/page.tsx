@@ -229,31 +229,23 @@ export default function OnboardingPage() {
         if (!userRow) return
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [outputsRes, defsRes, surveyRes, dcpRes] = await Promise.all([
+        const [outputsRes, dcpRes] = await Promise.all([
           supabase.from('step_output').select('step_id,status').eq('workspace_id', orgId),
-          supabase.from('step_definition').select('id,section'),
-          supabase.from('workspace_survey').select('id').eq('org_id', orgId).maybeSingle(),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
         ])
 
         const outputs = (outputsRes.data ?? []) as { step_id: string; status: string }[]
-        const defs = (defsRes.data ?? []) as { id: string; section: string }[]
-
-        // Latest status per step (keep most recent output entry)
-        const outputMap = new Map<string, string>()
-        for (const o of outputs) {
-          outputMap.set(o.step_id, o.status)
-        }
 
         const approvedSet = new Set(
           outputs.filter(o => o.status === 'approved').map(o => o.step_id)
         )
 
-        const endemicIds = defs
-          .filter(d => d.section === 'Endemic Problems')
-          .map(d => d.id)
+        // outputMap still needed for Phase 2 / Phase 3 item completion checks
+        const outputMap = new Map<string, string>()
+        for (const o of outputs) {
+          outputMap.set(o.step_id, o.status)
+        }
 
-        const hasSurvey = surveyRes.data !== null
         const dcpStatus = (dcpRes.data as { status?: string } | null)?.status ?? ''
 
         // ── Phase 1: Decision Intelligence ──────────────────────────────────
@@ -267,27 +259,27 @@ export default function OnboardingPage() {
           items: [
             {
               badge: '1',
-              title: 'Complete your Company Profile',
-              description: 'Set up your workspace with your product, market segments, and decision makers',
-              complete: ['1', '2', '3'].every(id => outputMap.has(id)),
+              title: 'Step 1 — Product / Service Profile',
+              description: 'Describe what you sell, your primary use case, and key industries served',
+              complete: approvedSet.has('1'),
             },
             {
               badge: '2',
-              title: 'Define your Product or Service',
-              description: 'Describe what you sell, your primary use case, and key industries served',
-              complete: outputMap.has('1'),
+              title: 'Step 2 — Top 3 Target Market Segments',
+              description: 'Name and describe the three segments you sell into most effectively',
+              complete: approvedSet.has('2'),
             },
             {
               badge: '3',
-              title: 'Build your Decision Clarity Process Survey',
-              description: 'Select questions that reveal how your buyers make decisions',
-              complete: hasSurvey,
+              title: 'Step 3 — Key Decision Makers',
+              description: 'Map the buying roles, influence levels, and primary concerns per segment',
+              complete: approvedSet.has('3'),
             },
             {
-              badge: '4',
-              title: 'Identify your Three Endemic Problems',
-              description: 'Document the core pain points that drive your buyers to seek solutions',
-              complete: endemicIds.some(id => outputMap.has(id)),
+              badge: '3.5',
+              title: 'Step 3.5 — Buying Center Evaluation',
+              description: 'Define stakeholder count, decision style, sales cycle, and ACV range',
+              complete: approvedSet.has('3.5'),
             },
             {
               badge: 'G1',
