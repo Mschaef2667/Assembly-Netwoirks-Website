@@ -1419,14 +1419,35 @@ export default function StepPage() {
                   </button>
                 )
               ) : (
-                <ActionButton
-                  dark
-                  icon={Wand2}
-                  label="Draft"
-                  onClick={() => void runCopilot('draft')}
-                  disabled={copilotStreaming}
-                  active={activeAction === 'draft' && copilotStreaming}
-                />
+                draftApplied ? (
+                  <button
+                    onClick={() => { revertToOriginal(); setDraftApplied(false) }}
+                    disabled={copilotStreaming}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '0 14px', minHeight: '44px',
+                      backgroundColor: '#0A1628',
+                      color: '#FFFFFF',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '8px',
+                      fontSize: '14px', fontWeight: 600,
+                      cursor: copilotStreaming ? 'not-allowed' : 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    <Wand2 size={16} />
+                    Revert
+                  </button>
+                ) : (
+                  <ActionButton
+                    dark
+                    icon={Wand2}
+                    label="Draft"
+                    onClick={() => void runCopilot('draft')}
+                    disabled={copilotStreaming}
+                    active={activeAction === 'draft' && copilotStreaming}
+                  />
+                )
               )}
               <ActionButton
                 dark
