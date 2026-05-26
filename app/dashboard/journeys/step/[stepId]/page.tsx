@@ -66,6 +66,54 @@ interface AllStep {
   phase: number
 }
 
+// ── Step 2 types ──────────────────────────────────────────────────────────────
+
+interface Segment {
+  name: string
+  industry: string
+  company_size: string
+  geography: string
+}
+
+const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geography: '' }
+
+// ── Step 3 types ──────────────────────────────────────────────────────────────
+
+interface DecisionMaker {
+  title: string
+  influence: string
+  primary_concern: string
+}
+
+const DEFAULT_DM: DecisionMaker = { title: '', influence: '', primary_concern: '' }
+
+function makeDMs(): DecisionMaker[] {
+  return [{ ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }]
+}
+
+// ── Step 3.5 types ────────────────────────────────────────────────────────────
+
+interface BuyingCenterRole {
+  title: string
+  key_concern: string
+}
+
+interface BuyingCenterSegment {
+  economic_buyer: BuyingCenterRole
+  champion: BuyingCenterRole
+  evaluator: BuyingCenterRole
+  blocker: BuyingCenterRole
+}
+
+function makeBCSegment(): BuyingCenterSegment {
+  return {
+    economic_buyer: { title: '', key_concern: '' },
+    champion: { title: '', key_concern: '' },
+    evaluator: { title: '', key_concern: '' },
+    blocker: { title: '', key_concern: '' },
+  }
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUTOSAVE_DELAY_MS = 1200
@@ -74,6 +122,8 @@ const STEP4_AUTOSAVE_DELAY_MS = 800
 const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
+
+const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
 const DEFAULT_PAIN_POINTS: PainPoint[] = [
   { index: 1, title: '', description: '' },
@@ -98,6 +148,19 @@ const LABEL_STYLE: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.07em',
   marginBottom: '6px',
+}
+
+const FIELD_INPUT: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  border: '1px solid #9CA3AF',
+  borderRadius: '8px',
+  fontSize: '14px',
+  color: '#0D0D0D',
+  backgroundColor: '#FFFFFF',
+  boxSizing: 'border-box',
+  fontFamily: 'inherit',
+  outline: 'none',
 }
 
 // ── Confidence badge ──────────────────────────────────────────────────────────
@@ -613,6 +676,334 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
   )
 }
 
+// ── Step 2 Editor — Target Market Segments ────────────────────────────────────
+
+interface Step2EditorProps {
+  segments: Segment[]
+  saveState: SaveState
+  onChange: (idx: number, field: keyof Segment, value: string) => void
+  onBlur: () => void
+}
+
+function Step2Editor({ segments, saveState, onChange, onBlur }: Step2EditorProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <label style={LABEL_STYLE}>Target Market Segments</label>
+        <SaveIndicator state={saveState} />
+      </div>
+      {segments.map((seg, i) => (
+        <div key={i} style={PANEL_CARD}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            marginBottom: '16px',
+            paddingBottom: '12px',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              backgroundColor: '#E8520A',
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: 700,
+              flexShrink: 0,
+            }}>
+              {i + 1}
+            </span>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>Segment {i + 1}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ ...LABEL_STYLE, display: 'block' }}>Segment Name</label>
+              <input
+                type="text"
+                value={seg.name}
+                onChange={e => onChange(i, 'name', e.target.value)}
+                onBlur={onBlur}
+                placeholder="e.g. Mid-Market SaaS Companies"
+                style={FIELD_INPUT}
+              />
+            </div>
+            <div>
+              <label style={{ ...LABEL_STYLE, display: 'block' }}>Industry</label>
+              <input
+                type="text"
+                value={seg.industry}
+                onChange={e => onChange(i, 'industry', e.target.value)}
+                onBlur={onBlur}
+                placeholder="e.g. Technology, Healthcare"
+                style={FIELD_INPUT}
+              />
+            </div>
+            <div>
+              <label style={{ ...LABEL_STYLE, display: 'block' }}>Company Size</label>
+              <input
+                type="text"
+                value={seg.company_size}
+                onChange={e => onChange(i, 'company_size', e.target.value)}
+                onBlur={onBlur}
+                placeholder="e.g. 50–500 employees"
+                style={FIELD_INPUT}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ ...LABEL_STYLE, display: 'block' }}>Geography</label>
+              <input
+                type="text"
+                value={seg.geography}
+                onChange={e => onChange(i, 'geography', e.target.value)}
+                onBlur={onBlur}
+                placeholder="e.g. North America, EMEA"
+                style={FIELD_INPUT}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Step 3 Editor — Key Decision Makers Per Segment ───────────────────────────
+
+interface Step3EditorProps {
+  segmentNames: string[]
+  dms: Record<string, DecisionMaker[]>
+  activeTab: number
+  saveState: SaveState
+  onTabChange: (tab: number) => void
+  onChange: (segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) => void
+  onBlur: () => void
+}
+
+function Step3Editor({ segmentNames, dms, activeTab, saveState, onTabChange, onChange, onBlur }: Step3EditorProps) {
+  const activeKey = SEG_KEYS[activeTab]
+  const activeDMs = dms[activeKey] ?? makeDMs()
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <label style={LABEL_STYLE}>Key Decision Makers</label>
+        <SaveIndicator state={saveState} />
+      </div>
+
+      {/* Segment tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {SEG_KEYS.map((key, i) => (
+          <button
+            key={key}
+            onClick={() => onTabChange(i)}
+            style={{
+              padding: '6px 16px', minHeight: '36px',
+              backgroundColor: activeTab === i ? '#E8520A' : 'rgba(255,255,255,0.06)',
+              color: activeTab === i ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+              border: `1px solid ${activeTab === i ? '#E8520A' : 'rgba(255,255,255,0.15)'}`,
+              borderRadius: '6px',
+              fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            {segmentNames[i] || `Segment ${i + 1}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Decision maker rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {activeDMs.map((dm, dmIdx) => (
+          <div key={dmIdx} style={PANEL_CARD}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '14px',
+              paddingBottom: '10px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(232,82,10,0.2)',
+                color: '#E8520A',
+                fontSize: '12px',
+                fontWeight: 700,
+                flexShrink: 0,
+              }}>
+                {dmIdx + 1}
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
+                Decision Maker {dmIdx + 1}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Title</label>
+                <input
+                  type="text"
+                  value={dm.title}
+                  onChange={e => onChange(activeKey, dmIdx, 'title', e.target.value)}
+                  onBlur={onBlur}
+                  placeholder="e.g. VP of Sales"
+                  style={FIELD_INPUT}
+                />
+              </div>
+              <div>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Influence Level</label>
+                <select
+                  value={dm.influence}
+                  onChange={e => onChange(activeKey, dmIdx, 'influence', e.target.value)}
+                  onBlur={onBlur}
+                  style={{ ...FIELD_INPUT, cursor: 'pointer' }}
+                >
+                  <option value="">Select…</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Primary Concern</label>
+                <input
+                  type="text"
+                  value={dm.primary_concern}
+                  onChange={e => onChange(activeKey, dmIdx, 'primary_concern', e.target.value)}
+                  onBlur={onBlur}
+                  placeholder="e.g. Revenue predictability"
+                  style={FIELD_INPUT}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Step 3.5 Editor — Buying Center Evaluation ────────────────────────────────
+
+interface Step35EditorProps {
+  segmentNames: string[]
+  buyingCenter: Record<string, BuyingCenterSegment>
+  activeTab: number
+  saveState: SaveState
+  onTabChange: (tab: number) => void
+  onChange: (segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) => void
+  onBlur: () => void
+}
+
+const BC_ROLES: Array<{ key: keyof BuyingCenterSegment; label: string; optional?: boolean }> = [
+  { key: 'economic_buyer', label: 'Economic Buyer' },
+  { key: 'champion', label: 'Champion' },
+  { key: 'evaluator', label: 'Evaluator' },
+  { key: 'blocker', label: 'Blocker', optional: true },
+]
+
+function Step35Editor({ segmentNames, buyingCenter, activeTab, saveState, onTabChange, onChange, onBlur }: Step35EditorProps) {
+  const activeKey = SEG_KEYS[activeTab]
+  const activeSeg = buyingCenter[activeKey] ?? makeBCSegment()
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <label style={LABEL_STYLE}>Buying Center Evaluation</label>
+        <SaveIndicator state={saveState} />
+      </div>
+
+      {/* Segment tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {SEG_KEYS.map((key, i) => (
+          <button
+            key={key}
+            onClick={() => onTabChange(i)}
+            style={{
+              padding: '6px 16px', minHeight: '36px',
+              backgroundColor: activeTab === i ? '#E8520A' : 'rgba(255,255,255,0.06)',
+              color: activeTab === i ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+              border: `1px solid ${activeTab === i ? '#E8520A' : 'rgba(255,255,255,0.15)'}`,
+              borderRadius: '6px',
+              fontSize: '13px', fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            {segmentNames[i] || `Segment ${i + 1}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Buying center role cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        {BC_ROLES.map(({ key, label, optional }) => {
+          const role = activeSeg[key]
+          return (
+            <div key={key} style={PANEL_CARD}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '14px',
+                paddingBottom: '10px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{label}</span>
+                {optional && (
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: 'rgba(255,255,255,0.4)',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                  }}>
+                    optional
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <label style={{ ...LABEL_STYLE, display: 'block' }}>Title</label>
+                  <input
+                    type="text"
+                    value={role.title}
+                    onChange={e => onChange(activeKey, key, 'title', e.target.value)}
+                    onBlur={onBlur}
+                    placeholder="e.g. CFO"
+                    style={FIELD_INPUT}
+                  />
+                </div>
+                <div>
+                  <label style={{ ...LABEL_STYLE, display: 'block' }}>Key Concern</label>
+                  <input
+                    type="text"
+                    value={role.key_concern}
+                    onChange={e => onChange(activeKey, key, 'key_concern', e.target.value)}
+                    onBlur={onBlur}
+                    placeholder="e.g. Budget justification and ROI"
+                    style={FIELD_INPUT}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StepPage() {
@@ -639,6 +1030,32 @@ export default function StepPage() {
   const [activeTab, setActiveTab] = useState(1)
   const [draftApplied, setDraftApplied] = useState(false)
 
+  // Step 2 state
+  const [step2Segments, setStep2Segments] = useState<Segment[]>([
+    { ...DEFAULT_SEGMENT },
+    { ...DEFAULT_SEGMENT },
+    { ...DEFAULT_SEGMENT },
+  ])
+
+  // Step 3 state
+  const [step3DMs, setStep3DMs] = useState<Record<string, DecisionMaker[]>>({
+    segment_1: makeDMs(),
+    segment_2: makeDMs(),
+    segment_3: makeDMs(),
+  })
+  const [step3ActiveTab, setStep3ActiveTab] = useState(0)
+
+  // Step 3.5 state
+  const [step35BC, setStep35BC] = useState<Record<string, BuyingCenterSegment>>({
+    segment_1: makeBCSegment(),
+    segment_2: makeBCSegment(),
+    segment_3: makeBCSegment(),
+  })
+  const [step35ActiveTab, setStep35ActiveTab] = useState(0)
+
+  // Segment names loaded from Step 2 content for display in Steps 3 and 3.5
+  const [segmentNames, setSegmentNames] = useState<string[]>(['Segment 1', 'Segment 2', 'Segment 3'])
+
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [activeAction, setActiveAction] = useState<CopilotAction | null>(null)
   const [streamBuffer, setStreamBuffer] = useState('')
@@ -652,6 +1069,12 @@ export default function StepPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const step4SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const step4SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const step2SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const step2SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const step3SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const step3SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const step35SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const step35SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const preApplyContentRef = useRef<string>('')
   const preApplyPainPointsRef = useRef<PainPoint[]>([])
   const originalContentRef = useRef<string>('')
@@ -732,7 +1155,60 @@ export default function StepPage() {
               setPainPoints(merged)
               setActiveCount(Math.max(1, Math.min(4, Number(c?.['active_count'] ?? parsed.length))))
             }
-          } else if (stepId === '1' || stepId === '2' || stepId === '3' || stepId === '3.5') {
+          } else if (stepId === '2') {
+            const segs = c?.['segments']
+            if (Array.isArray(segs)) {
+              const parsed = (segs as Array<Record<string, unknown>>).map(s => ({
+                name: String(s['name'] ?? ''),
+                industry: String(s['industry'] ?? ''),
+                company_size: String(s['company_size'] ?? ''),
+                geography: String(s['geography'] ?? ''),
+              }))
+              setStep2Segments([0, 1, 2].map(i => parsed[i] ?? { ...DEFAULT_SEGMENT }))
+            }
+          } else if (stepId === '3') {
+            const dmsRaw = c?.['decision_makers'] as Record<string, unknown> | undefined
+            if (dmsRaw) {
+              const loaded: Record<string, DecisionMaker[]> = {
+                segment_1: makeDMs(), segment_2: makeDMs(), segment_3: makeDMs(),
+              }
+              ;(['segment_1', 'segment_2', 'segment_3'] as const).forEach(key => {
+                const arr = dmsRaw[key]
+                if (Array.isArray(arr)) {
+                  const parsed = (arr as Array<Record<string, unknown>>).map(dm => ({
+                    title: String(dm['title'] ?? ''),
+                    influence: String(dm['influence'] ?? ''),
+                    primary_concern: String(dm['primary_concern'] ?? ''),
+                  }))
+                  loaded[key] = [0, 1, 2].map(i => parsed[i] ?? { ...DEFAULT_DM })
+                }
+              })
+              setStep3DMs(loaded)
+            }
+          } else if (stepId === '3.5') {
+            const bcRaw = c?.['buying_center'] as Record<string, unknown> | undefined
+            if (bcRaw) {
+              const loaded: Record<string, BuyingCenterSegment> = {
+                segment_1: makeBCSegment(), segment_2: makeBCSegment(), segment_3: makeBCSegment(),
+              }
+              ;(['segment_1', 'segment_2', 'segment_3'] as const).forEach(key => {
+                const seg = bcRaw[key] as Record<string, unknown> | undefined
+                if (seg) {
+                  const loadRole = (r: unknown): BuyingCenterRole => {
+                    const role = (typeof r === 'object' && r !== null) ? r as Record<string, unknown> : {}
+                    return { title: String(role['title'] ?? ''), key_concern: String(role['key_concern'] ?? '') }
+                  }
+                  loaded[key] = {
+                    economic_buyer: loadRole(seg['economic_buyer']),
+                    champion: loadRole(seg['champion']),
+                    evaluator: loadRole(seg['evaluator']),
+                    blocker: loadRole(seg['blocker']),
+                  }
+                }
+              })
+              setStep35BC(loaded)
+            }
+          } else if (stepId === '1') {
             setContent(extractStepContent(stepId, c))
           } else {
             setContent(typeof c?.['text'] === 'string' ? c['text'] : JSON.stringify(c ?? '', null, 2))
@@ -764,6 +1240,26 @@ export default function StepPage() {
                 logged_at: new Date().toISOString(),
               })
             } catch { /* non-fatal — logging must never break the UI */ }
+          }
+        }
+
+        // Load Step 2 segment names for Steps 3 and 3.5
+        if (stepId === '3' || stepId === '3.5') {
+          const { data: s2Rows } = await supabase
+            .from('step_output')
+            .select('content')
+            .eq('workspace_id', wsId)
+            .eq('step_id', '2')
+            .order('version', { ascending: false })
+            .limit(1)
+          if (s2Rows && s2Rows.length > 0) {
+            const s2c = (s2Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown>
+            if (Array.isArray(s2c?.['segments'])) {
+              const names = (s2c['segments'] as Array<Record<string, unknown>>)
+                .slice(0, 3)
+                .map((s, i) => String(s['name'] ?? '').trim() || `Segment ${i + 1}`)
+              setSegmentNames(names)
+            }
           }
         }
 
@@ -931,14 +1427,155 @@ export default function StepPage() {
     }
   }, [outputId, outputVersion, stepId])
 
+  // ── Auto-save (Step 2) ──────────────────────────────────────────────────────
+
+  const persistStep2Content = useCallback(async (segs: Segment[], wsId: string) => {
+    setSaveState('saving')
+    try {
+      const contentPayload = { segments: segs }
+      const now = new Date().toISOString()
+      if (outputId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content: contentPayload, last_saved_at: now, last_updated_at: now })
+          .eq('id', outputId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: outputVersion,
+            status: 'draft',
+            content: contentPayload,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
+      }
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2500)
+    } catch {
+      setSaveState('error')
+    }
+  }, [outputId, outputVersion, stepId])
+
+  // ── Auto-save (Step 3) ──────────────────────────────────────────────────────
+
+  const persistStep3Content = useCallback(async (dms: Record<string, DecisionMaker[]>, wsId: string) => {
+    setSaveState('saving')
+    try {
+      const contentPayload = { decision_makers: dms }
+      const now = new Date().toISOString()
+      if (outputId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content: contentPayload, last_saved_at: now, last_updated_at: now })
+          .eq('id', outputId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: outputVersion,
+            status: 'draft',
+            content: contentPayload,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
+      }
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2500)
+    } catch {
+      setSaveState('error')
+    }
+  }, [outputId, outputVersion, stepId])
+
+  // ── Auto-save (Step 3.5) ────────────────────────────────────────────────────
+
+  const persistStep35Content = useCallback(async (bc: Record<string, BuyingCenterSegment>, wsId: string) => {
+    setSaveState('saving')
+    try {
+      const contentPayload = { buying_center: bc }
+      const now = new Date().toISOString()
+      if (outputId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content: contentPayload, last_saved_at: now, last_updated_at: now })
+          .eq('id', outputId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: outputVersion,
+            status: 'draft',
+            content: contentPayload,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
+      }
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2500)
+    } catch {
+      setSaveState('error')
+    }
+  }, [outputId, outputVersion, stepId])
+
   // Keep step4SaveRef current each render
   step4SaveRef.current = async () => {
     if (workspaceId) await persistStep4Content(painPoints, activeCount, workspaceId)
   }
 
+  step2SaveRef.current = async () => {
+    if (workspaceId) await persistStep2Content(step2Segments, workspaceId)
+  }
+
+  step3SaveRef.current = async () => {
+    if (workspaceId) await persistStep3Content(step3DMs, workspaceId)
+  }
+
+  step35SaveRef.current = async () => {
+    if (workspaceId) await persistStep35Content(step35BC, workspaceId)
+  }
+
   function scheduleStep4Save() {
     if (step4SaveTimer.current) clearTimeout(step4SaveTimer.current)
     step4SaveTimer.current = setTimeout(() => { void step4SaveRef.current() }, STEP4_AUTOSAVE_DELAY_MS)
+  }
+
+  function scheduleStep2Save() {
+    if (step2SaveTimer.current) clearTimeout(step2SaveTimer.current)
+    step2SaveTimer.current = setTimeout(() => { void step2SaveRef.current() }, AUTOSAVE_DELAY_MS)
+  }
+
+  function scheduleStep3Save() {
+    if (step3SaveTimer.current) clearTimeout(step3SaveTimer.current)
+    step3SaveTimer.current = setTimeout(() => { void step3SaveRef.current() }, AUTOSAVE_DELAY_MS)
+  }
+
+  function scheduleStep35Save() {
+    if (step35SaveTimer.current) clearTimeout(step35SaveTimer.current)
+    step35SaveTimer.current = setTimeout(() => { void step35SaveRef.current() }, AUTOSAVE_DELAY_MS)
   }
 
   function handleStep4TitleChange(tab: number, title: string) {
@@ -970,6 +1607,42 @@ export default function StepPage() {
   function handleStep4Blur() {
     if (step4SaveTimer.current) clearTimeout(step4SaveTimer.current)
     void step4SaveRef.current()
+  }
+
+  function handleStep2Change(idx: number, field: keyof Segment, value: string) {
+    setStep2Segments(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
+    scheduleStep2Save()
+  }
+
+  function handleStep2Blur() {
+    if (step2SaveTimer.current) clearTimeout(step2SaveTimer.current)
+    void step2SaveRef.current()
+  }
+
+  function handleStep3Change(segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) {
+    setStep3DMs(prev => ({
+      ...prev,
+      [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => i === dmIdx ? { ...dm, [field]: value } : dm),
+    }))
+    scheduleStep3Save()
+  }
+
+  function handleStep3Blur() {
+    if (step3SaveTimer.current) clearTimeout(step3SaveTimer.current)
+    void step3SaveRef.current()
+  }
+
+  function handleStep35Change(segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) {
+    setStep35BC(prev => ({
+      ...prev,
+      [segKey]: { ...(prev[segKey] ?? makeBCSegment()), [role]: { ...(prev[segKey] ?? makeBCSegment())[role], [field]: value } },
+    }))
+    scheduleStep35Save()
+  }
+
+  function handleStep35Blur() {
+    if (step35SaveTimer.current) clearTimeout(step35SaveTimer.current)
+    void step35SaveRef.current()
   }
 
   // ── Copilot action ──────────────────────────────────────────────────────────
@@ -1227,6 +1900,63 @@ export default function StepPage() {
               </p>
             </div>
           </div>
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '2') {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '860px', flex: 1 }}>
+          <Step2Editor
+            segments={step2Segments}
+            saveState={saveState}
+            onChange={handleStep2Change}
+            onBlur={handleStep2Blur}
+          />
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '3') {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
+          <Step3Editor
+            segmentNames={segmentNames}
+            dms={step3DMs}
+            activeTab={step3ActiveTab}
+            saveState={saveState}
+            onTabChange={setStep3ActiveTab}
+            onChange={handleStep3Change}
+            onBlur={handleStep3Blur}
+          />
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '3.5') {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
+          <Step35Editor
+            segmentNames={segmentNames}
+            buyingCenter={step35BC}
+            activeTab={step35ActiveTab}
+            saveState={saveState}
+            onTabChange={setStep35ActiveTab}
+            onChange={handleStep35Change}
+            onBlur={handleStep35Blur}
+          />
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
