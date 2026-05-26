@@ -164,6 +164,22 @@ export default function IntelligencePage() {
 
       <div style={{ padding: '28px 32px', maxWidth: '960px' }}>
 
+        {/* Phase 2 reminder banner */}
+        <div style={{
+          borderLeft: '4px solid #E8520A',
+          backgroundColor: '#0F2140',
+          borderRadius: '0 8px 8px 0',
+          padding: '14px 18px',
+          marginBottom: '24px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderLeftColor: '#E8520A',
+          borderLeftWidth: '4px',
+        }}>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: '1.55', margin: 0 }}>
+            Complete all three steps below and submit your DCP Map for Gate 1 approval before moving to Phase 2.
+          </p>
+        </div>
+
         {/* Gate 1 status banner */}
         <div style={{ marginBottom: '28px' }}>
           {loading ? null : <GateBadge status={status.gate1Status} />}

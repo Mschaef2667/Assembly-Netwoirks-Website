@@ -8,12 +8,15 @@ import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type StepStatus = 'not_started' | 'draft' | 'approved'
+
 interface CheckItem {
   badge: string
   title: string
   description: string
   complete: boolean
   isGate?: boolean
+  stepStatus?: StepStatus
 }
 
 interface PhaseData {
@@ -102,7 +105,15 @@ function CheckRow({ item }: { item: CheckItem }) {
 
       {/* Status icon */}
       <div style={{ flexShrink: 0, paddingTop: '2px' }}>
-        {isComplete ? (
+        {item.stepStatus ? (
+          item.stepStatus === 'approved' ? (
+            <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
+          ) : item.stepStatus === 'draft' ? (
+            <Circle size={20} style={{ color: '#E8520A' }} />
+          ) : (
+            <Circle size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
+          )
+        ) : isComplete ? (
           <CheckCircle2 size={20} style={{ color: '#0EA5E9' }} />
         ) : (
           <Circle size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
@@ -250,6 +261,11 @@ export default function OnboardingPage() {
 
         // ── Phase 1: Decision Intelligence ──────────────────────────────────
 
+        const getStepStatus = (id: string): StepStatus => {
+          if (!outputMap.has(id)) return 'not_started'
+          return outputMap.get(id) === 'approved' ? 'approved' : 'draft'
+        }
+
         const p1gate1 = dcpStatus === 'approved'
         const phase1: PhaseData = {
           number: 1,
@@ -262,24 +278,28 @@ export default function OnboardingPage() {
               title: 'Step 1 — Product / Service Profile',
               description: 'Describe what you sell, your primary use case, and key industries served',
               complete: approvedSet.has('1'),
+              stepStatus: getStepStatus('1'),
             },
             {
               badge: '2',
               title: 'Step 2 — Top 3 Target Market Segments',
               description: 'Name and describe the three segments you sell into most effectively',
               complete: approvedSet.has('2'),
+              stepStatus: getStepStatus('2'),
             },
             {
               badge: '3',
               title: 'Step 3 — Key Decision Makers',
               description: 'Map the buying roles, influence levels, and primary concerns per segment',
               complete: approvedSet.has('3'),
+              stepStatus: getStepStatus('3'),
             },
             {
               badge: '3.5',
               title: 'Step 3.5 — Buying Center Evaluation',
               description: 'Define stakeholder count, decision style, sales cycle, and ACV range',
               complete: approvedSet.has('3.5'),
+              stepStatus: getStepStatus('3.5'),
             },
             {
               badge: 'G1',
@@ -485,8 +505,46 @@ export default function OnboardingPage() {
 
         {/* Phase cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
-          {phases.map(phase => (
-            <PhaseCard key={phase.number} phase={phase} />
+          {phases.map((phase, i) => (
+            <div key={phase.number}>
+              <PhaseCard phase={phase} />
+              {i === 0 && (
+                <div style={{
+                  marginTop: '20px',
+                  borderLeft: '4px solid #E8520A',
+                  backgroundColor: '#0F2140',
+                  borderRadius: '0 12px 12px 0',
+                  padding: '20px 24px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderLeftColor: '#E8520A',
+                  borderLeftWidth: '4px',
+                }}>
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#E8520A', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+                    Before You Begin Phase 2
+                  </p>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', lineHeight: '1.6', margin: '0 0 16px' }}>
+                    Intelligence Gathering is a critical step between Phase 1 and Phase 2. Before building your Company Formulas, you must complete the Decision Clarity Process — a structured survey that reveals exactly how your buyers make decisions. Gate 1 approval requires a completed DCP Map.
+                  </p>
+                  <Link
+                    href="/dashboard/intelligence"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      minHeight: '44px',
+                      padding: '0 20px',
+                      borderRadius: '8px',
+                      backgroundColor: '#E8520A',
+                      color: '#FFFFFF',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Go to Intelligence
+                  </Link>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>

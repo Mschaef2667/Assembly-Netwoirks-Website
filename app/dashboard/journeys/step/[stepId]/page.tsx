@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
-import ConfidenceBar from '@/components/copilot/ConfidenceBar'
+
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
 import Step14Editor from '@/components/journeys/Step14Editor'
 import BlendEditor from '@/components/journeys/BlendEditor'
@@ -161,6 +161,35 @@ const FIELD_INPUT: React.CSSProperties = {
   boxSizing: 'border-box',
   fontFamily: 'inherit',
   outline: 'none',
+}
+
+// ── Content quality scoring ───────────────────────────────────────────────────
+
+function scoreSingleContent(text: string): number {
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  const len = trimmed.length
+  if (len < 50) return 10
+  if (len < 150) return 30
+  const hasNumbers = /\d/.test(trimmed)
+  const hasPercentage = /%/.test(trimmed)
+  const hasNamedEntities = /\b[A-Z]{2,}\b/.test(trimmed) || /[A-Z][a-z]+ [A-Z][a-z]+/.test(trimmed)
+  const criteria = [hasNumbers, hasPercentage, hasNamedEntities].filter(Boolean).length
+  if (len <= 300) return criteria > 0 ? 65 : 50
+  if (criteria === 0) return 75
+  if (criteria === 1) return 85
+  if (criteria === 2) return 90
+  return 95
+}
+
+function calculateContentQuality(sid: string, text: string, pts: PainPoint[], activeCnt: number): number {
+  if (sid === '4') {
+    const active = pts.slice(0, activeCnt)
+    if (active.length === 0) return 0
+    const scores = active.map(pp => scoreSingleContent(`${pp.title} ${pp.description}`.trim()))
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+  }
+  return scoreSingleContent(text)
 }
 
 // ── Confidence badge ──────────────────────────────────────────────────────────
@@ -379,6 +408,7 @@ interface Step4EditorProps {
   activeCount: number
   activeTab: number
   saveState: SaveState
+  contentQuality: number
   onTabChange: (tab: number) => void
   onTitleChange: (tab: number, title: string) => void
   onDescriptionChange: (tab: number, description: string) => void
@@ -388,18 +418,27 @@ interface Step4EditorProps {
 }
 
 function Step4Editor({
-  painPoints, activeCount, activeTab, saveState,
+  painPoints, activeCount, activeTab, saveState, contentQuality,
   onTabChange, onTitleChange, onDescriptionChange,
   onAddPainPoint, onRemovePainPoint, onBlur,
 }: Step4EditorProps) {
   const activePP = painPoints.find(pp => pp.index === activeTab) ?? painPoints[0]
   const visibleTabs = painPoints.slice(0, activeCount)
+  const cqLabel = contentQuality >= 85 ? 'High' : contentQuality >= 65 ? 'Good' : contentQuality >= 30 ? 'Medium' : 'Low'
+  const cqColor = contentQuality >= 85 ? '#16A34A' : contentQuality >= 65 ? '#0EA5E9' : contentQuality >= 30 ? '#D97706' : '#DC2626'
 
   return (
     <div>
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <label style={LABEL_STYLE}>Pain Points</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label style={LABEL_STYLE}>Pain Points</label>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', fontWeight: 700 }}>·</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: cqColor }}>Quality: {contentQuality} · {cqLabel}</span>
+          <div style={{ width: '40px', height: '3px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ width: `${contentQuality}%`, height: '100%', backgroundColor: cqColor, borderRadius: '2px' }} />
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <SaveIndicator state={saveState} />
           {activeCount < 4 && (
@@ -1799,6 +1838,10 @@ export default function StepPage() {
   const isBlendStep = BLEND_STEPS.has(stepId)
   const isActionPlanStep = ACTION_PLAN_STEPS.has(stepId)
   const stepIndex = allSteps.findIndex(s => s.id === stepId)
+
+  const contentQuality = calculateContentQuality(stepId, content, painPoints, activeCount)
+  const cqLabel = contentQuality >= 85 ? 'High' : contentQuality >= 65 ? 'Good' : contentQuality >= 30 ? 'Medium' : 'Low'
+  const cqColor = contentQuality >= 85 ? '#16A34A' : contentQuality >= 65 ? '#0EA5E9' : contentQuality >= 30 ? '#D97706' : '#DC2626'
   const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
   const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
 
@@ -1818,11 +1861,6 @@ export default function StepPage() {
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
           {stepDesc}
         </p>
-      )}
-      {decayedConfidence !== null && (
-        <div style={{ marginTop: '14px', maxWidth: '300px' }}>
-          <ConfidenceBar score={decayedConfidence} dark />
-        </div>
       )}
     </header>
   )
@@ -2048,6 +2086,7 @@ export default function StepPage() {
                 activeCount={activeCount}
                 activeTab={activeTab}
                 saveState={saveState}
+                contentQuality={contentQuality}
                 onTabChange={setActiveTab}
                 onTitleChange={handleStep4TitleChange}
                 onDescriptionChange={handleStep4DescriptionChange}
@@ -2059,7 +2098,14 @@ export default function StepPage() {
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <label style={LABEL_STYLE}>Your Content</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={LABEL_STYLE}>Your Content</label>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', fontWeight: 700 }}>·</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: cqColor }}>Quality: {contentQuality} · {cqLabel}</span>
+                  <div style={{ width: '40px', height: '3px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${contentQuality}%`, height: '100%', backgroundColor: cqColor, borderRadius: '2px' }} />
+                  </div>
+                </div>
                 <SaveIndicator state={saveState} />
               </div>
               <textarea
