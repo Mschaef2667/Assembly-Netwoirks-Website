@@ -90,6 +90,7 @@ type RoleCategory =
   | 'Operating Partner (PE Firm)'
   | 'VP Business Development'
   | 'Revenue Operations Manager'
+  | 'Head of Technology'
   | 'Practice Lead'
   | 'Marketing Director'
   | 'CMO / Head of Marketing'
@@ -123,6 +124,7 @@ const ROLE_CATEGORIES: RoleCategory[] = [
   'Operating Partner (PE Firm)',
   'VP Business Development',
   'Revenue Operations Manager',
+  'Head of Technology',
   'Practice Lead',
   'Marketing Director',
   'CMO / Head of Marketing',
@@ -155,7 +157,11 @@ const CONCERN_OPTIONS: string[] = [
   'Budget approval and procurement',
   'Competitive differentiation',
   'Customer acquisition and retention',
-  'Other',
+  'System integration and technical architecture',
+  'Data security and compliance requirements',
+  'Team adoption and change management',
+  'Total cost of ownership',
+  'Vendor reliability and support quality',
 ]
 
 const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
@@ -167,6 +173,7 @@ const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
   'Operating Partner (PE Firm)': ['ROI justification and contract terms', 'Board and investor reporting'],
   'VP Business Development': ['New market entry and partnership revenue', 'Customer acquisition and retention'],
   'Revenue Operations Manager': ['Tool consolidation and data accuracy', 'Implementation complexity and adoption'],
+  'Head of Technology': ['System integration and technical architecture', 'Data security and compliance requirements'],
   'Practice Lead': ['Competitive differentiation', 'Customer acquisition and retention'],
   'Marketing Director': ['Lead quality and marketing-attributed revenue', 'Messaging consistency across sales and marketing'],
   'CMO / Head of Marketing': ['Lead quality and marketing-attributed revenue', 'Competitive differentiation'],
@@ -943,11 +950,12 @@ interface Step3EditorProps {
   onTabChange: (tab: number) => void
   onChange: (segKey: string, dmIdx: number, field: Exclude<keyof DecisionMaker, 'primary_concerns'>, value: string) => void
   onConcernToggle: (segKey: string, dmIdx: number, concern: string) => void
-  onOtherConcernChange: (segKey: string, dmIdx: number, customText: string) => void
+  onAddCustomConcern: (segKey: string, dmIdx: number, customText: string) => void
   onBlur: () => void
 }
 
-function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, onChange, onConcernToggle, onOtherConcernChange, onBlur }: Step3EditorProps) {
+function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, onChange, onConcernToggle, onAddCustomConcern, onBlur }: Step3EditorProps) {
+  const [customInputs, setCustomInputs] = useState<Record<number, string>>({})
   const activeKey = SEG_KEYS[activeTab]
   const activeDMs = dms[activeKey] ?? makeDMs()
 
@@ -1055,34 +1063,67 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
               </div>
             </div>
             <div style={{ marginTop: '12px' }}>
-              <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>
-                Primary Concerns
-                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: '6px', fontSize: '11px' }}>
-                  (select up to 3)
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Primary Concerns</label>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                  {dm.primary_concerns.length} of 3 selected
                 </span>
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {CONCERN_OPTIONS.filter(c => c !== 'Other').map(concern => {
-                  const selected = dm.primary_concerns.includes(concern)
+              </div>
+
+              {/* Layer 1: Selected pills (orange) — click to deselect */}
+              {dm.primary_concerns.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                  {dm.primary_concerns.map(concern => (
+                    <button
+                      key={concern}
+                      type="button"
+                      onClick={() => { onConcernToggle(activeKey, dmIdx, concern); onBlur() }}
+                      title="Click to deselect"
+                      style={{
+                        padding: '4px 10px',
+                        minHeight: '28px',
+                        borderRadius: '14px',
+                        border: '1px solid #E8520A',
+                        backgroundColor: '#E8520A',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'opacity 0.15s',
+                      }}
+                    >
+                      {concern}
+                      <span style={{ fontSize: '10px', opacity: 0.75 }}>✕</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Layer 2: Suggested pills (grey) — all unselected concerns */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {CONCERN_OPTIONS.filter(c => !dm.primary_concerns.includes(c)).map(concern => {
                   const atLimit = dm.primary_concerns.length >= 3
                   return (
                     <button
                       key={concern}
                       type="button"
-                      onClick={() => { onConcernToggle(activeKey, dmIdx, concern); onBlur() }}
-                      disabled={!selected && atLimit}
+                      onClick={() => { if (!atLimit) { onConcernToggle(activeKey, dmIdx, concern); onBlur() } }}
+                      disabled={atLimit}
                       style={{
                         padding: '4px 10px',
                         minHeight: '28px',
                         borderRadius: '14px',
-                        border: `1px solid ${selected ? '#E8520A' : 'rgba(255,255,255,0.2)'}`,
-                        backgroundColor: selected ? '#E8520A' : '#0A1628',
-                        color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        backgroundColor: '#0A1628',
+                        color: 'rgba(255,255,255,0.65)',
                         fontSize: '12px',
-                        fontWeight: selected ? 600 : 400,
-                        cursor: (!selected && atLimit) ? 'not-allowed' : 'pointer',
-                        opacity: (!selected && atLimit) ? 0.4 : 1,
-                        transition: 'background-color 0.15s, border-color 0.15s, color 0.15s',
+                        fontWeight: 400,
+                        cursor: atLimit ? 'not-allowed' : 'pointer',
+                        opacity: atLimit ? 0.4 : 1,
+                        transition: 'background-color 0.15s, border-color 0.15s',
                       }}
                     >
                       {concern}
@@ -1090,37 +1131,54 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                   )
                 })}
               </div>
-              {/* Other free-text */}
-              {dm.primary_concerns.includes('Other') ? (
+
+              {/* Layer 3: Custom concern input */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="text"
-                  value={dm.primary_concerns.find(c => !CONCERN_OPTIONS.includes(c)) ?? ''}
-                  onChange={e => onOtherConcernChange(activeKey, dmIdx, e.target.value)}
-                  onBlur={onBlur}
-                  placeholder="Describe your concern…"
-                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF', marginTop: '8px' }}
+                  value={customInputs[dmIdx] ?? ''}
+                  onChange={e => setCustomInputs(prev => ({ ...prev, [dmIdx]: e.target.value }))}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = (customInputs[dmIdx] ?? '').trim()
+                      if (val && dm.primary_concerns.length < 3 && !dm.primary_concerns.includes(val)) {
+                        onAddCustomConcern(activeKey, dmIdx, val)
+                        setCustomInputs(prev => ({ ...prev, [dmIdx]: '' }))
+                        onBlur()
+                      }
+                    }
+                  }}
+                  placeholder="Add your own concern..."
+                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF', flex: 1, fontSize: '12px', padding: '4px 10px', minHeight: '32px' }}
                 />
-              ) : (
                 <button
                   type="button"
-                  onClick={() => { onConcernToggle(activeKey, dmIdx, 'Other'); onBlur() }}
-                  disabled={!dm.primary_concerns.includes('Other') && dm.primary_concerns.length >= 3}
+                  onClick={() => {
+                    const val = (customInputs[dmIdx] ?? '').trim()
+                    if (val && dm.primary_concerns.length < 3 && !dm.primary_concerns.includes(val)) {
+                      onAddCustomConcern(activeKey, dmIdx, val)
+                      setCustomInputs(prev => ({ ...prev, [dmIdx]: '' }))
+                      onBlur()
+                    }
+                  }}
+                  disabled={dm.primary_concerns.length >= 3 || !(customInputs[dmIdx] ?? '').trim()}
                   style={{
-                    marginTop: '6px',
-                    padding: '4px 10px',
-                    minHeight: '28px',
-                    borderRadius: '14px',
+                    padding: '4px 14px',
+                    minHeight: '32px',
+                    borderRadius: '6px',
                     border: '1px solid rgba(255,255,255,0.2)',
-                    backgroundColor: '#0A1628',
-                    color: 'rgba(255,255,255,0.65)',
-                    fontSize: '12px',
-                    cursor: dm.primary_concerns.length >= 3 ? 'not-allowed' : 'pointer',
-                    opacity: dm.primary_concerns.length >= 3 ? 0.4 : 1,
+                    backgroundColor: (dm.primary_concerns.length >= 3 || !(customInputs[dmIdx] ?? '').trim()) ? '#0A1628' : 'rgba(232,82,10,0.15)',
+                    color: (dm.primary_concerns.length >= 3 || !(customInputs[dmIdx] ?? '').trim()) ? 'rgba(255,255,255,0.3)' : '#E8520A',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    cursor: (dm.primary_concerns.length >= 3 || !(customInputs[dmIdx] ?? '').trim()) ? 'not-allowed' : 'pointer',
+                    lineHeight: 1,
+                    transition: 'background-color 0.15s, color 0.15s',
                   }}
                 >
-                  Other
+                  +
                 </button>
-              )}
+              </div>
             </div>
           </div>
         ))}
@@ -1901,18 +1959,15 @@ export default function StepPage() {
     scheduleStep3Save()
   }
 
-  function handleStep3OtherConcernChange(segKey: string, dmIdx: number, customText: string) {
+  function handleAddCustomConcern(segKey: string, dmIdx: number, customText: string) {
     setSaveStatus('editing')
     setStep3DMs(prev => ({
       ...prev,
       [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => {
         if (i !== dmIdx) return dm
-        const knownOptions = CONCERN_OPTIONS.filter(o => o !== 'Other')
-        const withoutCustom = dm.primary_concerns.filter(c => c === 'Other' || knownOptions.includes(c))
-        const next = customText
-          ? [...withoutCustom.filter(c => c !== 'Other'), 'Other', customText]
-          : withoutCustom
-        return { ...dm, primary_concerns: next }
+        const trimmed = customText.trim()
+        if (!trimmed || dm.primary_concerns.length >= 3 || dm.primary_concerns.includes(trimmed)) return dm
+        return { ...dm, primary_concerns: [...dm.primary_concerns, trimmed] }
       }),
     }))
     scheduleStep3Save()
@@ -2227,7 +2282,7 @@ export default function StepPage() {
             onTabChange={setStep3ActiveTab}
             onChange={handleStep3Change}
             onConcernToggle={handleStep3ConcernToggle}
-            onOtherConcernChange={handleStep3OtherConcernChange}
+            onAddCustomConcern={handleAddCustomConcern}
             onBlur={handleStep3Blur}
           />
         </div>
