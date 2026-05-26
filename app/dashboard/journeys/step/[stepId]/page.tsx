@@ -1102,35 +1102,52 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                 </div>
               )}
 
-              {/* Layer 2: Suggested pills (grey) — all unselected concerns */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-                {CONCERN_OPTIONS.filter(c => !dm.primary_concerns.includes(c)).map(concern => {
-                  const atLimit = dm.primary_concerns.length >= 3
-                  return (
-                    <button
-                      key={concern}
-                      type="button"
-                      onClick={() => { if (!atLimit) { onConcernToggle(activeKey, dmIdx, concern); onBlur() } }}
-                      disabled={atLimit}
-                      style={{
-                        padding: '4px 10px',
-                        minHeight: '28px',
-                        borderRadius: '14px',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        backgroundColor: '#0A1628',
-                        color: 'rgba(255,255,255,0.65)',
-                        fontSize: '12px',
-                        fontWeight: 400,
-                        cursor: atLimit ? 'not-allowed' : 'pointer',
-                        opacity: atLimit ? 0.4 : 1,
-                        transition: 'background-color 0.15s, border-color 0.15s',
-                      }}
-                    >
-                      {concern}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Layer 2: Additional concern pills (grey) — filtered by role */}
+              {(() => {
+                const roleConcerns = PRIMARY_CONCERN_MAP[dm.role_category as RoleCategory] ?? []
+                const layer2Concerns = CONCERN_OPTIONS.filter(c =>
+                  !dm.primary_concerns.includes(c) &&
+                  (dm.role_category === '' || !roleConcerns.includes(c))
+                )
+                const layer2Label = dm.role_category !== ''
+                  ? `Suggested for ${dm.role_category}`
+                  : 'All concerns'
+                return (
+                  <>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
+                      {layer2Label}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                      {layer2Concerns.map(concern => {
+                        const atLimit = dm.primary_concerns.length >= 3
+                        return (
+                          <button
+                            key={concern}
+                            type="button"
+                            onClick={() => { if (!atLimit) { onConcernToggle(activeKey, dmIdx, concern); onBlur() } }}
+                            disabled={atLimit}
+                            style={{
+                              padding: '4px 10px',
+                              minHeight: '28px',
+                              borderRadius: '14px',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              backgroundColor: '#0A1628',
+                              color: 'rgba(255,255,255,0.65)',
+                              fontSize: '12px',
+                              fontWeight: 400,
+                              cursor: atLimit ? 'not-allowed' : 'pointer',
+                              opacity: atLimit ? 0.4 : 1,
+                              transition: 'background-color 0.15s, border-color 0.15s',
+                            }}
+                          >
+                            {concern}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
 
               {/* Layer 3: Custom concern input */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
