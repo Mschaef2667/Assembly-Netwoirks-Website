@@ -1030,27 +1030,6 @@ export default function PainPointStepEditor({
               </button>
             </div>
 
-            {copilotOutput.assumptions.length > 0 && (
-              <div style={PANEL_CARD}>
-                <p style={LABEL_STYLE}>Assumptions</p>
-                <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                  {copilotOutput.assumptions.map((a, i) => (
-                    <li key={i} style={{ fontSize: '12px', color: '#6B7280', marginBottom: '2px' }}>{a}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {copilotOutput.open_questions.length > 0 && (
-              <div style={PANEL_CARD}>
-                <p style={LABEL_STYLE}>Open questions</p>
-                <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                  {copilotOutput.open_questions.map((q, i) => (
-                    <li key={i} style={{ fontSize: '12px', color: '#0D0D0D', marginBottom: '2px' }}>{q}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </>
         )}
       </div>
