@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ShieldCheck, Lock, Clock, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -197,6 +198,7 @@ function SkeletonBar({ w }: { w: number }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [stepDefs, setStepDefs] = useState<StepDef[]>([])
   const [latestOutputs, setLatestOutputs] = useState<Map<string, StepOut>>(new Map())
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
@@ -236,6 +238,12 @@ export default function DashboardPage() {
         for (const r of (outputsRes.data ?? []) as StepOut[]) {
           const ex = outMap.get(r.step_id)
           if (!ex || r.version > ex.version) outMap.set(r.step_id, r)
+        }
+
+        // Redirect completely fresh workspaces to the onboarding welcome flow
+        if (outMap.size === 0) {
+          router.push('/dashboard/onboarding')
+          return
         }
 
         // Dependency map: step_id → [prerequisite_ids]
