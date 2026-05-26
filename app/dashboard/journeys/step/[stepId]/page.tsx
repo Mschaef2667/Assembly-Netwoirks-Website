@@ -91,6 +91,9 @@ type RoleCategory =
   | 'VP Business Development'
   | 'Revenue Operations Manager'
   | 'Head of Technology'
+  | 'Chief Customer Officer / VP Customer Success'
+  | 'Chief Product Officer / VP Product'
+  | 'Product Marketing Manager'
   | 'Practice Lead'
   | 'Marketing Director'
   | 'CMO / Head of Marketing'
@@ -125,6 +128,9 @@ const ROLE_CATEGORIES: RoleCategory[] = [
   'VP Business Development',
   'Revenue Operations Manager',
   'Head of Technology',
+  'Chief Customer Officer / VP Customer Success',
+  'Chief Product Officer / VP Product',
+  'Product Marketing Manager',
   'Practice Lead',
   'Marketing Director',
   'CMO / Head of Marketing',
@@ -162,6 +168,12 @@ const CONCERN_OPTIONS: string[] = [
   'Team adoption and change management',
   'Total cost of ownership',
   'Vendor reliability and support quality',
+  'GTM strategy and execution ownership',
+  'Brand positioning and market differentiation',
+  'Omni-channel campaign execution',
+  'Customer retention and expansion revenue',
+  'Product-market fit validation',
+  'Competitive win/loss analysis',
 ]
 
 const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
@@ -174,6 +186,9 @@ const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
   'VP Business Development': ['New market entry and partnership revenue', 'Customer acquisition and retention'],
   'Revenue Operations Manager': ['Tool consolidation and data accuracy', 'Implementation complexity and adoption'],
   'Head of Technology': ['System integration and technical architecture', 'Data security and compliance requirements'],
+  'Chief Customer Officer / VP Customer Success': ['Customer retention and expansion revenue', 'Customer acquisition and retention'],
+  'Chief Product Officer / VP Product': ['Product-market fit validation', 'Competitive win/loss analysis'],
+  'Product Marketing Manager': ['Brand positioning and market differentiation', 'GTM strategy and execution ownership'],
   'Practice Lead': ['Competitive differentiation', 'Customer acquisition and retention'],
   'Marketing Director': ['Lead quality and marketing-attributed revenue', 'Messaging consistency across sales and marketing'],
   'CMO / Head of Marketing': ['Lead quality and marketing-attributed revenue', 'Competitive differentiation'],
@@ -188,26 +203,49 @@ function makeDMs(): DecisionMaker[] {
 
 // ── Step 3.5 types ────────────────────────────────────────────────────────────
 
-interface BuyingCenterRole {
-  title: string
-  key_concern: string
+interface BuyingCenterEntry {
+  decision_maker: string
+  say_yes: string
 }
 
-interface BuyingCenterSegment {
-  economic_buyer: BuyingCenterRole
-  champion: BuyingCenterRole
-  evaluator: BuyingCenterRole
-  blocker: BuyingCenterRole
+function makeBCEntry(): BuyingCenterEntry {
+  return { decision_maker: '', say_yes: '' }
 }
 
-function makeBCSegment(): BuyingCenterSegment {
-  return {
-    economic_buyer: { title: '', key_concern: '' },
-    champion: { title: '', key_concern: '' },
-    evaluator: { title: '', key_concern: '' },
-    blocker: { title: '', key_concern: '' },
-  }
+// ── Step 4.5 types ────────────────────────────────────────────────────────────
+
+interface GTMSnapshotContent {
+  current_revenue: string
+  growth_target: string
+  sales_cycle: string
+  sales_motion: string
+  marketing_channels: string[]
+  gtm_challenge: string
+  what_working: string
 }
+
+const DEFAULT_GTM_SNAPSHOT: GTMSnapshotContent = {
+  current_revenue: '',
+  growth_target: '',
+  sales_cycle: '',
+  sales_motion: '',
+  marketing_channels: [],
+  gtm_challenge: '',
+  what_working: '',
+}
+
+const GTM_CHANNEL_OPTIONS = [
+  'SEO/Content',
+  'Paid Search',
+  'Paid Social',
+  'Email',
+  'Events/Conferences',
+  'PR/Media',
+  'Referral/Word of mouth',
+  'Partner/Channel',
+  'Cold Outreach',
+  'Account-Based Marketing',
+]
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -445,19 +483,18 @@ function extractDecisionMakers(content: unknown): string {
 function extractBuyingCenter(content: unknown): string {
   if (typeof content !== 'object' || content === null) return ''
   const c = content as Record<string, unknown>
-  // Content may be flat or nested under 'buyingCenter'
-  const bc = (typeof c['buyingCenter'] === 'object' && c['buyingCenter'] !== null)
-    ? (c['buyingCenter'] as Record<string, unknown>)
+  const bc = (typeof c['buying_center'] === 'object' && c['buying_center'] !== null)
+    ? (c['buying_center'] as Record<string, unknown>)
     : c
   const lines: string[] = []
-  if (bc['stakeholderMin'] !== undefined || bc['stakeholderMax'] !== undefined) {
-    lines.push(`Stakeholder Count: ${bc['stakeholderMin'] ?? ''}–${bc['stakeholderMax'] ?? ''}`)
-  } else if (bc['stakeholderCount'] !== undefined) {
-    lines.push(`Stakeholder Count: ${String(bc['stakeholderCount'])}`)
-  }
-  if (bc['decisionStyle'] !== undefined) lines.push(`Decision Style: ${String(bc['decisionStyle'])}`)
-  if (bc['salesCycle'] !== undefined) lines.push(`Sales Cycle: ${String(bc['salesCycle'])}`)
-  if (bc['acvRange'] !== undefined) lines.push(`ACV Range: ${String(bc['acvRange'])}`)
+  ;(['segment_1', 'segment_2', 'segment_3'] as const).forEach((key, i) => {
+    const seg = bc[key] as Record<string, unknown> | undefined
+    if (seg && (seg['decision_maker'] || seg['say_yes'])) {
+      lines.push(`Segment ${i + 1}:`)
+      if (seg['decision_maker']) lines.push(`  Decision Maker: ${String(seg['decision_maker'])}`)
+      if (seg['say_yes']) lines.push(`  What Makes Them Say Yes: ${String(seg['say_yes'])}`)
+    }
+  })
   return lines.join('\n')
 }
 
@@ -1208,24 +1245,17 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
 
 interface Step35EditorProps {
   segmentNames: string[]
-  buyingCenter: Record<string, BuyingCenterSegment>
+  buyingCenter: Record<string, BuyingCenterEntry>
   activeTab: number
   saveStatus: SaveStatus
   onTabChange: (tab: number) => void
-  onChange: (segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) => void
+  onChange: (segKey: string, field: keyof BuyingCenterEntry, value: string) => void
   onBlur: () => void
 }
 
-const BC_ROLES: Array<{ key: keyof BuyingCenterSegment; label: string; optional?: boolean }> = [
-  { key: 'economic_buyer', label: 'Economic Buyer' },
-  { key: 'champion', label: 'Champion' },
-  { key: 'evaluator', label: 'Evaluator' },
-  { key: 'blocker', label: 'Blocker', optional: true },
-]
-
 function Step35Editor({ segmentNames, buyingCenter, activeTab, saveStatus, onTabChange, onChange, onBlur }: Step35EditorProps) {
   const activeKey = SEG_KEYS[activeTab]
-  const activeSeg = buyingCenter[activeKey] ?? makeBCSegment()
+  const activeEntry = buyingCenter[activeKey] ?? makeBCEntry()
 
   return (
     <div>
@@ -1256,61 +1286,48 @@ function Step35Editor({ segmentNames, buyingCenter, activeTab, saveStatus, onTab
         ))}
       </div>
 
-      {/* Buying center role cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        {BC_ROLES.map(({ key, label, optional }) => {
-          const role = activeSeg[key]
-          return (
-            <div key={key} style={PANEL_CARD}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '14px',
-                paddingBottom: '10px',
-                borderBottom: '1px solid rgba(255,255,255,0.1)',
-              }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{label}</span>
-                {optional && (
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    color: 'rgba(255,255,255,0.4)',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                  }}>
-                    optional
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div>
-                  <label style={{ ...LABEL_STYLE, display: 'block' }}>Title</label>
-                  <input
-                    type="text"
-                    value={role.title}
-                    onChange={e => onChange(activeKey, key, 'title', e.target.value)}
-                    onBlur={onBlur}
-                    placeholder="e.g. CFO"
-                    style={FIELD_INPUT}
-                  />
-                </div>
-                <div>
-                  <label style={{ ...LABEL_STYLE, display: 'block' }}>Key Concern</label>
-                  <input
-                    type="text"
-                    value={role.key_concern}
-                    onChange={e => onChange(activeKey, key, 'key_concern', e.target.value)}
-                    onBlur={onBlur}
-                    placeholder="e.g. Budget justification and ROI"
-                    style={FIELD_INPUT}
-                  />
-                </div>
-              </div>
-            </div>
-          )
-        })}
+      {/* Single question card */}
+      <div style={PANEL_CARD}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', margin: '0 0 20px' }}>
+          Who is the ultimate decision maker and what will make them say yes?
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ ...LABEL_STYLE, display: 'block' }}>Ultimate Decision Maker</label>
+            <input
+              type="text"
+              value={activeEntry.decision_maker}
+              onChange={e => onChange(activeKey, 'decision_maker', e.target.value)}
+              onBlur={onBlur}
+              placeholder="e.g. CEO / Board of Directors"
+              style={FIELD_INPUT}
+            />
+          </div>
+          <div>
+            <label style={{ ...LABEL_STYLE, display: 'block' }}>What Makes Them Say Yes</label>
+            <textarea
+              value={activeEntry.say_yes}
+              onChange={e => onChange(activeKey, 'say_yes', e.target.value)}
+              onBlur={onBlur}
+              placeholder="e.g. Clear ROI within 90 days, peer validation from similar companies, low implementation risk"
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #9CA3AF',
+                borderRadius: '8px',
+                fontSize: '14px',
+                lineHeight: '1.65',
+                color: '#0D0D0D',
+                backgroundColor: '#FFFFFF',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1359,12 +1376,15 @@ export default function StepPage() {
   const [step3ActiveTab, setStep3ActiveTab] = useState(0)
 
   // Step 3.5 state
-  const [step35BC, setStep35BC] = useState<Record<string, BuyingCenterSegment>>({
-    segment_1: makeBCSegment(),
-    segment_2: makeBCSegment(),
-    segment_3: makeBCSegment(),
+  const [step35BC, setStep35BC] = useState<Record<string, BuyingCenterEntry>>({
+    segment_1: makeBCEntry(),
+    segment_2: makeBCEntry(),
+    segment_3: makeBCEntry(),
   })
   const [step35ActiveTab, setStep35ActiveTab] = useState(0)
+
+  // Step 4.5 state
+  const [step45Data, setStep45Data] = useState<GTMSnapshotContent>(DEFAULT_GTM_SNAPSHOT)
 
   // Segment names loaded from Step 2 content for display in Steps 3 and 3.5
   const [segmentNames, setSegmentNames] = useState<string[]>(['Segment 1', 'Segment 2', 'Segment 3'])
@@ -1388,6 +1408,8 @@ export default function StepPage() {
   const step3SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const step35SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const step35SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const step45SaveRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const step45SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const preApplyContentRef = useRef<string>('')
   const preApplyPainPointsRef = useRef<PainPoint[]>([])
   const originalContentRef = useRef<string>('')
@@ -1508,26 +1530,33 @@ export default function StepPage() {
           } else if (stepId === '3.5') {
             const bcRaw = c?.['buying_center'] as Record<string, unknown> | undefined
             if (bcRaw) {
-              const loaded: Record<string, BuyingCenterSegment> = {
-                segment_1: makeBCSegment(), segment_2: makeBCSegment(), segment_3: makeBCSegment(),
+              const loaded: Record<string, BuyingCenterEntry> = {
+                segment_1: makeBCEntry(), segment_2: makeBCEntry(), segment_3: makeBCEntry(),
               }
               ;(['segment_1', 'segment_2', 'segment_3'] as const).forEach(key => {
                 const seg = bcRaw[key] as Record<string, unknown> | undefined
                 if (seg) {
-                  const loadRole = (r: unknown): BuyingCenterRole => {
-                    const role = (typeof r === 'object' && r !== null) ? r as Record<string, unknown> : {}
-                    return { title: String(role['title'] ?? ''), key_concern: String(role['key_concern'] ?? '') }
-                  }
                   loaded[key] = {
-                    economic_buyer: loadRole(seg['economic_buyer']),
-                    champion: loadRole(seg['champion']),
-                    evaluator: loadRole(seg['evaluator']),
-                    blocker: loadRole(seg['blocker']),
+                    decision_maker: String(seg['decision_maker'] ?? ''),
+                    say_yes: String(seg['say_yes'] ?? ''),
                   }
                 }
               })
               setStep35BC(loaded)
             }
+            setSaveStatus('saved')
+          } else if (stepId === '4.5') {
+            const loaded: GTMSnapshotContent = { ...DEFAULT_GTM_SNAPSHOT }
+            if (c) {
+              if (typeof c['current_revenue'] === 'string') loaded.current_revenue = c['current_revenue'] as string
+              if (typeof c['growth_target'] === 'string') loaded.growth_target = c['growth_target'] as string
+              if (typeof c['sales_cycle'] === 'string') loaded.sales_cycle = c['sales_cycle'] as string
+              if (typeof c['sales_motion'] === 'string') loaded.sales_motion = c['sales_motion'] as string
+              if (Array.isArray(c['marketing_channels'])) loaded.marketing_channels = c['marketing_channels'] as string[]
+              if (typeof c['gtm_challenge'] === 'string') loaded.gtm_challenge = c['gtm_challenge'] as string
+              if (typeof c['what_working'] === 'string') loaded.what_working = c['what_working'] as string
+            }
+            setStep45Data(loaded)
             setSaveStatus('saved')
           } else if (stepId === '1') {
             setContent(extractStepContent(stepId, c))
@@ -1824,7 +1853,7 @@ export default function StepPage() {
 
   // ── Auto-save (Step 3.5) ────────────────────────────────────────────────────
 
-  const persistStep35Content = useCallback(async (bc: Record<string, BuyingCenterSegment>, wsId: string) => {
+  const persistStep35Content = useCallback(async (bc: Record<string, BuyingCenterEntry>, wsId: string) => {
     setSaveStatus('saving')
     try {
       const contentPayload = { buying_center: bc }
@@ -1859,6 +1888,42 @@ export default function StepPage() {
     }
   }, [outputId, outputVersion, stepId])
 
+  // ── Auto-save (Step 4.5) ────────────────────────────────────────────────────
+
+  const persistStep45Content = useCallback(async (data: GTMSnapshotContent, wsId: string) => {
+    setSaveStatus('saving')
+    try {
+      const now = new Date().toISOString()
+      if (outputId) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ content: data, last_saved_at: now, last_updated_at: now })
+          .eq('id', outputId)
+        if (error) throw error
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('step_output')
+          .insert({
+            workspace_id: wsId,
+            step_id: stepId,
+            version: outputVersion,
+            status: 'draft',
+            content: data,
+            copilot_assisted: false,
+            last_saved_at: now,
+            last_updated_at: now,
+          })
+          .select('id')
+          .single()
+        if (error) throw error
+        if (inserted) setOutputId((inserted as Record<string, unknown>)['id'] as string)
+      }
+      setSaveStatus('saved')
+    } catch {
+      setSaveStatus('error')
+    }
+  }, [outputId, outputVersion, stepId])
+
   // Keep step4SaveRef current each render
   step4SaveRef.current = async () => {
     if (workspaceId) await persistStep4Content(painPoints, activeCount, workspaceId)
@@ -1874,6 +1939,10 @@ export default function StepPage() {
 
   step35SaveRef.current = async () => {
     if (workspaceId) await persistStep35Content(step35BC, workspaceId)
+  }
+
+  step45SaveRef.current = async () => {
+    if (workspaceId) await persistStep45Content(step45Data, workspaceId)
   }
 
   function scheduleStep4Save() {
@@ -1894,6 +1963,34 @@ export default function StepPage() {
   function scheduleStep35Save() {
     if (step35SaveTimer.current) clearTimeout(step35SaveTimer.current)
     step35SaveTimer.current = setTimeout(() => { void step35SaveRef.current() }, AUTOSAVE_DELAY_MS)
+  }
+
+  function scheduleStep45Save() {
+    if (step45SaveTimer.current) clearTimeout(step45SaveTimer.current)
+    step45SaveTimer.current = setTimeout(() => { void step45SaveRef.current() }, AUTOSAVE_DELAY_MS)
+  }
+
+  function handleStep45Change(field: keyof GTMSnapshotContent, value: string | string[]) {
+    setSaveStatus('editing')
+    setStep45Data(prev => ({ ...prev, [field]: value }))
+    scheduleStep45Save()
+  }
+
+  function handleStep45ChannelToggle(channel: string) {
+    setSaveStatus('editing')
+    setStep45Data(prev => {
+      const current = prev.marketing_channels
+      const next = current.includes(channel)
+        ? current.filter(c => c !== channel)
+        : [...current, channel]
+      return { ...prev, marketing_channels: next }
+    })
+    scheduleStep45Save()
+  }
+
+  function handleStep45Blur() {
+    if (step45SaveTimer.current) clearTimeout(step45SaveTimer.current)
+    void step45SaveRef.current()
   }
 
   function handleStep4TitleChange(tab: number, title: string) {
@@ -1995,11 +2092,11 @@ export default function StepPage() {
     void step3SaveRef.current()
   }
 
-  function handleStep35Change(segKey: string, role: keyof BuyingCenterSegment, field: keyof BuyingCenterRole, value: string) {
+  function handleStep35Change(segKey: string, field: keyof BuyingCenterEntry, value: string) {
     setSaveStatus('editing')
     setStep35BC(prev => ({
       ...prev,
-      [segKey]: { ...(prev[segKey] ?? makeBCSegment()), [role]: { ...(prev[segKey] ?? makeBCSegment())[role], [field]: value } },
+      [segKey]: { ...(prev[segKey] ?? makeBCEntry()), [field]: value },
     }))
     scheduleStep35Save()
   }
@@ -2031,7 +2128,17 @@ export default function StepPage() {
           .slice(0, activeCount)
           .map(pp => `Pain Point ${pp.index}:\nTitle: ${pp.title}\nDescription: ${pp.description}`)
           .join('\n\n')
-      : content
+      : stepId === '4.5'
+        ? [
+            `Current Annual Revenue: ${step45Data.current_revenue}`,
+            `Revenue Growth Target: ${step45Data.growth_target}`,
+            `Average Sales Cycle: ${step45Data.sales_cycle}`,
+            `Primary Sales Motion: ${step45Data.sales_motion}`,
+            `Marketing Channels: ${step45Data.marketing_channels.join(', ')}`,
+            `Biggest GTM Challenge: ${step45Data.gtm_challenge}`,
+            `What Is Working Well: ${step45Data.what_working}`,
+          ].join('\n')
+        : content
 
     if (action === 'draft') {
       originalContentRef.current = content
@@ -2262,6 +2369,274 @@ export default function StepPage() {
                 This step will allow you to evaluate whether your competitors can deliver on your Critical Success Formulas. Coming in Sprint 4.
               </p>
             </div>
+          </div>
+        </div>
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      </div>
+    )
+  }
+
+  if (stepId === '4.5') {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+
+          {/* Left: GTM Snapshot fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={LABEL_STYLE}>GTM Snapshot</label>
+              <SaveIndicator state={saveStatus} />
+            </div>
+
+            {/* Revenue + Growth row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={PANEL_CARD}>
+                <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>Current Annual Revenue</label>
+                <select
+                  value={step45Data.current_revenue}
+                  onChange={e => handleStep45Change('current_revenue', e.target.value)}
+                  onBlur={handleStep45Blur}
+                  style={{ ...DROPDOWN_STYLE, color: step45Data.current_revenue ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }}
+                >
+                  <option value="">Select revenue range</option>
+                  <option value="Under $1M">Under $1M</option>
+                  <option value="$1M–$5M">$1M–$5M</option>
+                  <option value="$5M–$10M">$5M–$10M</option>
+                  <option value="$10M–$25M">$10M–$25M</option>
+                  <option value="$25M–$50M">$25M–$50M</option>
+                  <option value="$50M–$100M">$50M–$100M</option>
+                  <option value="$100M+">$100M+</option>
+                </select>
+              </div>
+              <div style={PANEL_CARD}>
+                <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>Revenue Growth Target</label>
+                <select
+                  value={step45Data.growth_target}
+                  onChange={e => handleStep45Change('growth_target', e.target.value)}
+                  onBlur={handleStep45Blur}
+                  style={{ ...DROPDOWN_STYLE, color: step45Data.growth_target ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }}
+                >
+                  <option value="">Select growth target</option>
+                  <option value="Maintain current">Maintain current</option>
+                  <option value="10–25% growth">10–25% growth</option>
+                  <option value="25–50% growth">25–50% growth</option>
+                  <option value="50–100% growth">50–100% growth</option>
+                  <option value="2x+">2x+</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Sales cycle + motion row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={PANEL_CARD}>
+                <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>Average Sales Cycle</label>
+                <select
+                  value={step45Data.sales_cycle}
+                  onChange={e => handleStep45Change('sales_cycle', e.target.value)}
+                  onBlur={handleStep45Blur}
+                  style={{ ...DROPDOWN_STYLE, color: step45Data.sales_cycle ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }}
+                >
+                  <option value="">Select sales cycle</option>
+                  <option value="Less than 1 week">Less than 1 week</option>
+                  <option value="1–4 weeks">1–4 weeks</option>
+                  <option value="1–3 months">1–3 months</option>
+                  <option value="3–6 months">3–6 months</option>
+                  <option value="6–12 months">6–12 months</option>
+                  <option value="12+ months">12+ months</option>
+                </select>
+              </div>
+              <div style={PANEL_CARD}>
+                <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>Primary Sales Motion</label>
+                <select
+                  value={step45Data.sales_motion}
+                  onChange={e => handleStep45Change('sales_motion', e.target.value)}
+                  onBlur={handleStep45Blur}
+                  style={{ ...DROPDOWN_STYLE, color: step45Data.sales_motion ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }}
+                >
+                  <option value="">Select sales motion</option>
+                  <option value="Inbound">Inbound</option>
+                  <option value="Outbound">Outbound</option>
+                  <option value="Channel/Partner">Channel/Partner</option>
+                  <option value="Product-Led">Product-Led</option>
+                  <option value="Account-Based">Account-Based</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Marketing channels multi-select */}
+            <div style={PANEL_CARD}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <label style={LABEL_STYLE}>Current Marketing Channels</label>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                  {step45Data.marketing_channels.length} selected
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {GTM_CHANNEL_OPTIONS.map(channel => {
+                  const selected = step45Data.marketing_channels.includes(channel)
+                  return (
+                    <button
+                      key={channel}
+                      type="button"
+                      onClick={() => handleStep45ChannelToggle(channel)}
+                      style={{
+                        padding: '6px 14px',
+                        minHeight: '34px',
+                        borderRadius: '999px',
+                        border: `1px solid ${selected ? '#E8520A' : 'rgba(255,255,255,0.2)'}`,
+                        backgroundColor: selected ? '#E8520A' : '#0A1628',
+                        color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+                        fontSize: '13px',
+                        fontWeight: selected ? 600 : 400,
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s, border-color 0.15s',
+                      }}
+                    >
+                      {channel}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* GTM challenge textarea */}
+            <div style={PANEL_CARD}>
+              <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>Biggest GTM Challenge Right Now</label>
+              <textarea
+                value={step45Data.gtm_challenge}
+                onChange={e => handleStep45Change('gtm_challenge', e.target.value)}
+                onBlur={handleStep45Blur}
+                placeholder="Describe your single biggest go-to-market challenge in your own words"
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #9CA3AF',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  lineHeight: '1.65',
+                  color: '#0D0D0D',
+                  backgroundColor: '#FFFFFF',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* What is working well textarea */}
+            <div style={PANEL_CARD}>
+              <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>What is Working Well</label>
+              <textarea
+                value={step45Data.what_working}
+                onChange={e => handleStep45Change('what_working', e.target.value)}
+                onBlur={handleStep45Blur}
+                placeholder="What parts of your current GTM approach are producing results?"
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #9CA3AF',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  lineHeight: '1.65',
+                  color: '#0D0D0D',
+                  backgroundColor: '#FFFFFF',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Right: Copilot panel */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={PANEL_CARD}>
+              <p style={{ ...LABEL_STYLE, color: 'rgba(255,255,255,0.55)' }}>Copilot Actions</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <button
+                  onClick={() => void runCopilot('draft')}
+                  disabled={copilotStreaming}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '0 14px', minHeight: '44px',
+                    backgroundColor: copilotStreaming ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px', fontWeight: 600,
+                    cursor: copilotStreaming ? 'not-allowed' : 'pointer',
+                    width: '100%',
+                    opacity: copilotStreaming ? 0.6 : 1,
+                  }}
+                >
+                  <Wand2 size={16} />
+                  Copilot Draft
+                </button>
+              </div>
+            </div>
+
+            {copilotStreaming && !copilotOutput && (
+              <div style={{ ...PANEL_CARD, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Loader2 size={16} className="animate-spin" style={{ color: '#E8520A', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px' }}>Generating…</p>
+                  <p style={{
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    maxHeight: '120px',
+                    overflowY: 'auto',
+                    margin: 0,
+                  }}>
+                    {streamBuffer.slice(-300)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {copilotError && (
+              <div style={{ ...PANEL_CARD, border: '1px solid rgba(248,113,113,0.35)', backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                <p style={{ fontSize: '13px', color: '#FCA5A5', margin: '0 0 8px' }}>{copilotError}</p>
+                <a
+                  href="https://status.anthropic.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '12px', color: '#FCA5A5', textDecoration: 'underline' }}
+                >
+                  Check AI Status ↗
+                </a>
+              </div>
+            )}
+
+            {copilotOutput && !copilotStreaming && (
+              <div style={PANEL_CARD}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+                  <ConfidenceBadge score={copilotOutput.confidence} />
+                </div>
+                <p style={{ ...LABEL_STYLE, marginBottom: '6px' }}>GTM Insights</p>
+                <div style={{
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.8)',
+                  lineHeight: '1.6',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  whiteSpace: 'pre-wrap',
+                  maxHeight: '320px',
+                  overflowY: 'auto',
+                }}>
+                  {copilotOutput.draft}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
