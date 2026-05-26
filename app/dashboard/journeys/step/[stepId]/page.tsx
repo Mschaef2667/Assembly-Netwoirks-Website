@@ -82,69 +82,98 @@ const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geo
 
 type RoleCategory =
   | ''
-  | 'C-Suite (CEO, COO, CFO)'
+  | 'CEO / Founder'
+  | 'CEO / President'
   | 'Chief Revenue Officer / VP Sales'
   | 'Chief Marketing Officer / VP Marketing'
-  | 'Revenue Operations'
-  | 'VP / Director of Business Development'
-  | 'IT / Technology Leader'
-  | 'Legal / Compliance'
-  | 'Finance / Procurement'
-  | 'Board Member / Investor'
+  | 'Managing Partner'
+  | 'Operating Partner (PE Firm)'
+  | 'VP Business Development'
+  | 'Revenue Operations Manager'
+  | 'Practice Lead'
+  | 'Marketing Director'
+  | 'CMO / Head of Marketing'
+  | 'CRO / VP Sales'
   | 'Other'
 
 type InfluenceLevel =
   | ''
-  | 'Final Decision Maker'
-  | 'Strong Influence'
+  | 'Final Approver'
+  | 'Economic Buyer'
+  | 'Primary Buyer'
+  | 'Champion'
   | 'Evaluator'
+  | 'Influencer'
   | 'Gatekeeper / Blocker'
-  | 'Low Influence'
 
 interface DecisionMaker {
   role_category: RoleCategory
   specific_title: string
   influence: InfluenceLevel
-  primary_concern: string
+  primary_concerns: string[]
 }
 
 const ROLE_CATEGORIES: RoleCategory[] = [
   '',
-  'C-Suite (CEO, COO, CFO)',
+  'CEO / Founder',
+  'CEO / President',
   'Chief Revenue Officer / VP Sales',
   'Chief Marketing Officer / VP Marketing',
-  'Revenue Operations',
-  'VP / Director of Business Development',
-  'IT / Technology Leader',
-  'Legal / Compliance',
-  'Finance / Procurement',
-  'Board Member / Investor',
+  'Managing Partner',
+  'Operating Partner (PE Firm)',
+  'VP Business Development',
+  'Revenue Operations Manager',
+  'Practice Lead',
+  'Marketing Director',
+  'CMO / Head of Marketing',
+  'CRO / VP Sales',
   'Other',
 ]
 
 const INFLUENCE_LEVELS: InfluenceLevel[] = [
   '',
-  'Final Decision Maker',
-  'Strong Influence',
+  'Final Approver',
+  'Economic Buyer',
+  'Primary Buyer',
+  'Champion',
   'Evaluator',
+  'Influencer',
   'Gatekeeper / Blocker',
-  'Low Influence',
 ]
 
-const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string>> = {
-  'C-Suite (CEO, COO, CFO)': 'Revenue growth and competitive positioning',
-  'Chief Revenue Officer / VP Sales': 'Pipeline predictability and quota attainment',
-  'Chief Marketing Officer / VP Marketing': 'Lead quality and marketing-attributed revenue',
-  'Revenue Operations': 'Tool consolidation and data accuracy',
-  'VP / Director of Business Development': 'New market entry and partnership revenue',
-  'IT / Technology Leader': 'Security, integration, and implementation complexity',
-  'Legal / Compliance': 'Data privacy and vendor risk management',
-  'Finance / Procurement': 'ROI justification and contract terms',
-  'Board Member / Investor': 'Return on investment and market share growth',
-  'Other': '',
+const CONCERN_OPTIONS: string[] = [
+  'Pipeline predictability and quota attainment',
+  'Revenue growth and competitive positioning',
+  'Lead quality and marketing-attributed revenue',
+  'Messaging consistency across sales and marketing',
+  'Tool consolidation and data accuracy',
+  'New market entry and partnership revenue',
+  'ROI justification and contract terms',
+  'Implementation complexity and adoption',
+  'Data privacy and vendor risk management',
+  'Board and investor reporting',
+  'Budget approval and procurement',
+  'Competitive differentiation',
+  'Customer acquisition and retention',
+  'Other',
+]
+
+const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
+  'CEO / Founder': ['Revenue growth and competitive positioning', 'Competitive differentiation'],
+  'CEO / President': ['Revenue growth and competitive positioning', 'Board and investor reporting'],
+  'Chief Revenue Officer / VP Sales': ['Pipeline predictability and quota attainment', 'Messaging consistency across sales and marketing'],
+  'Chief Marketing Officer / VP Marketing': ['Lead quality and marketing-attributed revenue', 'Messaging consistency across sales and marketing'],
+  'Managing Partner': ['Revenue growth and competitive positioning', 'Customer acquisition and retention'],
+  'Operating Partner (PE Firm)': ['ROI justification and contract terms', 'Board and investor reporting'],
+  'VP Business Development': ['New market entry and partnership revenue', 'Customer acquisition and retention'],
+  'Revenue Operations Manager': ['Tool consolidation and data accuracy', 'Implementation complexity and adoption'],
+  'Practice Lead': ['Competitive differentiation', 'Customer acquisition and retention'],
+  'Marketing Director': ['Lead quality and marketing-attributed revenue', 'Messaging consistency across sales and marketing'],
+  'CMO / Head of Marketing': ['Lead quality and marketing-attributed revenue', 'Competitive differentiation'],
+  'CRO / VP Sales': ['Pipeline predictability and quota attainment', 'Revenue growth and competitive positioning'],
 }
 
-const DEFAULT_DM: DecisionMaker = { role_category: '', specific_title: '', influence: '', primary_concern: '' }
+const DEFAULT_DM: DecisionMaker = { role_category: '', specific_title: '', influence: '', primary_concerns: [] }
 
 function makeDMs(): DecisionMaker[] {
   return [{ ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }]
@@ -912,11 +941,13 @@ interface Step3EditorProps {
   activeTab: number
   saveStatus: SaveStatus
   onTabChange: (tab: number) => void
-  onChange: (segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) => void
+  onChange: (segKey: string, dmIdx: number, field: Exclude<keyof DecisionMaker, 'primary_concerns'>, value: string) => void
+  onConcernToggle: (segKey: string, dmIdx: number, concern: string) => void
+  onOtherConcernChange: (segKey: string, dmIdx: number, customText: string) => void
   onBlur: () => void
 }
 
-function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, onChange, onBlur }: Step3EditorProps) {
+function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, onChange, onConcernToggle, onOtherConcernChange, onBlur }: Step3EditorProps) {
   const activeKey = SEG_KEYS[activeTab]
   const activeDMs = dms[activeKey] ?? makeDMs()
 
@@ -982,7 +1013,7 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ ...LABEL_STYLE, display: 'block' }}>Role Category</label>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Role / Title</label>
                 <select
                   value={dm.role_category}
                   onChange={e => onChange(activeKey, dmIdx, 'role_category', e.target.value)}
@@ -991,7 +1022,7 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                 >
                   {ROLE_CATEGORIES.map(cat => (
                     <option key={cat} value={cat} style={{ backgroundColor: '#0F2140' }}>
-                      {cat === '' ? 'Select a role' : cat}
+                      {cat === '' ? 'Select a title' : cat}
                     </option>
                   ))}
                 </select>
@@ -1022,17 +1053,74 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
                   ))}
                 </select>
               </div>
-              <div>
-                <label style={{ ...LABEL_STYLE, display: 'block' }}>Primary Concern</label>
+            </div>
+            <div style={{ marginTop: '12px' }}>
+              <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px' }}>
+                Primary Concerns
+                <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: '6px', fontSize: '11px' }}>
+                  (select up to 3)
+                </span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {CONCERN_OPTIONS.filter(c => c !== 'Other').map(concern => {
+                  const selected = dm.primary_concerns.includes(concern)
+                  const atLimit = dm.primary_concerns.length >= 3
+                  return (
+                    <button
+                      key={concern}
+                      type="button"
+                      onClick={() => { onConcernToggle(activeKey, dmIdx, concern); onBlur() }}
+                      disabled={!selected && atLimit}
+                      style={{
+                        padding: '4px 10px',
+                        minHeight: '28px',
+                        borderRadius: '14px',
+                        border: `1px solid ${selected ? '#E8520A' : 'rgba(255,255,255,0.2)'}`,
+                        backgroundColor: selected ? '#E8520A' : '#0A1628',
+                        color: selected ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+                        fontSize: '12px',
+                        fontWeight: selected ? 600 : 400,
+                        cursor: (!selected && atLimit) ? 'not-allowed' : 'pointer',
+                        opacity: (!selected && atLimit) ? 0.4 : 1,
+                        transition: 'background-color 0.15s, border-color 0.15s, color 0.15s',
+                      }}
+                    >
+                      {concern}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* Other free-text */}
+              {dm.primary_concerns.includes('Other') ? (
                 <input
                   type="text"
-                  value={dm.primary_concern}
-                  onChange={e => onChange(activeKey, dmIdx, 'primary_concern', e.target.value)}
+                  value={dm.primary_concerns.find(c => !CONCERN_OPTIONS.includes(c)) ?? ''}
+                  onChange={e => onOtherConcernChange(activeKey, dmIdx, e.target.value)}
                   onBlur={onBlur}
-                  placeholder="e.g. Revenue predictability"
-                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF' }}
+                  placeholder="Describe your concern…"
+                  style={{ ...FIELD_INPUT, color: '#0D0D0D', backgroundColor: '#FFFFFF', marginTop: '8px' }}
                 />
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { onConcernToggle(activeKey, dmIdx, 'Other'); onBlur() }}
+                  disabled={!dm.primary_concerns.includes('Other') && dm.primary_concerns.length >= 3}
+                  style={{
+                    marginTop: '6px',
+                    padding: '4px 10px',
+                    minHeight: '28px',
+                    borderRadius: '14px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backgroundColor: '#0A1628',
+                    color: 'rgba(255,255,255,0.65)',
+                    fontSize: '12px',
+                    cursor: dm.primary_concerns.length >= 3 ? 'not-allowed' : 'pointer',
+                    opacity: dm.primary_concerns.length >= 3 ? 0.4 : 1,
+                  }}
+                >
+                  Other
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -1330,7 +1418,11 @@ export default function StepPage() {
                     role_category: (dm['role_category'] ?? '') as RoleCategory,
                     specific_title: String(dm['specific_title'] ?? dm['title'] ?? ''),
                     influence: (dm['influence'] ?? '') as InfluenceLevel,
-                    primary_concern: String(dm['primary_concern'] ?? ''),
+                    primary_concerns: Array.isArray(dm['primary_concerns'])
+                      ? (dm['primary_concerns'] as string[])
+                      : dm['primary_concern']
+                        ? [String(dm['primary_concern'])]
+                        : [],
                   }))
                   loaded[key] = [0, 1, 2, 3].map(i => parsed[i] ?? { ...DEFAULT_DM })
                 }
@@ -1771,7 +1863,7 @@ export default function StepPage() {
     void step2SaveRef.current()
   }
 
-  function handleStep3Change(segKey: string, dmIdx: number, field: keyof DecisionMaker, value: string) {
+  function handleStep3Change(segKey: string, dmIdx: number, field: Exclude<keyof DecisionMaker, 'primary_concerns'>, value: string) {
     setSaveStatus('editing')
     setStep3DMs(prev => ({
       ...prev,
@@ -1779,9 +1871,48 @@ export default function StepPage() {
         if (i !== dmIdx) return dm
         const updated = { ...dm, [field]: value }
         if (field === 'role_category' && value !== '') {
-          updated.primary_concern = PRIMARY_CONCERN_MAP[value as RoleCategory] ?? dm.primary_concern
+          updated.primary_concerns = PRIMARY_CONCERN_MAP[value as RoleCategory] ?? dm.primary_concerns
         }
         return updated
+      }),
+    }))
+    scheduleStep3Save()
+  }
+
+  function handleStep3ConcernToggle(segKey: string, dmIdx: number, concern: string) {
+    setSaveStatus('editing')
+    setStep3DMs(prev => ({
+      ...prev,
+      [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => {
+        if (i !== dmIdx) return dm
+        const current = dm.primary_concerns
+        const alreadySelected = current.includes(concern)
+        let next: string[]
+        if (alreadySelected) {
+          next = current.filter(c => c !== concern)
+        } else if (current.length < 3) {
+          next = [...current, concern]
+        } else {
+          next = current
+        }
+        return { ...dm, primary_concerns: next }
+      }),
+    }))
+    scheduleStep3Save()
+  }
+
+  function handleStep3OtherConcernChange(segKey: string, dmIdx: number, customText: string) {
+    setSaveStatus('editing')
+    setStep3DMs(prev => ({
+      ...prev,
+      [segKey]: (prev[segKey] ?? makeDMs()).map((dm, i) => {
+        if (i !== dmIdx) return dm
+        const knownOptions = CONCERN_OPTIONS.filter(o => o !== 'Other')
+        const withoutCustom = dm.primary_concerns.filter(c => c === 'Other' || knownOptions.includes(c))
+        const next = customText
+          ? [...withoutCustom.filter(c => c !== 'Other'), 'Other', customText]
+          : withoutCustom
+        return { ...dm, primary_concerns: next }
       }),
     }))
     scheduleStep3Save()
@@ -2095,6 +2226,8 @@ export default function StepPage() {
             saveStatus={saveStatus}
             onTabChange={setStep3ActiveTab}
             onChange={handleStep3Change}
+            onConcernToggle={handleStep3ConcernToggle}
+            onOtherConcernChange={handleStep3OtherConcernChange}
             onBlur={handleStep3Blur}
           />
         </div>
