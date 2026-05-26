@@ -212,6 +212,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
+      let redirecting = false
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Not authenticated')
@@ -240,8 +241,10 @@ export default function DashboardPage() {
           if (!ex || r.version > ex.version) outMap.set(r.step_id, r)
         }
 
-        // Redirect completely fresh workspaces to the onboarding welcome flow
-        if (outMap.size === 0) {
+        // Redirect workspaces that are truly just getting started (no approved steps and fewer than 3 step outputs)
+        const totalApprovedEarly = Array.from(outMap.values()).filter(r => r.status === 'approved').length
+        if (totalApprovedEarly === 0 && outMap.size < 3) {
+          redirecting = true
           router.push('/dashboard/onboarding')
           return
         }
@@ -262,7 +265,7 @@ export default function DashboardPage() {
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
-        setLoading(false)
+        if (!redirecting) setLoading(false)
       }
     }
     void load()
