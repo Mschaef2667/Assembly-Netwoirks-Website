@@ -653,6 +653,7 @@ export default function StepPage() {
   const step4SaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const preApplyContentRef = useRef<string>('')
   const preApplyPainPointsRef = useRef<PainPoint[]>([])
+  const originalContentRef = useRef<string>('')
 
   // ── Data load ───────────────────────────────────────────────────────────────
 
@@ -983,6 +984,7 @@ export default function StepPage() {
       : content
 
     if (action === 'draft') {
+      originalContentRef.current = content
       preApplyContentRef.current = content
       preApplyPainPointsRef.current = painPoints.map(pp => ({ ...pp }))
     }
@@ -1081,7 +1083,7 @@ export default function StepPage() {
     if (stepId === '4') {
       setPainPoints(preApplyPainPointsRef.current)
     } else {
-      setContent(preApplyContentRef.current)
+      setContent(originalContentRef.current)
     }
     setCopilotOutput(null)
   }
