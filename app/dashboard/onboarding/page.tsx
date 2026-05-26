@@ -438,15 +438,8 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {/* Phase cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
-          {phases.map(phase => (
-            <PhaseCard key={phase.number} phase={phase} />
-          ))}
-        </div>
-
         {/* CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '48px' }}>
           {allPhasesComplete ? (
             <Link
               href="/dashboard"
@@ -496,6 +489,13 @@ export default function OnboardingPage() {
           >
             Skip to dashboard
           </Link>
+        </div>
+
+        {/* Phase cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
+          {phases.map(phase => (
+            <PhaseCard key={phase.number} phase={phase} />
+          ))}
         </div>
       </div>
     </div>
