@@ -2200,14 +2200,16 @@ export default function StepPage() {
                   active={activeAction === 'verify' && copilotStreaming}
                 />
               )}
-              <ActionButton
-                dark
-                icon={Sparkles}
-                label="Improve"
-                onClick={() => void runCopilot('improve')}
-                disabled={copilotStreaming}
-                active={activeAction === 'improve' && copilotStreaming}
-              />
+              {!['1', '2', '3', '3.5'].includes(stepId) && (
+                <ActionButton
+                  dark
+                  icon={Sparkles}
+                  label="Improve"
+                  onClick={() => void runCopilot('improve')}
+                  disabled={copilotStreaming}
+                  active={activeAction === 'improve' && copilotStreaming}
+                />
+              )}
               {false && (
                 <ActionButton
                   dark
