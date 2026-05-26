@@ -161,30 +161,9 @@ Return ONLY valid JSON (no markdown fences, no prose) with this exact shape:
 }`
 
   } else if (stepId === '1') {
-    const searchInstruction = orgName
-      ? `Use web search to find the company website and product information. Search for "${orgName}" to find their product description, key features, target market, and differentiators. Use this to draft a complete company profile.`
-      : `Use web search to find company and product information based on the current content below. Use this to draft a complete company profile.`
-
-    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist.
-
-${searchInstruction}
-
-Your task: Write Step 1 — Product/Service Profile — for this workspace.
-
-After searching the web, write a 2-3 paragraph company profile covering:
-- What the company sells
-- Who they sell to (target buyers and industries)
-- Their primary use case or outcome delivered
-- Key industries served
-- What makes them different from alternatives
-
-Be specific and use language directly from the company's website. Do not use generic phrases.
-
-OUTPUT FORMAT: Return ONLY valid JSON with no markdown fences, no prose, no preamble. The response must start with { and end with }.
-
-Use this exact shape:
+    systemPrompt = `You are a JSON generator. Return ONLY a valid JSON object starting with { and ending with }. No markdown, no prose, no explanation. Use this exact shape:
 {
-  "draft": "<2-3 paragraph company profile as plain prose>",
+  "draft": "<2-3 paragraphs describing the company profile based on the search results provided>",
   "confidence": <integer 0-100>,
   "sources": ["<URL or source used>"],
   "assumptions": ["<assumption made>"],
@@ -192,14 +171,9 @@ Use this exact shape:
   "verification_checks": ["<factual claim to verify>"]
 }
 
-RULES:
-- Write from the company's perspective, describing what they sell and who they sell to.
-- Be specific about the product/service, use case, and target industries. Use language from the website.
-- Do not use generic phrases. Ground every sentence in what you find about the actual company.
-- Do not output any text before or after the JSON object. The first character must be { and the last must be }.
-- Confidence scoring: 71-100 if the company website was found with specific product details; 41-70 if only partial information was found; 0-40 if the company could not be found online.
+The draft must be 2-3 paragraphs covering: what the company sells, who they sell to, primary use case or outcome delivered, key industries served, and what makes them different from alternatives. Write from the company's perspective using specific language from the search results. Do not use generic phrases.
 
-${currentContent ? `CURRENT CONTENT (refine if present):\n${currentContent}` : '(no existing content — generate a first draft)'}`
+Confidence scoring: 71-100 if specific product details were found; 41-70 if only partial information was found; 0-40 if the company could not be found online.`
 
   } else if (stepId === '4') {
     // Extract Step 1 and Step 3 content from prerequisites
@@ -512,6 +486,31 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
 
+  // ── Step 1: two-step web search (search first, then generate clean JSON) ────
+  let webSearchResults = ''
+  if (stepId === '1' && !isImprove) {
+    const searchTarget = orgName || (currentContent ? currentContent.slice(0, 200) : 'the company')
+    const searchQuery = `Search for ${searchTarget} and return only the raw facts you find: company description, products/services, target customers, key differentiators. No prose, just facts.`
+    try {
+      const searchResponse = await anthropic.messages.create({
+        model,
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305' as const, name: 'web_search', max_uses: 3 }],
+        messages: [{ role: 'user', content: searchQuery }],
+      })
+      for (const block of searchResponse.content) {
+        if (block.type === 'text') webSearchResults += block.text
+      }
+    } catch (searchErr) {
+      const msg = searchErr instanceof Error ? searchErr.message : String(searchErr)
+      console.warn('[copilot/draft] Step 1 web search pre-call failed:', msg)
+    }
+  }
+
+  const userMessage = stepId === '1' && !isImprove
+    ? `SEARCH RESULTS:\n${webSearchResults || '(no results found)'}\n\nGenerate the JSON now.`
+    : 'Generate the draft now.'
+
   let fullText = ''
   let streamError: string | null = null
   let streamErrorCode = 'unknown'
@@ -521,19 +520,13 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
     async start(controller) {
       const encoder = new TextEncoder()
 
-      const step1Tool: Anthropic.Messages.WebSearchTool20250305 | undefined =
-        stepId === '1' && !isImprove
-          ? { type: 'web_search_20250305', name: 'web_search', max_uses: 3 }
-          : undefined
-
       outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const claudeStream = anthropic.messages.stream({
             model,
             max_tokens: 1500,
-            messages: [{ role: 'user', content: 'Generate the draft now.' }],
+            messages: [{ role: 'user', content: userMessage }],
             system: systemPrompt,
-            ...(step1Tool ? { tools: [step1Tool] } : {}),
           })
 
           for await (const chunk of claudeStream) {
