@@ -597,6 +597,7 @@ REQUIRED TYPE DISTRIBUTION (total across all 15 questions):
 - multiple_choice: 2 questions
 
 QUESTION WRITING RULES:
+- Keep each question under 15 words — no sub-questions, no follow-ups, no compound sentences
 - All questions follow the audience framing above — apply it consistently to every question
 - Be specific to the industry, segments, and decision maker roles from the Phase 1 data below
 - Every question must be tailored — no generic filler questions
@@ -690,7 +691,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
-  const maxTokens = stepId === 'survey-builder' ? 3000 : 1500
+  const maxTokens = stepId === 'survey-builder' ? 4000 : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
   let webSearchResults = ''
