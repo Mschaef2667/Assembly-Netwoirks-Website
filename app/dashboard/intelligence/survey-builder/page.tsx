@@ -715,6 +715,47 @@ export default function SurveyBuilderPage() {
               )
             })}
           </div>
+
+          {/* Mark as Complete — bottom of left column */}
+          {isApproved ? (
+            <div style={{
+              marginTop: '20px', backgroundColor: 'rgba(22,163,74,0.08)',
+              borderRadius: '12px', padding: '20px 24px',
+              border: '1px solid rgba(22,163,74,0.25)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#16A34A' }}>
+                  Survey marked as complete
+                </span>
+              </div>
+              <Link
+                href="/dashboard/intelligence"
+                style={{ fontSize: '13px', color: '#0EA5E9', textDecoration: 'underline', fontWeight: 600 }}
+              >
+                Return to Intelligence
+              </Link>
+            </div>
+          ) : total > 0 ? (
+            <button
+              onClick={() => void handleMarkComplete()}
+              disabled={markingComplete}
+              style={{
+                marginTop: '20px', width: '100%', minHeight: '52px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                backgroundColor: markingComplete ? 'rgba(22,163,74,0.55)' : '#16A34A',
+                color: '#FFFFFF', border: 'none', borderRadius: '10px',
+                cursor: markingComplete ? 'not-allowed' : 'pointer',
+                fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
+              }}
+            >
+              {markingComplete
+                ? <><Loader2 size={18} className="animate-spin" /> Saving…</>
+                : <><CheckCircle2 size={18} /> Mark Survey as Complete</>
+              }
+            </button>
+          ) : null}
         </div>
 
         {/* ── RIGHT: Copilot panel (40%) ── */}
@@ -831,47 +872,6 @@ export default function SurveyBuilderPage() {
               </button>
             </div>
           </div>
-
-          {/* Mark as Complete */}
-          {isApproved ? (
-            <div style={{
-              marginTop: '16px', backgroundColor: 'rgba(22,163,74,0.08)',
-              borderRadius: '12px', padding: '20px 24px',
-              border: '1px solid rgba(22,163,74,0.25)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#16A34A' }}>
-                  Survey marked as complete
-                </span>
-              </div>
-              <Link
-                href="/dashboard/intelligence"
-                style={{ fontSize: '13px', color: '#0EA5E9', textDecoration: 'underline', fontWeight: 600 }}
-              >
-                Return to Intelligence
-              </Link>
-            </div>
-          ) : total > 0 ? (
-            <button
-              onClick={() => void handleMarkComplete()}
-              disabled={markingComplete}
-              style={{
-                marginTop: '16px', width: '100%', minHeight: '48px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                backgroundColor: markingComplete ? 'rgba(22,163,74,0.55)' : '#16A34A',
-                color: '#FFFFFF', border: 'none', borderRadius: '10px',
-                cursor: markingComplete ? 'not-allowed' : 'pointer',
-                fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
-              }}
-            >
-              {markingComplete
-                ? <><Loader2 size={18} className="animate-spin" /> Saving…</>
-                : <><CheckCircle2 size={18} /> Mark Survey as Complete</>
-              }
-            </button>
-          ) : null}
 
           {/* Tips panel */}
           <TipsPanel tips={STEP_TIPS['survey-builder']} />
