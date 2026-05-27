@@ -178,6 +178,86 @@ Confidence scoring — apply these rules exactly based on what is present in the
 - Score 41-70: A company website was found but product information is thin, vague, or generic
 - Score 0-40: No company website was found, or the company could not be identified online`
 
+  } else if (stepId === '2') {
+    // Step 2: Target Market Segments
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Analyze the three target market segments defined for Step 2 and provide strategic insights for each.
+
+For each segment provide:
+- Why this segment is a strong fit based on the company profile
+- The primary buying trigger that would cause this segment to seek a solution
+- The biggest risk or challenge in selling to this segment
+- One specific recommendation to strengthen the segment definition
+
+OUTPUT FORMAT: Return ONLY valid JSON with no markdown fences:
+{
+  "draft": "<3 paragraphs, one per segment, each starting with the segment name in bold>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+CONFIDENCE: 71-100 if all 3 segments have name and industry defined, 41-70 if 1-2 segments defined, 0-40 if no segments defined.
+
+STEP 1 — Company Profile (what the company sells):
+${step1Text}
+${provisionalNote}
+CURRENT CONTENT (segments the user has defined):
+${currentContent || '(empty — no segments defined yet)'}
+${extraContext ? `\nADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+
+  } else if (stepId === '3') {
+    // Step 3: Key Decision Makers
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step2Text = step2 ? JSON.stringify(step2.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Analyze the key decision makers identified for each segment and provide strategic selling insights.
+
+For each segment and decision maker provide:
+- The most effective first message to get their attention based on their primary concerns
+- The objection they are most likely to raise and how to overcome it
+- The metric or outcome they care most about that Assembly AI should lead with
+
+OUTPUT FORMAT: Return ONLY valid JSON with no markdown fences:
+{
+  "draft": "<organized by segment, each decision maker on its own line with their name and key insight>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+CONFIDENCE: 71-100 if decision makers have roles and primary concerns defined, 41-70 if partial, 0-40 if empty.
+
+STEP 1 — Company Profile (what the company sells):
+${step1Text}
+
+STEP 2 — Target Market Segments:
+${step2Text}
+${provisionalNote}
+CURRENT CONTENT (decision makers the user has defined):
+${currentContent || '(empty — no decision makers defined yet)'}
+${extraContext ? `\nADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+
   } else if (stepId === '4') {
     // Extract Step 1 and Step 3 content from prerequisites
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
