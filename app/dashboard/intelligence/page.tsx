@@ -11,6 +11,7 @@ type GateStatus = 'locked' | 'pending' | 'approved'
 
 interface PhaseStatus {
   surveyBuilt: boolean
+  surveyInProgress: boolean
   responsesImported: boolean
   dcpMapGenerated: boolean
   gate1Status: GateStatus
@@ -62,11 +63,12 @@ function GateBadge({ status }: { status: GateStatus }) {
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
-function StepDot({ done }: { done: boolean }) {
+function StepDot({ done, inProgress = false }: { done: boolean; inProgress?: boolean }) {
+  const bg = done ? '#16A34A' : inProgress ? '#E8520A' : 'rgba(255,255,255,0.15)'
   return (
     <div style={{
       width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-      backgroundColor: done ? '#16A34A' : 'rgba(255,255,255,0.15)',
+      backgroundColor: bg,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {done && <CheckCircle2 size={12} color="#FFFFFF" />}
@@ -79,6 +81,11 @@ function StepDot({ done }: { done: boolean }) {
 function hasMeaningfulSurveyContent(content: Record<string, unknown>): boolean {
   const questions = content['questions']
   if (Array.isArray(questions) && questions.length > 0) return true
+  // Handle survey builder's Record<number, Question[]> stored as object
+  if (questions && typeof questions === 'object' && !Array.isArray(questions)) {
+    const vals = Object.values(questions as Record<string, unknown>)
+    if (vals.some(v => Array.isArray(v) && (v as unknown[]).length > 0)) return true
+  }
   for (let i = 1; i <= 7; i++) {
     const stage = content[`stage_${i}`]
     if (Array.isArray(stage) && stage.length > 0) return true
@@ -91,6 +98,7 @@ function hasMeaningfulSurveyContent(content: Record<string, unknown>): boolean {
 export default function IntelligencePage() {
   const [status, setStatus] = useState<PhaseStatus>({
     surveyBuilt: false,
+    surveyInProgress: false,
     responsesImported: false,
     dcpMapGenerated: false,
     gate1Status: 'locked',
@@ -108,7 +116,7 @@ export default function IntelligencePage() {
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
         const [surveyRes, responsesRes, dcpRes] = await Promise.all([
-          supabase.from('step_output').select('id, content').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
+          supabase.from('step_output').select('id, content, status').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
           supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
         ])
@@ -120,10 +128,13 @@ export default function IntelligencePage() {
           ? (surveyRes.data[0] as Record<string, unknown>)
           : null
         const surveyContent = surveyRow ? (surveyRow['content'] as Record<string, unknown> | null) : null
-        const surveyBuilt = !!(surveyContent && hasMeaningfulSurveyContent(surveyContent))
+        const surveyRowStatus = surveyRow ? String(surveyRow['status'] ?? 'draft') : null
+        const surveyBuilt = surveyRowStatus === 'approved'
+        const surveyInProgress = !surveyBuilt && !!(surveyContent && hasMeaningfulSurveyContent(surveyContent))
 
         setStatus({
           surveyBuilt,
+          surveyInProgress,
           responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
           dcpMapGenerated: !!dcpRow,
           gate1Status: dcpStatus === 'approved' ? 'approved'
@@ -146,6 +157,7 @@ export default function IntelligencePage() {
       description: 'Generate tailored DCP questions for four buyer audiences using Copilot. Export as Google Forms-ready CSV.',
       href: '/dashboard/intelligence/survey-builder',
       done: status.surveyBuilt,
+      inProgress: status.surveyInProgress,
       step: 1,
       domId: 'intelligence-survey',
     },
@@ -155,6 +167,7 @@ export default function IntelligencePage() {
       description: 'Import completed survey responses via Google Sheets URL or CSV upload. Responses fuel the Decision Clarity Profile analysis.',
       href: '/dashboard/intelligence/responses',
       done: status.responsesImported,
+      inProgress: false,
       step: 2,
       domId: undefined,
     },
@@ -164,6 +177,7 @@ export default function IntelligencePage() {
       description: 'Copilot analyzes responses across all 7 stages and generates your Decision Clarity Profile. Submit for Gate 1 approval to unlock Phase 2.',
       href: '/dashboard/intelligence/dcp-map',
       done: status.dcpMapGenerated,
+      inProgress: false,
       step: 3,
       domId: 'intelligence-dcp',
     },
@@ -205,7 +219,7 @@ export default function IntelligencePage() {
 
         {/* Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-          {cards.map(({ icon: Icon, title, description, href, done, step, domId }) => (
+          {cards.map(({ icon: Icon, title, description, href, done, inProgress, step, domId }) => (
             <div
               key={href}
               id={domId}
@@ -214,10 +228,10 @@ export default function IntelligencePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '10px',
-                  backgroundColor: done ? 'rgba(22,163,74,0.2)' : 'rgba(255,255,255,0.07)',
+                  backgroundColor: done ? 'rgba(22,163,74,0.2)' : inProgress ? 'rgba(232,82,10,0.15)' : 'rgba(255,255,255,0.07)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <Icon size={20} color={done ? '#16A34A' : '#0EA5E9'} />
+                  <Icon size={20} color={done ? '#16A34A' : inProgress ? '#E8520A' : '#0EA5E9'} />
                 </div>
                 <div>
                   <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
@@ -232,9 +246,9 @@ export default function IntelligencePage() {
               </p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 'auto' }}>
-                <StepDot done={done} />
-                <span style={{ fontSize: '12px', color: done ? '#16A34A' : 'rgba(255,255,255,0.4)' }}>
-                  {done ? 'Complete' : 'Not started'}
+                <StepDot done={done} inProgress={inProgress} />
+                <span style={{ fontSize: '12px', color: done ? '#16A34A' : inProgress ? '#E8520A' : 'rgba(255,255,255,0.4)' }}>
+                  {done ? 'Complete' : inProgress ? 'In Progress' : 'Not started'}
                 </span>
               </div>
 
@@ -247,7 +261,7 @@ export default function IntelligencePage() {
                   fontSize: '14px', fontWeight: 600, textDecoration: 'none',
                 }}
               >
-                {done ? 'Review' : 'Start'}
+                {done ? 'Review' : inProgress ? 'Continue' : 'Start'}
               </Link>
             </div>
           ))}
