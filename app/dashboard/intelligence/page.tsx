@@ -125,8 +125,8 @@ export default function IntelligencePage() {
     {
       icon: ClipboardList,
       title: 'Survey Builder',
-      description: 'Select and customize Decision Clarity Process questions across 7 buying journey stages. Export as a Google Forms-ready CSV.',
-      href: '/dashboard/intelligence/survey',
+      description: 'Generate tailored DCP questions for four buyer audiences using Copilot. Export as Google Forms-ready CSV.',
+      href: '/dashboard/intelligence/survey-builder',
       done: status.surveyBuilt,
       step: 1,
       domId: 'intelligence-survey',
