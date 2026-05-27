@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { ShieldCheck, Lock, Clock, ChevronRight, X } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -198,7 +197,6 @@ function SkeletonBar({ w }: { w: number }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const router = useRouter()
   const [stepDefs, setStepDefs] = useState<StepDef[]>([])
   const [latestOutputs, setLatestOutputs] = useState<Map<string, StepOut>>(new Map())
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
@@ -213,7 +211,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      let redirecting = false
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Not authenticated')
@@ -242,15 +239,6 @@ export default function DashboardPage() {
           if (!ex || r.version > ex.version) outMap.set(r.step_id, r)
         }
 
-        // Redirect until all 6 Phase 1 steps are approved
-        const FOUNDATION_STEPS = ['1', '2', '3', '3.5', '4', '4.5']
-        const foundationApproved = FOUNDATION_STEPS.filter(id => outMap.get(id)?.status === 'approved').length
-        if (foundationApproved < 6) {
-          redirecting = true
-          router.push('/dashboard/onboarding')
-          return
-        }
-
         // Dependency map: step_id → [prerequisite_ids]
         const dm = new Map<string, string[]>()
         for (const d of (depsRes.data ?? []) as { step_id: string; prerequisite_step_id: string }[]) {
@@ -267,7 +255,7 @@ export default function DashboardPage() {
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
-        if (!redirecting) setLoading(false)
+        setLoading(false)
       }
     }
     void load()
@@ -399,8 +387,8 @@ export default function DashboardPage() {
   const score = computeScore(latestOutputs, icpRows, dcpRow)
   const grade = getGrade(scoreAnimated)
 
-  // Phase 1 Complete banner: all 6 foundation steps approved, Gate 1 not yet approved
-  const PHASE1_STEPS = ['1', '2', '3', '3.5', '4', '4.5']
+  // Phase 1 Complete banner: all 4 foundation steps approved, Gate 1 not yet approved
+  const PHASE1_STEPS = ['1', '2', '3', '3.5']
   const phase1Complete = PHASE1_STEPS.every(id => approvedSet.has(id))
   const showPhase1Banner = phase1Complete && gate1 !== 'approved' && !bannerDismissed
 

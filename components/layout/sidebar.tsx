@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
+  BookOpen,
   Building2,
   Brain,
   Target,
@@ -20,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabase/client'
 
 const navItems = [
+  { label: 'Onboarding',      href: '/dashboard/onboarding',         icon: BookOpen  },
   { label: 'Workspace',       href: '/dashboard',                    icon: Building2 },
   { label: 'Intelligence',    href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
   { label: 'Target Markets',  href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
@@ -44,6 +46,7 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userInitial, setUserInitial] = useState<string>('')
   const [orgName, setOrgName] = useState<string | null>(null)
+  const [onboardingComplete, setOnboardingComplete] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -66,15 +69,20 @@ export default function Sidebar() {
 
           const orgId = String(row['org_id'] ?? '')
           if (orgId) {
-            const { data: orgData } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', orgId)
-              .single()
-            if (orgData) {
-              const orgRow = orgData as Record<string, unknown>
+            const [orgRes, stepsRes] = await Promise.all([
+              supabase.from('organizations').select('name').eq('id', orgId).single(),
+              supabase.from('step_output')
+                .select('step_id,status')
+                .eq('workspace_id', orgId)
+                .in('step_id', ['1', '2', '3', '3.5']),
+            ])
+            if (orgRes.data) {
+              const orgRow = orgRes.data as Record<string, unknown>
               setOrgName(String(orgRow['name'] ?? ''))
             }
+            const steps = (stepsRes.data ?? []) as { step_id: string; status: string }[]
+            const approvedIds = new Set(steps.filter(s => s.status === 'approved').map(s => s.step_id))
+            setOnboardingComplete(['1', '2', '3', '3.5'].every(id => approvedIds.has(id)))
           }
         } else if (user.email) {
           setUserInitial(user.email[0].toUpperCase())
@@ -116,6 +124,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {navItems.map(({ label, href, icon: Icon, id }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
+          const isOnboarding = href === '/dashboard/onboarding'
           return (
             <Link
               key={href}
@@ -130,7 +139,19 @@ export default function Sidebar() {
               className="flex items-center gap-3 px-3 rounded-md text-sm font-medium transition-colors hover:bg-white/5 hover:text-white"
             >
               <Icon size={18} strokeWidth={1.8} />
-              {label}
+              <span style={{ flex: 1 }}>{label}</span>
+              {isOnboarding && onboardingComplete && (
+                <span style={{
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  backgroundColor: '#16A34A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                    <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              )}
             </Link>
           )
         })}

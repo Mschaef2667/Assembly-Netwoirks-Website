@@ -2,34 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { CheckCircle2, Circle, Lock, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Circle, Play, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type StepStatus = 'not_started' | 'draft' | 'approved'
 
-interface CheckItem {
+interface Phase1Step {
   badge: string
   title: string
   description: string
-  complete: boolean
-  isGate?: boolean
-  stepStatus?: StepStatus
-}
-
-interface PhaseData {
-  number: number
-  name: string
-  unlockNote: string
-  locked: boolean
-  items: CheckItem[]
+  href: string
+  stepStatus: StepStatus
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const PHASE_CARD: React.CSSProperties = {
+const CARD: React.CSSProperties = {
   backgroundColor: '#0F2140',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: '12px',
@@ -38,195 +28,123 @@ const PHASE_CARD: React.CSSProperties = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function CheckRow({ item }: { item: CheckItem }) {
-  const isComplete = item.complete
+function Phase1Row({ step }: { step: Phase1Step }) {
+  const isApproved = step.stepStatus === 'approved'
+  const isDraft = step.stepStatus === 'draft'
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '16px',
-      padding: '14px 0',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
-    }}>
-      {/* Badge */}
-      <div style={{
-        flexShrink: 0,
-        width: '36px',
-        height: '36px',
-        borderRadius: '8px',
-        backgroundColor: item.isGate
-          ? (isComplete ? 'rgba(14,165,233,0.2)' : 'rgba(255,255,255,0.06)')
-          : (isComplete ? 'rgba(232,82,10,0.15)' : '#E8520A'),
-        border: item.isGate
-          ? (isComplete ? '1px solid rgba(14,165,233,0.4)' : '1px solid rgba(255,255,255,0.1)')
-          : 'none',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        {item.isGate ? (
-          <ShieldCheck
-            size={16}
-            style={{ color: isComplete ? '#0EA5E9' : 'rgba(255,255,255,0.35)' }}
-          />
-        ) : (
-          <span style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            color: isComplete ? 'rgba(255,255,255,0.5)' : '#FFFFFF',
-            letterSpacing: '-0.02em',
-          }}>
-            {item.badge}
-          </span>
-        )}
-      </div>
-
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0, paddingTop: '2px' }}>
-        <p style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          color: isComplete ? 'rgba(255,255,255,0.5)' : '#FFFFFF',
-          margin: '0 0 3px',
-          textDecoration: isComplete ? 'line-through' : 'none',
-        }}>
-          {item.title}
-        </p>
-        <p style={{
-          fontSize: '12px',
-          color: 'rgba(255,255,255,0.35)',
-          margin: 0,
-          lineHeight: 1.5,
-        }}>
-          {item.description}
-        </p>
-      </div>
-
-      {/* Status icon */}
-      <div style={{ flexShrink: 0, paddingTop: '2px' }}>
-        {item.stepStatus ? (
-          item.stepStatus === 'approved' ? (
-            <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
-          ) : item.stepStatus === 'draft' ? (
-            <Circle size={20} style={{ color: '#E8520A' }} />
-          ) : (
-            <Circle size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
-          )
-        ) : isComplete ? (
-          <CheckCircle2 size={20} style={{ color: '#0EA5E9' }} />
-        ) : (
-          <Circle size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
-        )}
-      </div>
-    </div>
-  )
-}
-
-function PhaseCard({ phase }: { phase: PhaseData }) {
-  const allComplete = phase.items.every(i => i.complete)
-
-  return (
-    <div style={{ ...PHASE_CARD, position: 'relative', overflow: 'hidden' }}>
-      {/* Header */}
+    <Link
+      href={step.href}
+      style={{ textDecoration: 'none' }}
+    >
       <div style={{
         display: 'flex',
         alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: '20px',
+        gap: '16px',
+        padding: '14px 0',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        cursor: 'pointer',
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <div style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              backgroundColor: phase.locked
-                ? 'rgba(255,255,255,0.08)'
-                : (allComplete ? 'rgba(22,163,74,0.2)' : 'rgba(232,82,10,0.15)'),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              {phase.locked ? (
-                <Lock size={13} style={{ color: 'rgba(255,255,255,0.3)' }} />
-              ) : allComplete ? (
-                <CheckCircle2 size={13} style={{ color: '#16A34A' }} />
-              ) : (
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#E8520A' }}>
-                  {phase.number}
-                </span>
-              )}
-            </div>
-            <h3 style={{
-              fontSize: '15px',
-              fontWeight: 700,
-              color: phase.locked ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
-              margin: 0,
-            }}>
-              Phase {phase.number} — {phase.name}
-            </h3>
-          </div>
+        {/* Badge */}
+        <div style={{
+          flexShrink: 0,
+          width: '36px',
+          height: '36px',
+          borderRadius: '8px',
+          backgroundColor: isApproved ? 'rgba(232,82,10,0.15)' : '#E8520A',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <span style={{
+            fontSize: '12px',
+            fontWeight: 700,
+            color: isApproved ? 'rgba(255,255,255,0.5)' : '#FFFFFF',
+            letterSpacing: '-0.02em',
+          }}>
+            {step.badge}
+          </span>
+        </div>
+
+        {/* Text */}
+        <div style={{ flex: 1, minWidth: 0, paddingTop: '2px' }}>
+          <p style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color: isApproved ? 'rgba(255,255,255,0.5)' : '#FFFFFF',
+            margin: '0 0 3px',
+            textDecoration: isApproved ? 'line-through' : 'none',
+          }}>
+            {step.title}
+          </p>
           <p style={{
             fontSize: '12px',
-            color: phase.locked ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.4)',
+            color: 'rgba(255,255,255,0.35)',
             margin: 0,
+            lineHeight: 1.5,
           }}>
-            {phase.unlockNote}
+            {step.description}
           </p>
         </div>
 
-        {phase.locked && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '20px',
-            padding: '4px 10px',
-            flexShrink: 0,
-          }}>
-            <Lock size={11} style={{ color: 'rgba(255,255,255,0.3)' }} />
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
-              Locked
-            </span>
-          </div>
-        )}
-
-        {allComplete && !phase.locked && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: 'rgba(22,163,74,0.15)',
-            border: '1px solid rgba(22,163,74,0.3)',
-            borderRadius: '20px',
-            padding: '4px 10px',
-            flexShrink: 0,
-          }}>
-            <CheckCircle2 size={11} style={{ color: '#16A34A' }} />
-            <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
-              Complete
-            </span>
-          </div>
-        )}
+        {/* Status icon */}
+        <div style={{ flexShrink: 0, paddingTop: '2px' }}>
+          {isApproved ? (
+            <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
+          ) : isDraft ? (
+            <Circle size={20} style={{ color: '#E8520A' }} />
+          ) : (
+            <Circle size={20} style={{ color: 'rgba(255,255,255,0.2)' }} />
+          )}
+        </div>
       </div>
+    </Link>
+  )
+}
 
-      {/* Items */}
-      <div style={{ opacity: phase.locked ? 0.35 : 1, pointerEvents: phase.locked ? 'none' : 'auto' }}>
-        {phase.items.map((item, i) => (
-          <CheckRow key={i} item={item} />
-        ))}
-      </div>
+function AdminCheckRow({ label, href }: { label: string; href?: string }) {
+  const content = (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '12px 0',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+    }}>
+      <div style={{
+        width: '18px',
+        height: '18px',
+        borderRadius: '4px',
+        border: '1px solid rgba(255,255,255,0.2)',
+        flexShrink: 0,
+      }} />
+      <span style={{
+        fontSize: '14px',
+        color: 'rgba(255,255,255,0.7)',
+        flex: 1,
+      }}>
+        {label}
+      </span>
+      {href && (
+        <ExternalLink size={13} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+      )}
     </div>
   )
+
+  if (href) {
+    return (
+      <Link href={href} style={{ textDecoration: 'none' }}>
+        {content}
+      </Link>
+    )
+  }
+  return content
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
-  const [phases, setPhases] = useState<PhaseData[]>([])
+  const [phase1Steps, setPhase1Steps] = useState<Phase1Step[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -240,158 +158,50 @@ export default function OnboardingPage() {
         if (!userRow) return
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [outputsRes, dcpRes] = await Promise.all([
-          supabase.from('step_output').select('step_id,status').eq('workspace_id', orgId),
-          supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
-        ])
+        const { data: outputsData } = await supabase
+          .from('step_output')
+          .select('step_id,status')
+          .eq('workspace_id', orgId)
+          .in('step_id', ['1', '2', '3', '3.5'])
 
-        const outputs = (outputsRes.data ?? []) as { step_id: string; status: string }[]
-
-        const approvedSet = new Set(
-          outputs.filter(o => o.status === 'approved').map(o => o.step_id)
-        )
-
-        // outputMap still needed for Phase 2 / Phase 3 item completion checks
-        const outputMap = new Map<string, string>()
-        for (const o of outputs) {
-          outputMap.set(o.step_id, o.status)
-        }
-
-        const dcpStatus = (dcpRes.data as { status?: string } | null)?.status ?? ''
-
-        // ── Phase 1: Decision Intelligence ──────────────────────────────────
+        const outputs = (outputsData ?? []) as { step_id: string; status: string }[]
+        const outputMap = new Map(outputs.map(o => [o.step_id, o.status]))
 
         const getStepStatus = (id: string): StepStatus => {
           if (!outputMap.has(id)) return 'not_started'
           return outputMap.get(id) === 'approved' ? 'approved' : 'draft'
         }
 
-        const p1gate1 = dcpStatus === 'approved'
-        const phase1: PhaseData = {
-          number: 1,
-          name: 'Decision Intelligence',
-          unlockNote: 'Complete this phase to unlock everything else',
-          locked: false,
-          items: [
-            {
-              badge: '1',
-              title: 'Step 1 — Product / Service Profile',
-              description: 'Describe what you sell, your primary use case, and key industries served',
-              complete: approvedSet.has('1'),
-              stepStatus: getStepStatus('1'),
-            },
-            {
-              badge: '2',
-              title: 'Step 2 — Top 3 Target Market Segments',
-              description: 'Name and describe the three segments you sell into most effectively',
-              complete: approvedSet.has('2'),
-              stepStatus: getStepStatus('2'),
-            },
-            {
-              badge: '3',
-              title: 'Step 3 — Key Decision Makers',
-              description: 'Map the buying roles, influence levels, and primary concerns per segment',
-              complete: approvedSet.has('3'),
-              stepStatus: getStepStatus('3'),
-            },
-            {
-              badge: '3.5',
-              title: 'Step 3.5 — The Yes Criteria',
-              description: 'Identify the ultimate decision maker and what will make them say yes.',
-              complete: approvedSet.has('3.5'),
-              stepStatus: getStepStatus('3.5'),
-            },
-            {
-              badge: '4',
-              title: 'Step 4 — Endemic Problems',
-              description: 'Define the core pain points your buyers experience that your solution addresses',
-              complete: approvedSet.has('4'),
-              stepStatus: getStepStatus('4'),
-            },
-            {
-              badge: '4.5',
-              title: 'Step 4.5 — GTM Snapshot',
-              description: 'Capture your current go-to-market metrics, sales motion, and biggest challenges',
-              complete: approvedSet.has('4.5'),
-              stepStatus: getStepStatus('4.5'),
-            },
-            {
-              badge: 'G1',
-              title: 'Gate 1: Submit DCP Map for approval',
-              description: 'Submit your Decision Clarity Profile to unlock Phase 2',
-              complete: p1gate1,
-              isGate: true,
-            },
-          ],
-        }
-
-        // ── Phase 2: Company Formulas ────────────────────────────────────────
-
-        const GATE2_STEPS = ['10', '11', '12', '13', '14', '15', '16']
-        const p2gate2 = GATE2_STEPS.every(id => approvedSet.has(id))
-        const phase2: PhaseData = {
-          number: 2,
-          name: 'Company Formulas',
-          unlockNote: 'Unlocks after Gate 1 — Decision Clarity Profile approved',
-          locked: !p1gate1,
-          items: [
-            {
-              badge: '5–10',
-              title: 'Define your ICP, Offers, and Buying Center',
-              description: 'Identify your ideal customer profiles, align your offers, and map buying roles',
-              complete: ['5', '6', '7', '8', '9', '10'].some(id => outputMap.has(id)),
-            },
-            {
-              badge: '11–16',
-              title: 'Build CVPs, KSPs, and Key Formulas',
-              description: 'Develop your core value propositions, key selling points, and critical success formulas',
-              complete: ['11', '12', '13', '14', '15', '16'].some(id => outputMap.has(id)),
-            },
-            {
-              badge: 'G2',
-              title: 'Gate 2: Submit Company Formulas for approval',
-              description: 'Approve your Company Formulas to unlock Phase 3',
-              complete: p2gate2,
-              isGate: true,
-            },
-          ],
-        }
-
-        // ── Phase 3: Competitive and Strategic ──────────────────────────────
-
-        const phase3: PhaseData = {
-          number: 3,
-          name: 'Competitive & Strategic',
-          unlockNote: 'Unlocks after Gate 2 — Company Formulas approved',
-          locked: !p2gate2,
-          items: [
-            {
-              badge: '17–26',
-              title: 'Competitive analysis and strategic messages',
-              description: 'Map competitive environments, identify opportunities, and build your strategic messaging',
-              complete: ['17', '18', '19', '20', '21', '22', '23', '24', '25', '26'].some(
-                id => outputMap.has(id)
-              ),
-            },
-            {
-              badge: '27–38',
-              title: 'Strategic Plan and final approvals',
-              description: 'Build your message blend, action plan, and deal scorecard',
-              complete: ['27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'].some(
-                id => outputMap.has(id)
-              ),
-            },
-            {
-              badge: 'G3–4',
-              title: 'Gate 3 and 4: Final approvals',
-              description: 'Approve Strategic Messages and Strategic Plan to complete your C3 Method',
-              complete: approvedSet.has('30') && approvedSet.has('38'),
-              isGate: true,
-            },
-          ],
-        }
-
-        setPhases([phase1, phase2, phase3])
+        setPhase1Steps([
+          {
+            badge: '1',
+            title: 'Step 1 — Product / Service Profile',
+            description: 'Describe what you sell, your primary use case, and key industries served',
+            href: '/dashboard/journeys/step/1',
+            stepStatus: getStepStatus('1'),
+          },
+          {
+            badge: '2',
+            title: 'Step 2 — Top 3 Target Market Segments',
+            description: 'Name and describe the three segments you sell into most effectively',
+            href: '/dashboard/journeys/step/2',
+            stepStatus: getStepStatus('2'),
+          },
+          {
+            badge: '3',
+            title: 'Step 3 — Key Decision Makers',
+            description: 'Map the buying roles, influence levels, and primary concerns per segment',
+            href: '/dashboard/journeys/step/3',
+            stepStatus: getStepStatus('3'),
+          },
+          {
+            badge: '3.5',
+            title: 'Step 3.5 — The Yes Criteria',
+            description: 'Identify the ultimate decision maker and what will make them say yes',
+            href: '/dashboard/journeys/step/3.5',
+            stepStatus: getStepStatus('3.5'),
+          },
+        ])
       } finally {
         setLoading(false)
       }
@@ -405,8 +215,8 @@ export default function OnboardingPage() {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0A1628', padding: '48px 32px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {[5, 3, 3].map((rows, i) => (
-            <div key={i} style={PHASE_CARD}>
+          {[4, 4].map((rows, i) => (
+            <div key={i} style={CARD}>
               {Array.from({ length: rows + 1 }).map((_, j) => (
                 <div key={j} style={{
                   height: '14px', borderRadius: '4px',
@@ -424,38 +234,26 @@ export default function OnboardingPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  const allPhasesComplete = phases.every(p => p.items.every(i => i.complete))
+  const allPhase1Complete = phase1Steps.every(s => s.stepStatus === 'approved')
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0A1628', padding: '48px 32px 64px' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* Logo */}
-        <div style={{ marginBottom: '40px' }}>
-          <Image
-            src="/images/logo.png"
-            alt="Assembly AI"
-            width={160}
-            height={40}
-            style={{ maxHeight: '40px', width: 'auto' }}
-            priority
-          />
-        </div>
-
         {/* Headline */}
-        <div style={{ marginBottom: '48px' }}>
+        <div style={{ marginBottom: '32px' }}>
           <h1 style={{
-            fontSize: '36px',
+            fontSize: '32px',
             fontWeight: 800,
             color: '#FFFFFF',
-            margin: '0 0 12px',
+            margin: '0 0 10px',
             lineHeight: 1.15,
             letterSpacing: '-0.02em',
           }}>
             Welcome to Assembly AI
           </h1>
           <p style={{
-            fontSize: '17px',
+            fontSize: '16px',
             color: 'rgba(255,255,255,0.55)',
             margin: 0,
             lineHeight: 1.6,
@@ -465,8 +263,8 @@ export default function OnboardingPage() {
         </div>
 
         {/* CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '48px' }}>
-          {allPhasesComplete ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
+          {allPhase1Complete ? (
             <Link
               href="/dashboard"
               style={{
@@ -517,49 +315,164 @@ export default function OnboardingPage() {
           </Link>
         </div>
 
-        {/* Phase cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
-          {phases.map((phase, i) => (
-            <div key={phase.number}>
-              <PhaseCard phase={phase} />
-              {i === 0 && (
-                <div style={{
-                  marginTop: '20px',
-                  borderLeft: '4px solid #E8520A',
-                  backgroundColor: '#0F2140',
-                  borderRadius: '0 12px 12px 0',
-                  padding: '20px 24px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderLeftColor: '#E8520A',
-                  borderLeftWidth: '4px',
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* Section 1 — Intro Video Placeholder */}
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            paddingBottom: '56.25%',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            backgroundColor: '#0A1628',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '16px',
+              padding: '24px',
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: '#E8520A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Play size={28} fill="#FFFFFF" style={{ color: '#FFFFFF', marginLeft: '3px' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{
+                  fontSize: '17px',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  margin: '0 0 8px',
                 }}>
-                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#E8520A', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
-                    Before You Begin Phase 2
-                  </p>
-                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', lineHeight: '1.6', margin: '0 0 16px' }}>
-                    Intelligence Gathering is a critical step between Phase 1 and Phase 2. Before building your Company Formulas, you must complete the Decision Clarity Process — a structured survey that reveals exactly how your buyers make decisions. Gate 1 approval requires a completed DCP Map.
-                  </p>
-                  <Link
-                    href="/dashboard/intelligence"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      minHeight: '44px',
-                      padding: '0 20px',
-                      borderRadius: '8px',
-                      backgroundColor: '#E8520A',
-                      color: '#FFFFFF',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Go to Intelligence
-                  </Link>
+                  Watch: Getting Started with Assembly AI
+                </p>
+                <p style={{
+                  fontSize: '13px',
+                  color: 'rgba(255,255,255,0.45)',
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}>
+                  Learn how to complete your setup and get the most out of the C3 Method. Video coming soon.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2 — Phase 1 Checklist */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <h2 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#FFFFFF',
+                margin: 0,
+              }}>
+                Phase 1 — Company Foundation
+              </h2>
+              {allPhase1Complete && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'rgba(22,163,74,0.15)',
+                  border: '1px solid rgba(22,163,74,0.3)',
+                  borderRadius: '20px',
+                  padding: '4px 10px',
+                }}>
+                  <CheckCircle2 size={11} style={{ color: '#16A34A' }} />
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>Complete</span>
                 </div>
               )}
             </div>
-          ))}
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              Complete these four steps to establish your company foundation before building your strategy.
+            </p>
+            {phase1Steps.map((step, i) => (
+              <Phase1Row key={i} step={step} />
+            ))}
+          </div>
+
+          {/* Section 3 — Administration Setup Checklist */}
+          <div style={CARD}>
+            <h2 style={{
+              fontSize: '15px',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              margin: '0 0 4px',
+            }}>
+              Workspace Setup
+            </h2>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              Configure your workspace before getting started.
+            </p>
+            <AdminCheckRow
+              label="Company name and website added"
+              href="/dashboard/administration"
+            />
+            <AdminCheckRow label="Team members invited" href="/dashboard/administration" />
+            <AdminCheckRow label="AI model preferences set" href="/dashboard/administration" />
+            <AdminCheckRow label="Notification preferences configured" />
+          </div>
+
+          {/* Section 4 — Intelligence Callout */}
+          <div style={{
+            borderLeft: '4px solid #E8520A',
+            backgroundColor: '#0F2140',
+            borderRadius: '0 12px 12px 0',
+            padding: '20px 24px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderLeftColor: '#E8520A',
+            borderLeftWidth: '4px',
+          }}>
+            <p style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#E8520A',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              margin: '0 0 8px',
+            }}>
+              Before You Begin Phase 2
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.75)',
+              lineHeight: '1.6',
+              margin: '0 0 16px',
+            }}>
+              Intelligence Gathering is a critical step between Phase 1 and Phase 2. Before building your Company Formulas, you must complete the Decision Clarity Process — a structured survey that reveals exactly how your buyers make decisions. Gate 1 approval requires a completed DCP Map.
+            </p>
+            <Link
+              href="/dashboard/intelligence"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: '44px',
+                padding: '0 20px',
+                borderRadius: '8px',
+                backgroundColor: '#E8520A',
+                color: '#FFFFFF',
+                fontSize: '14px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Go to Intelligence
+            </Link>
+          </div>
+
         </div>
       </div>
     </div>
