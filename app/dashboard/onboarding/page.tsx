@@ -296,10 +296,17 @@ export default function OnboardingPage() {
             },
             {
               badge: '3.5',
-              title: 'Step 3.5 — Buying Center Evaluation',
+              title: 'Step 3.5 — The Yes Criteria',
               description: 'Define stakeholder count, decision style, sales cycle, and ACV range',
               complete: approvedSet.has('3.5'),
               stepStatus: getStepStatus('3.5'),
+            },
+            {
+              badge: '4.5',
+              title: 'Step 4.5 — GTM Snapshot',
+              description: 'Capture your current go-to-market metrics, sales motion, and biggest challenges',
+              complete: approvedSet.has('4.5'),
+              stepStatus: getStepStatus('4.5'),
             },
             {
               badge: 'G1',

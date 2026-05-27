@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShieldCheck, Lock, Clock, ChevronRight } from 'lucide-react'
+import { ShieldCheck, Lock, Clock, ChevronRight, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
@@ -207,6 +207,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
+  const [bannerDismissed, setBannerDismissed] = useState(true)
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -241,10 +242,10 @@ export default function DashboardPage() {
           if (!ex || r.version > ex.version) outMap.set(r.step_id, r)
         }
 
-        // Redirect until all 4 Company Foundation steps are approved
-        const FOUNDATION_STEPS = ['1', '2', '3', '3.5']
+        // Redirect until all 6 Phase 1 steps are approved
+        const FOUNDATION_STEPS = ['1', '2', '3', '3.5', '4', '4.5']
         const foundationApproved = FOUNDATION_STEPS.filter(id => outMap.get(id)?.status === 'approved').length
-        if (foundationApproved < 4) {
+        if (foundationApproved < 6) {
           redirecting = true
           router.push('/dashboard/onboarding')
           return
@@ -287,6 +288,17 @@ export default function DashboardPage() {
     }, 20)
     return () => clearInterval(id)
   }, [loading, loadError, latestOutputs, icpRows, dcpRow])
+
+  // ── Phase 1 banner dismiss ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    setBannerDismissed(localStorage.getItem('phase1_banner_dismissed') === 'true')
+  }, [])
+
+  function handleDismissBanner() {
+    localStorage.setItem('phase1_banner_dismissed', 'true')
+    setBannerDismissed(true)
+  }
 
   // ── Shared header ────────────────────────────────────────────────────────────
 
@@ -386,6 +398,11 @@ export default function DashboardPage() {
   // Performance score
   const score = computeScore(latestOutputs, icpRows, dcpRow)
   const grade = getGrade(scoreAnimated)
+
+  // Phase 1 Complete banner: all 6 foundation steps approved, Gate 1 not yet approved
+  const PHASE1_STEPS = ['1', '2', '3', '3.5', '4', '4.5']
+  const phase1Complete = PHASE1_STEPS.every(id => approvedSet.has(id))
+  const showPhase1Banner = phase1Complete && gate1 !== 'approved' && !bannerDismissed
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -569,6 +586,54 @@ export default function DashboardPage() {
           </div>
 
         </div>
+
+        {/* ── Phase 1 Complete banner ──────────────────────────────────────── */}
+        {showPhase1Banner && (
+          <div style={{
+            backgroundColor: '#0F2140',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderLeft: '4px solid #E8520A',
+            borderRadius: '10px',
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '16px',
+          }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 6px' }}>
+                Phase 1 Complete — Time to Gather Intelligence
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: '0 0 16px', lineHeight: '1.5' }}>
+                You have completed your Company Foundation. The next critical step is the Decision Clarity Process — a structured survey that reveals exactly how your buyers make decisions. Complete Intelligence before moving to Phase 2.
+              </p>
+              <Link
+                href="/dashboard/intelligence"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  minHeight: '44px', padding: '0 20px', borderRadius: '8px',
+                  backgroundColor: '#E8520A', color: '#FFFFFF',
+                  textDecoration: 'none', fontSize: '13px', fontWeight: 600,
+                }}
+              >
+                Go to Intelligence
+                <ChevronRight size={15} />
+              </Link>
+            </div>
+            <button
+              onClick={handleDismissBanner}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '4px', flexShrink: 0, minWidth: '44px', minHeight: '44px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'rgba(255,255,255,0.4)',
+              }}
+              aria-label="Dismiss banner"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   )

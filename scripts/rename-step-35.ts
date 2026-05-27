@@ -1,8 +1,8 @@
 /**
- * Seed script — insert step_definition row for GTM Snapshot (step id '4.5')
+ * Rename step 3.5 title from 'Buying Center Evaluation' to 'The Yes Criteria'
  *
  * Usage:
- *   npx ts-node --project tsconfig.scripts.json scripts/seed-gtm-snapshot-step.ts
+ *   npx ts-node --project tsconfig.scripts.json scripts/rename-step-35.ts
  *
  * Requires SUPABASE_SERVICE_ROLE_KEY in .env.local to bypass RLS.
  */
@@ -32,27 +32,19 @@ if (!serviceKey) {
 const supabase = createClient(supabaseUrl, serviceKey)
 
 async function main(): Promise<void> {
-  console.log('\nInserting step_definition row for GTM Snapshot (step 4.5)…\n')
+  console.log('\nUpdating step_definition title for step 3.5…\n')
 
   const { error } = await supabase
     .from('step_definition')
-    .upsert(
-      {
-        id: '4.5',
-        title: 'GTM Snapshot',
-        description: 'Capture your current go-to-market metrics, sales motion, and biggest challenges to give Copilot context for the rest of the journey.',
-        section: 'Company Foundation',
-        phase: 4,
-      },
-      { onConflict: 'id' }
-    )
+    .update({ title: 'The Yes Criteria' })
+    .eq('id', '3.5')
 
   if (error) {
-    console.error('  ✗ Failed to upsert step_definition row:', error.message)
+    console.error('  ✗ Failed to update step_definition row:', error.message)
     process.exit(1)
   }
 
-  console.log('  ✓ step_definition row upserted: id=4.5, title="GTM Snapshot", section="Company Foundation", phase=4')
+  console.log('  ✓ step_definition updated: id=3.5, title="The Yes Criteria"')
   console.log('\nDone.\n')
 }
 

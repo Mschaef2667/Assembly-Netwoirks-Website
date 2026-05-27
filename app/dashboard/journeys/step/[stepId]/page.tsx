@@ -1241,7 +1241,7 @@ function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabChange, on
   )
 }
 
-// ── Step 3.5 Editor — Buying Center Evaluation ────────────────────────────────
+// ── Step 3.5 Editor — The Yes Criteria ────────────────────────────────────────
 
 interface Step35EditorProps {
   segmentNames: string[]
@@ -1260,7 +1260,7 @@ function Step35Editor({ segmentNames, buyingCenter, activeTab, saveStatus, onTab
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <label style={LABEL_STYLE}>Buying Center Evaluation</label>
+        <label style={LABEL_STYLE}>The Yes Criteria</label>
         <SaveIndicator state={saveStatus} />
       </div>
 
