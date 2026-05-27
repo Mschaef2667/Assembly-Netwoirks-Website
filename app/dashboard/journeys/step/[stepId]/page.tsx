@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
+import TipsPanel from '@/components/ui/TipsPanel'
+import { STEP_TIPS } from '@/lib/tips'
 
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
 import Step14Editor from '@/components/journeys/Step14Editor'
@@ -2462,6 +2464,9 @@ export default function StepPage() {
 
         {/* ── Right: Copilot panel ──────────────────────────────────────────── */}
         <div id="step-cvp-copilot-panel" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Tips panel */}
+          <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
 
           {/* Action buttons */}
           <div style={PANEL_CARD}>

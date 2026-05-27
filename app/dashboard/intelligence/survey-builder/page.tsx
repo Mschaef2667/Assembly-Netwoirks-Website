@@ -6,6 +6,8 @@ import {
   Copy, Download, Wand2, CheckCircle2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import TipsPanel from '@/components/ui/TipsPanel'
+import { STEP_TIPS } from '@/lib/tips'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -794,6 +796,9 @@ export default function SurveyBuilderPage() {
               </button>
             </div>
           </div>
+
+          {/* Tips panel */}
+          <TipsPanel tips={STEP_TIPS['survey-builder']} />
 
         </div>
       </div>
