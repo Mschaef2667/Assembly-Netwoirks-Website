@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Circle, Play, ExternalLink } from 'lucide-react'
+import { CheckCircle2, Circle, Play, ExternalLink, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type StepStatus = 'not_started' | 'draft' | 'approved'
+type ApprovalState = 'idle' | 'approving' | 'success' | 'error'
 
 interface Phase1Step {
   badge: string
@@ -33,10 +34,7 @@ function Phase1Row({ step }: { step: Phase1Step }) {
   const isDraft = step.stepStatus === 'draft'
 
   return (
-    <Link
-      href={step.href}
-      style={{ textDecoration: 'none' }}
-    >
+    <Link href={step.href} style={{ textDecoration: 'none' }}>
       <div style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -87,7 +85,7 @@ function Phase1Row({ step }: { step: Phase1Step }) {
           </p>
         </div>
 
-        {/* Status icon */}
+        {/* Status circle: grey = not started, orange = draft, green = approved */}
         <div style={{ flexShrink: 0, paddingTop: '2px' }}>
           {isApproved ? (
             <CheckCircle2 size={20} style={{ color: '#16A34A' }} />
@@ -102,8 +100,36 @@ function Phase1Row({ step }: { step: Phase1Step }) {
   )
 }
 
-function AdminCheckRow({ label, href }: { label: string; href?: string }) {
-  const content = (
+function AdminCheckRow({
+  label,
+  href,
+  checked,
+  onChange,
+}: {
+  label: string
+  href?: string
+  checked?: boolean
+  onChange?: () => void
+}) {
+  const checkboxEl = (
+    <span
+      onClick={onChange ? e => { e.preventDefault(); e.stopPropagation(); onChange() } : undefined}
+      style={{ flexShrink: 0, display: 'flex', alignItems: 'center', cursor: onChange ? 'pointer' : 'default' }}
+    >
+      {checked ? (
+        <CheckCircle2 size={18} style={{ color: '#16A34A' }} />
+      ) : (
+        <div style={{
+          width: '18px',
+          height: '18px',
+          borderRadius: '4px',
+          border: '1px solid rgba(255,255,255,0.2)',
+        }} />
+      )}
+    </span>
+  )
+
+  const inner = (
     <div style={{
       display: 'flex',
       alignItems: 'center',
@@ -111,17 +137,12 @@ function AdminCheckRow({ label, href }: { label: string; href?: string }) {
       padding: '12px 0',
       borderBottom: '1px solid rgba(255,255,255,0.05)',
     }}>
-      <div style={{
-        width: '18px',
-        height: '18px',
-        borderRadius: '4px',
-        border: '1px solid rgba(255,255,255,0.2)',
-        flexShrink: 0,
-      }} />
+      {checkboxEl}
       <span style={{
         fontSize: '14px',
-        color: 'rgba(255,255,255,0.7)',
+        color: checked ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.7)',
         flex: 1,
+        textDecoration: checked ? 'line-through' : 'none',
       }}>
         {label}
       </span>
@@ -131,23 +152,31 @@ function AdminCheckRow({ label, href }: { label: string; href?: string }) {
     </div>
   )
 
-  if (href) {
-    return (
-      <Link href={href} style={{ textDecoration: 'none' }}>
-        {content}
-      </Link>
-    )
-  }
-  return content
+  if (href) return <Link href={href} style={{ textDecoration: 'none' }}>{inner}</Link>
+  return inner
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
   const [phase1Steps, setPhase1Steps] = useState<Phase1Step[]>([])
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [approvalState, setApprovalState] = useState<ApprovalState>('idle')
+  const [hasWebsite, setHasWebsite] = useState(false)
+  const [adminChecks, setAdminChecks] = useState({
+    teamInvited: false,
+    modelSet: false,
+    notificationsSet: false,
+  })
 
   useEffect(() => {
+    setAdminChecks({
+      teamInvited: localStorage.getItem('onboarding_teamInvited') === 'true',
+      modelSet: localStorage.getItem('onboarding_modelSet') === 'true',
+      notificationsSet: localStorage.getItem('onboarding_notificationsSet') === 'true',
+    })
+
     async function load() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -156,18 +185,31 @@ export default function OnboardingPage() {
         const { data: userRow } = await supabase
           .from('users').select('org_id').eq('id', user.id).single()
         if (!userRow) return
-        const orgId = (userRow as Record<string, unknown>)['org_id'] as string
+        const wsId = (userRow as Record<string, unknown>)['org_id'] as string
+        setOrgId(wsId)
 
-        const { data: outputsData } = await supabase
-          .from('step_output')
-          .select('step_id,status')
-          .eq('workspace_id', orgId)
-          .in('step_id', ['1', '2', '3', '3.5'])
+        const [outputsRes, orgRes] = await Promise.all([
+          supabase
+            .from('step_output')
+            .select('step_id,status')
+            .eq('workspace_id', wsId)
+            .in('step_id', ['1', '2', '3', '3.5']),
+          supabase
+            .from('organizations')
+            .select('website')
+            .eq('id', wsId)
+            .single(),
+        ])
 
-        const outputs = (outputsData ?? []) as { step_id: string; status: string }[]
+        if (orgRes.data) {
+          const website = String((orgRes.data as Record<string, unknown>)['website'] ?? '')
+          setHasWebsite(website.trim().length > 0)
+        }
+
+        const outputs = (outputsRes.data ?? []) as { step_id: string; status: string }[]
         const outputMap = new Map(outputs.map(o => [o.step_id, o.status]))
 
-        const getStepStatus = (id: string): StepStatus => {
+        const getStatus = (id: string): StepStatus => {
           if (!outputMap.has(id)) return 'not_started'
           return outputMap.get(id) === 'approved' ? 'approved' : 'draft'
         }
@@ -178,28 +220,28 @@ export default function OnboardingPage() {
             title: 'Step 1 — Product / Service Profile',
             description: 'Describe what you sell, your primary use case, and key industries served',
             href: '/dashboard/journeys/step/1',
-            stepStatus: getStepStatus('1'),
+            stepStatus: getStatus('1'),
           },
           {
             badge: '2',
             title: 'Step 2 — Top 3 Target Market Segments',
             description: 'Name and describe the three segments you sell into most effectively',
             href: '/dashboard/journeys/step/2',
-            stepStatus: getStepStatus('2'),
+            stepStatus: getStatus('2'),
           },
           {
             badge: '3',
             title: 'Step 3 — Key Decision Makers',
             description: 'Map the buying roles, influence levels, and primary concerns per segment',
             href: '/dashboard/journeys/step/3',
-            stepStatus: getStepStatus('3'),
+            stepStatus: getStatus('3'),
           },
           {
             badge: '3.5',
             title: 'Step 3.5 — The Yes Criteria',
             description: 'Identify the ultimate decision maker and what will make them say yes',
             href: '/dashboard/journeys/step/3.5',
-            stepStatus: getStepStatus('3.5'),
+            stepStatus: getStatus('3.5'),
           },
         ])
       } finally {
@@ -208,6 +250,33 @@ export default function OnboardingPage() {
     }
     void load()
   }, [])
+
+  async function approvePhase1() {
+    if (!orgId) return
+    setApprovalState('approving')
+    try {
+      for (const stepId of ['1', '2', '3', '3.5']) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ status: 'approved' })
+          .eq('workspace_id', orgId)
+          .eq('step_id', stepId)
+        if (error) throw error
+      }
+      setPhase1Steps(prev => prev.map(s => ({ ...s, stepStatus: 'approved' as StepStatus })))
+      setApprovalState('success')
+    } catch {
+      setApprovalState('error')
+    }
+  }
+
+  function toggleAdminCheck(key: keyof typeof adminChecks) {
+    setAdminChecks(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      localStorage.setItem(`onboarding_${key}`, String(next[key]))
+      return next
+    })
+  }
 
   // ── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -232,9 +301,13 @@ export default function OnboardingPage() {
     )
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Derived state ─────────────────────────────────────────────────────────────
 
   const allPhase1Complete = phase1Steps.every(s => s.stepStatus === 'approved')
+  const allPhase1HaveContent = phase1Steps.length === 4 && phase1Steps.every(s => s.stepStatus !== 'not_started')
+  const showSuccessState = allPhase1Complete || approvalState === 'success'
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0A1628', padding: '48px 32px 64px' }}>
@@ -404,7 +477,84 @@ export default function OnboardingPage() {
             ))}
           </div>
 
-          {/* Section 3 — Administration Setup Checklist */}
+          {/* Phase 1 Approval Button / Success State */}
+          {showSuccessState ? (
+            <div style={{
+              width: '100%',
+              minHeight: '60px',
+              borderRadius: '10px',
+              border: '1px solid rgba(22,163,74,0.3)',
+              backgroundColor: 'rgba(22,163,74,0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '16px',
+              padding: '16px 24px',
+              boxSizing: 'border-box',
+              flexWrap: 'wrap',
+            }}>
+              <CheckCircle2 size={22} style={{ color: '#16A34A', flexShrink: 0 }} />
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#16A34A' }}>
+                Phase 1 Complete
+              </span>
+              <Link
+                href="/dashboard/intelligence"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  minHeight: '44px',
+                  padding: '0 20px',
+                  borderRadius: '8px',
+                  backgroundColor: '#E8520A',
+                  color: '#FFFFFF',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}
+              >
+                Go to Intelligence
+              </Link>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={allPhase1HaveContent && approvalState !== 'approving' ? approvePhase1 : undefined}
+                disabled={!allPhase1HaveContent || approvalState === 'approving'}
+                title={!allPhase1HaveContent ? 'Complete all steps before approving Phase 1' : undefined}
+                style={{
+                  width: '100%',
+                  minHeight: '54px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: allPhase1HaveContent ? '#E8520A' : 'rgba(255,255,255,0.1)',
+                  color: allPhase1HaveContent ? '#FFFFFF' : 'rgba(255,255,255,0.3)',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  cursor: allPhase1HaveContent && approvalState !== 'approving' ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                }}
+              >
+                {approvalState === 'approving' ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Approving Phase 1…
+                  </>
+                ) : (
+                  'Complete Phase 1'
+                )}
+              </button>
+              {approvalState === 'error' && (
+                <p style={{ fontSize: '13px', color: '#FCA5A5', margin: '-8px 0 0' }}>
+                  Something went wrong. Please try again.
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Section 3 — Workspace Setup */}
           <div style={CARD}>
             <h2 style={{
               fontSize: '15px',
@@ -420,10 +570,25 @@ export default function OnboardingPage() {
             <AdminCheckRow
               label="Company name and website added"
               href="/dashboard/administration"
+              checked={hasWebsite}
             />
-            <AdminCheckRow label="Team members invited" href="/dashboard/administration" />
-            <AdminCheckRow label="AI model preferences set" href="/dashboard/administration" />
-            <AdminCheckRow label="Notification preferences configured" />
+            <AdminCheckRow
+              label="Team members invited"
+              href="/dashboard/administration"
+              checked={adminChecks.teamInvited}
+              onChange={() => toggleAdminCheck('teamInvited')}
+            />
+            <AdminCheckRow
+              label="AI model preferences set"
+              href="/dashboard/administration"
+              checked={adminChecks.modelSet}
+              onChange={() => toggleAdminCheck('modelSet')}
+            />
+            <AdminCheckRow
+              label="Notification preferences configured"
+              checked={adminChecks.notificationsSet}
+              onChange={() => toggleAdminCheck('notificationsSet')}
+            />
           </div>
 
           {/* Section 4 — Intelligence Callout */}

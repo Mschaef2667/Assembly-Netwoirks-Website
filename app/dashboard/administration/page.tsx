@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from 'react'
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AssemblyUser } from '@/lib/supabase/client'
@@ -439,32 +438,6 @@ export default function AdministrationPage() {
           </div>
         </section>
 
-        {/* ── Company Profile ──────────────────────────────────────────────── */}
-        <section>
-          <h2 style={SECTION_HEADING}>Company Profile</h2>
-          <div style={CARD}>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.55)', marginBottom: '16px', marginTop: 0 }}>
-              Review and edit your C3 Method company profile inputs (Steps 1–3.5).
-            </p>
-            <Link
-              href="/dashboard/company-profile"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                minHeight: '44px',
-                padding: '0 24px',
-                backgroundColor: '#E8520A',
-                color: '#FFFFFF',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 600,
-                textDecoration: 'none',
-              }}
-            >
-              Review / Edit Company Profile
-            </Link>
-          </div>
-        </section>
 
       </div>
     </div>

@@ -368,10 +368,15 @@ export default function DashboardPage() {
     stepsBySection.set(sec, arr)
   }
 
-  // Recommended next steps: not yet approved, all prereqs met
+  // Phase 1 step IDs — used here and below for the banner
+  const PHASE1_STEPS = ['1', '2', '3', '3.5']
+  const phase1Complete = PHASE1_STEPS.every(id => approvedSet.has(id))
+
+  // Recommended next steps: not yet approved, all prereqs met, Phase 1 steps hidden once all approved
   const journeyNotStarted = latestOutputs.size === 0
   const recommended = sortedDefs
     .filter(s => !approvedSet.has(s.id))
+    .filter(s => !(phase1Complete && PHASE1_STEPS.includes(s.id)))
     .filter(s => (depsMap.get(s.id) ?? []).every(p => approvedSet.has(p)))
     .slice(0, 3)
 
@@ -388,8 +393,6 @@ export default function DashboardPage() {
   const grade = getGrade(scoreAnimated)
 
   // Phase 1 Complete banner: all 4 foundation steps approved, Gate 1 not yet approved
-  const PHASE1_STEPS = ['1', '2', '3', '3.5']
-  const phase1Complete = PHASE1_STEPS.every(id => approvedSet.has(id))
   const showPhase1Banner = phase1Complete && gate1 !== 'approved' && !bannerDismissed
 
   // ── Render ───────────────────────────────────────────────────────────────────
