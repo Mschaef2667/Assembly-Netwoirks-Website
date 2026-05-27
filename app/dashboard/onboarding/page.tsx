@@ -297,9 +297,16 @@ export default function OnboardingPage() {
             {
               badge: '3.5',
               title: 'Step 3.5 — The Yes Criteria',
-              description: 'Define stakeholder count, decision style, sales cycle, and ACV range',
+              description: 'Identify the ultimate decision maker and what will make them say yes.',
               complete: approvedSet.has('3.5'),
               stepStatus: getStepStatus('3.5'),
+            },
+            {
+              badge: '4',
+              title: 'Step 4 — Endemic Problems',
+              description: 'Define the core pain points your buyers experience that your solution addresses',
+              complete: approvedSet.has('4'),
+              stepStatus: getStepStatus('4'),
             },
             {
               badge: '4.5',
