@@ -2251,13 +2251,18 @@ export default function StepPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '860px', flex: 1 }}>
-          <Step2Editor
-            segments={step2Segments}
-            saveStatus={saveStatus}
-            onChange={handleStep2Change}
-            onBlur={handleStep2Blur}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+          <div>
+            <Step2Editor
+              segments={step2Segments}
+              saveStatus={saveStatus}
+              onChange={handleStep2Change}
+              onBlur={handleStep2Blur}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
+          </div>
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
@@ -2268,18 +2273,23 @@ export default function StepPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
-          <Step3Editor
-            segmentNames={segmentNames}
-            dms={step3DMs}
-            activeTab={step3ActiveTab}
-            saveStatus={saveStatus}
-            onTabChange={setStep3ActiveTab}
-            onChange={handleStep3Change}
-            onConcernToggle={handleStep3ConcernToggle}
-            onAddCustomConcern={handleAddCustomConcern}
-            onBlur={handleStep3Blur}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+          <div>
+            <Step3Editor
+              segmentNames={segmentNames}
+              dms={step3DMs}
+              activeTab={step3ActiveTab}
+              saveStatus={saveStatus}
+              onTabChange={setStep3ActiveTab}
+              onChange={handleStep3Change}
+              onConcernToggle={handleStep3ConcernToggle}
+              onAddCustomConcern={handleAddCustomConcern}
+              onBlur={handleStep3Blur}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
+          </div>
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>
@@ -2290,16 +2300,21 @@ export default function StepPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
-          <Step35Editor
-            segmentNames={segmentNames}
-            buyingCenter={step35BC}
-            activeTab={step35ActiveTab}
-            saveStatus={saveStatus}
-            onTabChange={setStep35ActiveTab}
-            onChange={handleStep35Change}
-            onBlur={handleStep35Blur}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+          <div>
+            <Step35Editor
+              segmentNames={segmentNames}
+              buyingCenter={step35BC}
+              activeTab={step35ActiveTab}
+              saveStatus={saveStatus}
+              onTabChange={setStep35ActiveTab}
+              onChange={handleStep35Change}
+              onBlur={handleStep35Blur}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
+          </div>
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
       </div>

@@ -96,7 +96,7 @@ export default function IntelligencePage() {
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
         const [surveyRes, responsesRes, dcpRes] = await Promise.all([
-          supabase.from('workspace_survey').select('id').eq('org_id', orgId).maybeSingle(),
+          supabase.from('step_output').select('id').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
           supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
         ])
@@ -105,7 +105,7 @@ export default function IntelligencePage() {
         const dcpStatus = dcpRow ? String(dcpRow['status'] ?? 'draft') : null
 
         setStatus({
-          surveyBuilt: !!surveyRes.data,
+          surveyBuilt: !!(surveyRes.data && surveyRes.data.length > 0),
           responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
           dcpMapGenerated: !!dcpRow,
           gate1Status: dcpStatus === 'approved' ? 'approved'
