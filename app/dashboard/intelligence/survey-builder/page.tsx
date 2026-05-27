@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import {
-  ChevronDown, ChevronRight, Loader2, Plus, X,
+  ChevronDown, ChevronRight, Loader2, Pencil, Plus, X,
   Copy, Download, Wand2, CheckCircle2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
@@ -91,6 +91,7 @@ export default function SurveyBuilderPage() {
   const [copyDone, setCopyDone]               = useState(false)
   const [loading, setLoading]                 = useState(true)
   const [selectedAudience, setSelectedAudience] = useState<Audience>('current')
+  const [hoveringQId, setHoveringQId]             = useState<string | null>(null)
 
   // Refs to avoid stale closures in async save callbacks
   const orgIdRef          = useRef<string | null>(null)
@@ -236,7 +237,7 @@ export default function SurveyBuilderPage() {
   }
 
   function addQuestion(stageId: number) {
-    if (countAll(survey) >= 15) return
+    if (countAll(survey) >= 20) return
     const q: Question = { id: uid(), text: '', type: 'open', stageId }
     const updated = { ...survey, [stageId]: [...(survey[stageId] ?? []), q] }
     updateSurvey(updated)
@@ -415,11 +416,12 @@ export default function SurveyBuilderPage() {
     )
   }
 
-  const total        = countAll(survey)
-  const atLimit      = total >= 15
-  const counterColor = total > 15 ? '#EF4444' : total > 12 ? '#E8520A' : '#FFFFFF'
-  const progressPct  = Math.min((total / 15) * 100, 100)
-  const progressColor = total > 15 ? '#EF4444' : total > 12 ? '#E8520A' : '#0EA5E9'
+  const total         = countAll(survey)
+  const atLimit       = total >= 20
+  const aboveRecommended = total > 15
+  const counterColor  = aboveRecommended ? '#EAB308' : total > 12 ? '#E8520A' : 'rgba(255,255,255,0.7)'
+  const progressPct   = Math.min((total / 20) * 100, 100)
+  const progressColor = aboveRecommended ? '#EAB308' : total > 12 ? '#E8520A' : '#0EA5E9'
 
   return (
     <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
@@ -482,11 +484,13 @@ export default function SurveyBuilderPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span style={{ fontSize: '14px', fontWeight: 700, color: counterColor }}>
-                {total} of 15 questions
+                {aboveRecommended ? `${total} questions (above recommended)` : `${total} of 15 recommended`}
               </span>
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                {Math.max(0, 15 - total)} remaining
-              </span>
+              {!aboveRecommended && (
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                  {Math.max(0, 15 - total)} remaining
+                </span>
+              )}
             </div>
             <div style={{ height: '6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
               <div style={{
@@ -494,6 +498,16 @@ export default function SurveyBuilderPage() {
                 backgroundColor: progressColor, borderRadius: '3px', transition: 'width 0.3s ease',
               }} />
             </div>
+            {total >= 15 && (
+              <div style={{
+                marginTop: '10px', padding: '8px 10px', borderRadius: '6px',
+                backgroundColor: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)',
+              }}>
+                <p style={{ fontSize: '12px', color: '#EAB308', margin: 0, lineHeight: '1.5' }}>
+                  You have reached the recommended maximum of 15 questions. Additional questions may reduce completion rates.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Stage sections */}
@@ -560,6 +574,8 @@ export default function SurveyBuilderPage() {
                       {qs.map(q => (
                         <div
                           key={q.id}
+                          onMouseEnter={() => setHoveringQId(q.id)}
+                          onMouseLeave={() => setHoveringQId(null)}
                           style={{ padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
                         >
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -583,22 +599,32 @@ export default function SurveyBuilderPage() {
                                   }}
                                 />
                               ) : (
-                                <p
-                                  onClick={() => { setEditingId(q.id); setEditText(q.text) }}
-                                  style={{
-                                    fontSize: '14px', lineHeight: '1.5', margin: '0 0 8px', cursor: 'text',
-                                    color: q.text ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
-                                    fontStyle: q.text ? 'normal' : 'italic',
-                                  }}
+                                <div
+                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '0 0 8px' }}
                                 >
-                                  {q.text || 'Click to add question text…'}
-                                </p>
+                                  <p
+                                    onClick={() => { setEditingId(q.id); setEditText(q.text) }}
+                                    style={{
+                                      fontSize: '14px', lineHeight: '1.5', margin: 0, cursor: 'text', flex: 1,
+                                      color: q.text ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)',
+                                      fontStyle: q.text ? 'normal' : 'italic',
+                                    }}
+                                  >
+                                    {q.text || 'Click to add question text…'}
+                                  </p>
+                                  {hoveringQId === q.id && (
+                                    <Pencil
+                                      size={12}
+                                      style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0, marginTop: '3px' }}
+                                    />
+                                  )}
+                                </div>
                               )}
 
                               {/* Type badge — click to cycle */}
                               <button
                                 onClick={() => cycleType(stage.id, q.id)}
-                                title="Click to change question type"
+                                title="Click to change type"
                                 style={{
                                   padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
                                   backgroundColor: TYPE_COLORS[q.type].bg, color: TYPE_COLORS[q.type].color,
@@ -631,6 +657,7 @@ export default function SurveyBuilderPage() {
                         <button
                           onClick={() => addQuestion(stage.id)}
                           disabled={atLimit}
+                          title={atLimit ? 'Maximum 20 questions reached' : undefined}
                           style={{
                             display: 'flex', alignItems: 'center', gap: '6px',
                             padding: '6px 14px', minHeight: '36px',
