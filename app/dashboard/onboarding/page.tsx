@@ -376,16 +376,6 @@ export default function OnboardingPage() {
               Start with Step 1
             </Link>
           )}
-          <Link
-            href="/dashboard"
-            style={{
-              fontSize: '13px',
-              color: 'rgba(255,255,255,0.35)',
-              textDecoration: 'none',
-            }}
-          >
-            Skip to dashboard
-          </Link>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
