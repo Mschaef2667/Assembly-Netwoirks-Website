@@ -545,10 +545,41 @@ ${provisionalNote}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
   } else if (stepId === 'survey-builder') {
+    const audienceMatch = typeof extraContext === 'string' ? extraContext.match(/^Audience:\s*(.+)$/m) : null
+    const audienceLabel = audienceMatch ? audienceMatch[1].trim() : 'Current Customers'
+
+    const audienceInstructions =
+      audienceLabel === 'Internal Stakeholders'
+        ? `AUDIENCE: Internal Stakeholders
+Frame all 15 questions for your internal sales and marketing team answering about HOW BUYERS make decisions — not about the company's own capabilities.
+- Use language like "How do your customers typically...", "What do you believe your buyers care most about...", "In your experience, when do prospects..."
+- Questions reveal where internal perception may align or diverge from buyer reality
+- 2 of the 15 questions must focus on internal alignment: (1) whether sales and marketing agree on the primary buyer motivation, and (2) how confidently the team can describe the buyer's key decision criteria
+`
+        : audienceLabel === 'Lost Customers'
+        ? `AUDIENCE: Lost Customers (prospects who evaluated but chose a competitor)
+Frame all questions to understand why they chose a different provider.
+- Use language like "When you evaluated solutions...", "What ultimately led you to choose a different provider...", "Looking back on your evaluation process..."
+- 2 of the 15 questions must focus specifically on competitor comparison: (1) which competitor they chose and what primarily drove that choice, and (2) what that competitor offered that was absent or unclear from your solution
+`
+        : audienceLabel === 'Potential Customers'
+        ? `AUDIENCE: Potential Customers (have not yet purchased)
+Frame all questions in present tense about the respondent's current situation and future buying intent.
+- Use language like "As you think about this problem today...", "When you eventually evaluate solutions...", "In your current environment...", "What would need to be true for you to..."
+- Questions should uncover current pain, urgency, and buying readiness
+`
+        : /* Current Customers — default */
+        `AUDIENCE: Current Customers
+Frame all questions in past tense about the respondent's actual buying experience with your company.
+- Use language like "When you chose us...", "Looking back on your decision...", "At the time you selected us...", "What convinced you to move forward with..."
+- Questions should uncover the real reasons behind the choice, not post-purchase rationalisations
+`
+
     systemPrompt = `You are Assembly AI Copilot, a B2B buyer research specialist.
 
 Your task: Generate a tailored Decision Clarity Process (DCP) survey with EXACTLY 15 questions distributed across 7 buying journey stages, based on the Phase 1 company profile below.
 
+${audienceInstructions}
 REQUIRED DISTRIBUTION (must be exact):
 - Stage 1 Need Recognition: 3 questions
 - Stage 2 Information Search: 2 questions
@@ -564,13 +595,12 @@ REQUIRED TYPE DISTRIBUTION (total across all 15 questions):
 - multiple_choice: 2 questions
 
 QUESTION WRITING RULES:
-- All questions are from the BUYER's perspective about THEIR experience and decision journey
-- NOT about product knowledge, features, or vendor capabilities from the company's perspective
+- All questions follow the audience framing above — apply it consistently to every question
 - Be specific to the industry, segments, and decision maker roles from the Phase 1 data below
 - Every question must be tailored — no generic filler questions
 - Open-ended: starts with "How", "What", "Why", "Describe", "Walk me through", "Tell me about", etc.
-- Scale 1-10: assesses urgency, priority, or magnitude of something in the buyer's experience
-- Multiple choice: offers 4 specific, realistic options directly relevant to the buyer's context
+- Scale 1-10: assesses urgency, priority, or magnitude of something in the respondent's experience
+- Multiple choice: offers 4 specific, realistic options directly relevant to the respondent's context
 
 CONFIDENCE SCORING:
 - 71-100: Phase 1 data (company profile, segments, decision makers) is complete and specific
@@ -579,7 +609,7 @@ CONFIDENCE SCORING:
 
 Return ONLY valid JSON with no markdown fences in this exact shape:
 {
-  "draft": "<1-2 sentence summary of the survey approach and what makes it tailored>",
+  "draft": "<1-2 sentence summary of the survey approach and what makes it tailored to this audience>",
   "confidence": <integer 0-100>,
   "sources": ["Step 1", "Step 2", "Step 3"],
   "assumptions": ["<assumption made about the buyer context>"],

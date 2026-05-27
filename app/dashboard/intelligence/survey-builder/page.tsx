@@ -48,6 +48,23 @@ const TYPE_COLORS: Record<QuestionType, { bg: string; color: string }> = {
   multiple_choice: { bg: 'rgba(232,82,10,0.15)',   color: '#E8520A' },
 }
 
+// ── Audiences ─────────────────────────────────────────────────────────────────
+
+type Audience = 'internal' | 'current' | 'lost' | 'potential'
+
+interface AudienceOption {
+  id: Audience
+  label: string
+  stepId: string
+}
+
+const AUDIENCES: AudienceOption[] = [
+  { id: 'internal',  label: 'Internal Stakeholders', stepId: 'survey-builder-internal' },
+  { id: 'current',   label: 'Current Customers',     stepId: 'survey-builder-current' },
+  { id: 'lost',      label: 'Lost Customers',        stepId: 'survey-builder-lost' },
+  { id: 'potential', label: 'Potential Customers',   stepId: 'survey-builder-potential' },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function uid(): string {
@@ -73,12 +90,14 @@ export default function SurveyBuilderPage() {
   const [saveState, setSaveState]             = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [copyDone, setCopyDone]               = useState(false)
   const [loading, setLoading]                 = useState(true)
+  const [selectedAudience, setSelectedAudience] = useState<Audience>('current')
 
   // Refs to avoid stale closures in async save callbacks
-  const orgIdRef         = useRef<string | null>(null)
-  const outputIdRef      = useRef<string | null>(null)
-  const surveyRef        = useRef<SurveyState>({})
-  const saveTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const orgIdRef          = useRef<string | null>(null)
+  const outputIdRef       = useRef<string | null>(null)
+  const surveyRef         = useRef<SurveyState>({})
+  const saveTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audienceStepIdRef = useRef<string>('survey-builder-current')
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -106,7 +125,7 @@ export default function SurveyBuilderPage() {
           .from('step_output')
           .select('id, content')
           .eq('workspace_id', oid)
-          .eq('step_id', 'survey-builder')
+          .eq('step_id', 'survey-builder-current')
           .order('version', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -149,7 +168,7 @@ export default function SurveyBuilderPage() {
         } else {
           const { data, error } = await supabase
             .from('step_output')
-            .insert({ workspace_id: oid, step_id: 'survey-builder', content: { questions: updated }, status: 'draft', version: 1 })
+            .insert({ workspace_id: oid, step_id: audienceStepIdRef.current, content: { questions: updated }, status: 'draft', version: 1 })
             .select('id').single()
           if (error) throw error
           if (data) outputIdRef.current = (data as Record<string, unknown>)['id'] as string
@@ -164,6 +183,46 @@ export default function SurveyBuilderPage() {
     surveyRef.current = updated
     setSurvey(updated)
     scheduleSave(updated)
+  }
+
+  async function handleAudienceSwitch(audience: Audience) {
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
+    const aud = AUDIENCES.find(a => a.id === audience)!
+    audienceStepIdRef.current = aud.stepId
+    setSelectedAudience(audience)
+    outputIdRef.current = null
+    surveyRef.current = {}
+    setSurvey({})
+    setCopilotStatus('idle')
+    setCopilotError(null)
+    setStageCounts(null)
+
+    const oid = orgIdRef.current
+    if (!oid) return
+    try {
+      const { data: outputRow } = await supabase
+        .from('step_output')
+        .select('id, content')
+        .eq('workspace_id', oid)
+        .eq('step_id', aud.stepId)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (outputRow) {
+        const row = outputRow as Record<string, unknown>
+        outputIdRef.current = String(row['id'] ?? '')
+        const content = row['content'] as Record<string, unknown> | null
+        if (content?.['questions']) {
+          const raw = content['questions'] as Record<string, unknown[]>
+          const parsed: SurveyState = {}
+          for (const [k, v] of Object.entries(raw)) {
+            parsed[parseInt(k, 10)] = v as Question[]
+          }
+          surveyRef.current = parsed
+          setSurvey(parsed)
+        }
+      }
+    } catch { /* non-fatal */ }
   }
 
   // ── Stage / question mutations ─────────────────────────────────────────────
@@ -223,6 +282,7 @@ export default function SurveyBuilderPage() {
     setStageCounts(null)
 
     try {
+      const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,6 +293,7 @@ export default function SurveyBuilderPage() {
           stepDescription: 'Generate buyer research questions across all 7 buying stages',
           currentContent: '',
           preferredModel,
+          extraContext: `Audience: ${audienceLabel}`,
         }),
       })
 
@@ -295,7 +356,8 @@ export default function SurveyBuilderPage() {
   // ── Export ────────────────────────────────────────────────────────────────
 
   function buildPlainText(): string {
-    const lines: string[] = []
+    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
+    const lines: string[] = [`DCP Survey — ${audienceLabel}`, '']
     for (const stage of STAGES) {
       const qs = survey[stage.id] ?? []
       if (qs.length === 0) continue
@@ -307,7 +369,8 @@ export default function SurveyBuilderPage() {
   }
 
   function buildCSV(): string {
-    const rows = ['Stage,Stage Name,Question,Type']
+    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
+    const rows = [`"DCP Survey — ${audienceLabel}"`, 'Stage,Stage Name,Question,Type']
     for (const stage of STAGES) {
       for (const q of (survey[stage.id] ?? [])) {
         const esc = `"${q.text.replace(/"/g, '""')}"`
@@ -326,11 +389,13 @@ export default function SurveyBuilderPage() {
   }
 
   function handleDownloadCSV() {
+    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
     const blob = new Blob([buildCSV()], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'dcp-survey.csv'
+    a.download = `dcp-survey-${selectedAudience}.csv`
+    a.title = `DCP Survey — ${audienceLabel}`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -382,7 +447,30 @@ export default function SurveyBuilderPage() {
         {/* ── LEFT: Survey editor (60%) ── */}
         <div style={{ flex: '0 0 60%', minWidth: 0 }}>
 
-          {/* Question counter */}
+          {/* Audience selector */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            {AUDIENCES.map(aud => {
+              const active = aud.id === selectedAudience
+              return (
+                <button
+                  key={aud.id}
+                  onClick={() => void handleAudienceSwitch(aud.id)}
+                  style={{
+                    padding: '7px 14px', minHeight: '36px', borderRadius: '6px',
+                    fontSize: '13px', fontWeight: active ? 700 : 500,
+                    backgroundColor: active ? '#E8520A' : 'rgba(255,255,255,0.06)',
+                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)',
+                    border: active ? '1px solid #E8520A' : '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {aud.label}
+                </button>
+              )
+            })}
+          </div>
+
+        {/* Question counter */}
           <div style={{
             backgroundColor: '#0F2140', borderRadius: '10px',
             border: '1px solid rgba(255,255,255,0.1)', padding: '16px 20px', marginBottom: '20px',
@@ -571,8 +659,11 @@ export default function SurveyBuilderPage() {
             <h3 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: '0 0 8px' }}>
               Generate Survey with Copilot
             </h3>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: '1.6', margin: '0 0 20px' }}>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: '1.6', margin: '0 0 6px' }}>
               Copilot will analyze your company profile, target segments, and decision makers to generate tailored DCP questions for each buying stage.
+            </p>
+            <p style={{ color: '#0EA5E9', fontSize: '13px', fontWeight: 600, margin: '0 0 20px' }}>
+              Generating survey for: {AUDIENCES.find(a => a.id === selectedAudience)!.label}
             </p>
 
             <button
