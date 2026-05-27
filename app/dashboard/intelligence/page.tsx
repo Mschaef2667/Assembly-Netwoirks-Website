@@ -74,6 +74,18 @@ function StepDot({ done }: { done: boolean }) {
   )
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function hasMeaningfulSurveyContent(content: Record<string, unknown>): boolean {
+  const questions = content['questions']
+  if (Array.isArray(questions) && questions.length > 0) return true
+  for (let i = 1; i <= 7; i++) {
+    const stage = content[`stage_${i}`]
+    if (Array.isArray(stage) && stage.length > 0) return true
+  }
+  return false
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function IntelligencePage() {
@@ -96,7 +108,7 @@ export default function IntelligencePage() {
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
         const [surveyRes, responsesRes, dcpRes] = await Promise.all([
-          supabase.from('step_output').select('id').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
+          supabase.from('step_output').select('id, content').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
           supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
         ])
@@ -104,8 +116,14 @@ export default function IntelligencePage() {
         const dcpRow = dcpRes.data as Record<string, unknown> | null
         const dcpStatus = dcpRow ? String(dcpRow['status'] ?? 'draft') : null
 
+        const surveyRow = surveyRes.data && surveyRes.data.length > 0
+          ? (surveyRes.data[0] as Record<string, unknown>)
+          : null
+        const surveyContent = surveyRow ? (surveyRow['content'] as Record<string, unknown> | null) : null
+        const surveyBuilt = !!(surveyContent && hasMeaningfulSurveyContent(surveyContent))
+
         setStatus({
-          surveyBuilt: !!(surveyRes.data && surveyRes.data.length > 0),
+          surveyBuilt,
           responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
           dcpMapGenerated: !!dcpRow,
           gate1Status: dcpStatus === 'approved' ? 'approved'
