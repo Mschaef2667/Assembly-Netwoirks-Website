@@ -318,7 +318,12 @@ export default function SurveyBuilderPage() {
         return
       }
 
-      const parsed = JSON.parse(accumulated.trim()) as {
+      const firstBrace = accumulated.indexOf('{')
+      const lastBrace  = accumulated.lastIndexOf('}')
+      const jsonStr    = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? accumulated.slice(firstBrace, lastBrace + 1)
+        : accumulated.trim()
+      const parsed = JSON.parse(jsonStr) as {
         draft?: string
         survey?: Record<string, Array<{ text: string; type: string }>>
       }

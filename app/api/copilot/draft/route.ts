@@ -575,7 +575,9 @@ Frame all questions in past tense about the respondent's actual buying experienc
 - Questions should uncover the real reasons behind the choice, not post-purchase rationalisations
 `
 
-    systemPrompt = `You are Assembly AI Copilot, a B2B buyer research specialist.
+    systemPrompt = `CRITICAL: Your response must start with { and end with }. No markdown, no backticks, no prose, no explanation before or after the JSON.
+
+You are Assembly AI Copilot, a B2B buyer research specialist.
 
 Your task: Generate a tailored Decision Clarity Process (DCP) survey with EXACTLY 15 questions distributed across 7 buying journey stages, based on the Phase 1 company profile below.
 
@@ -688,7 +690,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
-  const maxTokens = stepId === 'survey-builder' ? 2500 : 1500
+  const maxTokens = stepId === 'survey-builder' ? 3000 : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
   let webSearchResults = ''
@@ -713,6 +715,8 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   const userMessage = stepId === '1' && !isImprove
     ? `SEARCH RESULTS:\n${webSearchResults || '(no results found)'}\n\nGenerate the JSON now.`
+    : stepId === 'survey-builder'
+    ? 'Respond with only the JSON object. Start your response with { immediately.'
     : 'Generate the draft now.'
 
   let fullText = ''
