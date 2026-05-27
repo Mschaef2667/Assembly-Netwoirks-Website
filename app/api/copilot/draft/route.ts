@@ -140,6 +140,32 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     } catch { /* non-fatal */ }
   }
 
+  // ── Survey-builder: fetch Steps 1, 2, 3 directly (no step_dependency entry needed) ──
+  let surveyBuilderStep1 = ''
+  let surveyBuilderStep2 = ''
+  let surveyBuilderStep3 = ''
+  if (stepId === 'survey-builder') {
+    try {
+      const { data: sbOutputs } = await supabase
+        .from('step_output')
+        .select('step_id, content')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', ['1', '2', '3'])
+        .order('version', { ascending: false })
+      if (sbOutputs) {
+        const seen = new Set<string>()
+        for (const row of sbOutputs as Array<{ step_id: string; content: Record<string, unknown> }>) {
+          if (!seen.has(row.step_id)) {
+            seen.add(row.step_id)
+            if (row.step_id === '1') surveyBuilderStep1 = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '2') surveyBuilderStep2 = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '3') surveyBuilderStep3 = JSON.stringify(row.content, null, 2)
+          }
+        }
+      }
+    } catch { /* non-fatal — proceed without Phase 1 context */ }
+  }
+
   // ── Build system prompt ───────────────────────────────────────────────────────
 
   let systemPrompt: string
@@ -518,6 +544,70 @@ ${step13Text}
 ${provisionalNote}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
+  } else if (stepId === 'survey-builder') {
+    systemPrompt = `You are Assembly AI Copilot, a B2B buyer research specialist.
+
+Your task: Generate a tailored Decision Clarity Process (DCP) survey with EXACTLY 15 questions distributed across 7 buying journey stages, based on the Phase 1 company profile below.
+
+REQUIRED DISTRIBUTION (must be exact):
+- Stage 1 Need Recognition: 3 questions
+- Stage 2 Information Search: 2 questions
+- Stage 3 Evaluation of Alternatives: 2 questions
+- Stage 4 Purchase Decision: 3 questions
+- Stage 5 Purchase Process: 2 questions
+- Stage 6 Post-Purchase Evaluation: 2 questions
+- Stage 7 Loyalty and Advocacy: 1 question
+
+REQUIRED TYPE DISTRIBUTION (total across all 15 questions):
+- open: 10 questions
+- scale: 3 questions
+- multiple_choice: 2 questions
+
+QUESTION WRITING RULES:
+- All questions are from the BUYER's perspective about THEIR experience and decision journey
+- NOT about product knowledge, features, or vendor capabilities from the company's perspective
+- Be specific to the industry, segments, and decision maker roles from the Phase 1 data below
+- Every question must be tailored — no generic filler questions
+- Open-ended: starts with "How", "What", "Why", "Describe", "Walk me through", "Tell me about", etc.
+- Scale 1-10: assesses urgency, priority, or magnitude of something in the buyer's experience
+- Multiple choice: offers 4 specific, realistic options directly relevant to the buyer's context
+
+CONFIDENCE SCORING:
+- 71-100: Phase 1 data (company profile, segments, decision makers) is complete and specific
+- 41-70: Phase 1 data is partially available — some questions will be partially generic
+- 0-40: Phase 1 data is missing — questions are generic DCP questions only
+
+Return ONLY valid JSON with no markdown fences in this exact shape:
+{
+  "draft": "<1-2 sentence summary of the survey approach and what makes it tailored>",
+  "confidence": <integer 0-100>,
+  "sources": ["Step 1", "Step 2", "Step 3"],
+  "assumptions": ["<assumption made about the buyer context>"],
+  "open_questions": ["<something the user should verify before sending the survey>"],
+  "verification_checks": ["<factual claim to verify>"],
+  "survey": {
+    "stage_1": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
+    "stage_2": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
+    "stage_3": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}],
+    "stage_4": [{"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
+    "stage_5": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
+    "stage_6": [{"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
+    "stage_7": [{"text": "<question>", "type": "multiple_choice"}]
+  }
+}
+
+The type distribution in the shape above is prescriptive — follow it exactly.
+Type values must be exactly: "open", "scale", or "multiple_choice"
+
+STEP 1 — Company Profile (what the company sells and who it sells to):
+${surveyBuilderStep1 || 'Not yet available — generate generic DCP questions.'}
+
+STEP 2 — Target Market Segments:
+${surveyBuilderStep2 || 'Not yet available.'}
+
+STEP 3 — Key Decision Makers Per Segment:
+${surveyBuilderStep3 || 'Not yet available.'}`
+
   } else {
     // Generic prompt for all other steps
     const prerequisiteBlock = contextPacket.prerequisites.length > 0
@@ -568,6 +658,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
+  const maxTokens = stepId === 'survey-builder' ? 2500 : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
   let webSearchResults = ''
@@ -607,7 +698,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
         try {
           const claudeStream = anthropic.messages.stream({
             model,
-            max_tokens: 1500,
+            max_tokens: maxTokens,
             messages: [{ role: 'user', content: userMessage }],
             system: systemPrompt,
           })
