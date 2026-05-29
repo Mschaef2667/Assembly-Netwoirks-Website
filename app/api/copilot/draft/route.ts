@@ -548,89 +548,72 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent 
     const audienceMatch = typeof extraContext === 'string' ? extraContext.match(/^Audience:\s*(.+)$/m) : null
     const audienceLabel = audienceMatch ? audienceMatch[1].trim() : 'Current Customers'
 
-    const audienceInstructions =
-      audienceLabel === 'Internal Stakeholders'
-        ? `AUDIENCE: Internal Stakeholders
-Frame all 15 questions for your internal sales and marketing team answering about HOW BUYERS make decisions — not about the company's own capabilities.
-- Use language like "How do your customers typically...", "What do you believe your buyers care most about...", "In your experience, when do prospects..."
-- Questions reveal where internal perception may align or diverge from buyer reality
-- 2 of the 15 questions must focus on internal alignment: (1) whether sales and marketing agree on the primary buyer motivation, and (2) how confidently the team can describe the buyer's key decision criteria
-`
-        : audienceLabel === 'Lost Customers'
-        ? `AUDIENCE: Lost Customers (prospects who evaluated but chose a competitor)
-Frame all questions to understand why they chose a different provider.
-- Use language like "When you evaluated solutions...", "What ultimately led you to choose a different provider...", "Looking back on your evaluation process..."
-- 2 of the 15 questions must focus specifically on competitor comparison: (1) which competitor they chose and what primarily drove that choice, and (2) what that competitor offered that was absent or unclear from your solution
-`
-        : audienceLabel === 'Potential Customers'
-        ? `AUDIENCE: Potential Customers (have not yet purchased)
-Frame all questions in present tense about the respondent's current situation and future buying intent.
-- Use language like "As you think about this problem today...", "When you eventually evaluate solutions...", "In your current environment...", "What would need to be true for you to..."
-- Questions should uncover current pain, urgency, and buying readiness
-`
-        : /* Current Customers — default */
-        `AUDIENCE: Current Customers
-Frame all questions in past tense about the respondent's actual buying experience with your company.
-- Use language like "When you chose us...", "Looking back on your decision...", "At the time you selected us...", "What convinced you to move forward with..."
-- Questions should uncover the real reasons behind the choice, not post-purchase rationalisations
-`
-
     systemPrompt = `CRITICAL: Your response must start with { and end with }. No markdown, no backticks, no prose, no explanation before or after the JSON.
 
-You are Assembly AI Copilot, a B2B buyer research specialist.
+ROLE: You are Co-CSO, an AI-forward customer decision intelligence strategist using the C3 Method.
 
-Your task: Generate a tailored Decision Clarity Process (DCP) survey with EXACTLY 15 questions distributed across 7 buying journey stages, based on the Phase 1 company profile below.
+GOAL: Generate exactly 15 survey questions that uncover how buyers make decisions when purchasing the client's product or service. Questions must work across all target segments and decision maker roles defined in Phase 1 data. Questions should be generic enough to apply across segments but specific enough to surface real buying behavior.
 
-${audienceInstructions}
-REQUIRED DISTRIBUTION (must be exact):
-- Stage 1 — Need Recognition (What triggers the search for outside help?): 2 questions
-- Stage 2 — Motivation to Act (What outcome is expected and what is the cost of inaction?): 2 questions
-- Stage 3 — Information Search (Who initiates the search and where do they look?): 2 questions
-- Stage 4 — Evaluation of Alternatives (Which options are considered and what proof is required?): 3 questions
-- Stage 5 — Select Set (Which made the shortlist and what eliminated the others?): 2 questions
-- Stage 6 — Purchase Decision (Who controls budget and what is the investment range?): 2 questions
-- Stage 7 — Confirmation (Who has final approval and what determines success?): 2 questions
+QUESTION STYLE (follow these rules strictly):
+- Behavioral: 'What most often triggers...' 'Who typically initiates...'
+- Comparative: 'Which of these best describes...' 'Rank the following...'
+- Process: 'Who did what, and when?' 'How many partners made your shortlist?'
+- Risk/objection: 'What most often eliminates a partner?' 'What would cause you to delay?'
+- Keep each question under 20 words
+- No jargon, no double-barreled questions
+- Use 'Other (please specify)' where appropriate
+- Response types must be analyzable: include at least 2 ranking questions, 2 select-all-that-apply, 2 numeric/range or scale questions
 
-REQUIRED TYPE DISTRIBUTION (total across all 15 questions):
-- open: 10 questions
-- scale: 3 questions
-- multiple_choice: 2 questions
+STAGE FRAMEWORK (use these exact stage names and distribute questions exactly as shown):
+Stage 1 — Need Recognition (2 questions): What triggers the search? How urgent is the need?
+Stage 2 — Motivation to Act (2 questions): What outcome is expected? What is the cost of inaction?
+Stage 3 — Information Search (2 questions): Who initiates the search? Where do they look first?
+Stage 4 — Evaluation of Alternatives (3 questions): Which options are considered? What partner type? What proof is required?
+Stage 5 — Select Set (2 questions): How many make the shortlist? What eliminates a partner?
+Stage 6 — Purchase Decision (2 questions): Who controls budget? What is the investment range?
+Stage 7 — Confirmation (2 questions): Who has final approval? What determines success?
 
-QUESTION WRITING RULES:
-- Keep each question under 15 words — no sub-questions, no follow-ups, no compound sentences
-- All questions follow the audience framing above — apply it consistently to every question
-- Be specific to the industry, segments, and decision maker roles from the Phase 1 data below
-- Every question must be tailored — no generic filler questions
-- Open-ended: starts with "How", "What", "Why", "Describe", "Walk me through", "Tell me about", etc.
-- Scale 1-10: assesses urgency, priority, or magnitude of something in the respondent's experience
-- Multiple choice: offers 4 specific, realistic options directly relevant to the respondent's context
+AUDIENCE FRAMING: Apply the selected audience framing to every question:
+- Current Customers: past tense -- 'When you chose...' 'Looking back on your decision...'
+- Internal Stakeholders: internal perspective -- 'How do your customers typically...' 'What do you believe your buyers care most about...'
+- Lost Customers: competitor focus -- 'When you evaluated solutions...' 'What led you to choose a different provider...'
+- Potential Customers: present/future tense -- 'As you think about this problem today...' 'When you eventually evaluate solutions...'
 
-CONFIDENCE SCORING:
-- 71-100: Phase 1 data (company profile, segments, decision makers) is complete and specific
-- 41-70: Phase 1 data is partially available — some questions will be partially generic
-- 0-40: Phase 1 data is missing — questions are generic DCP questions only
+SELECTED AUDIENCE: ${audienceLabel}
 
-Return ONLY valid JSON with no markdown fences in this exact shape:
+STAKEHOLDER COVERAGE: Include at least 3 questions that explicitly identify:
+1. Who initiates the search
+2. Who controls the budget
+3. Who has final approval or veto power
+Use the decision maker roles and titles from the Phase 1 data as response options where relevant.
+
+PHASE 1 CONTEXT: Use the company profile, target segments, and decision maker data from Phase 1 to tailor response options. For example, if the client has identified 3 segments, include those segment-relevant titles in stakeholder questions. If they have specific industries, reference those in trigger event options.
+
+OUTPUT FORMAT: Return ONLY valid JSON starting with { and ending with }. No markdown, no prose.
 {
-  "draft": "<1-2 sentence summary of the survey approach and what makes it tailored to this audience>",
+  "draft": "<one sentence summary of the survey>",
   "confidence": <integer 0-100>,
-  "sources": ["Step 1", "Step 2", "Step 3"],
-  "assumptions": ["<assumption made about the buyer context>"],
-  "open_questions": ["<something the user should verify before sending the survey>"],
+  "sources": ["<source used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<something the user should verify>"],
   "verification_checks": ["<factual claim to verify>"],
   "survey": {
-    "stage_1": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}],
-    "stage_2": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
-    "stage_3": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
-    "stage_4": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
-    "stage_5": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}],
-    "stage_6": [{"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
-    "stage_7": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}]
+    "stage_1": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_2": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_3": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_4": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_5": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_6": [{"text": "<question>", "type": "open | scale | multiple_choice"}],
+    "stage_7": [{"text": "<question>", "type": "open | scale | multiple_choice"}]
   }
 }
 
-The type distribution in the shape above is prescriptive — follow it exactly.
 Type values must be exactly: "open", "scale", or "multiple_choice"
+
+CONFIDENCE SCORING:
+- 71-100: Phase 1 complete with segments, decision makers, and company profile
+- 41-70: Partial Phase 1 data
+- 0-40: No Phase 1 data available
 
 STEP 1 — Company Profile (what the company sells and who it sells to):
 ${surveyBuilderStep1 || 'Not yet available — generate generic DCP questions.'}
