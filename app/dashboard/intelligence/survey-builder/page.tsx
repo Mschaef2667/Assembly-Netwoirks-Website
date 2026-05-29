@@ -32,7 +32,7 @@ const STAGES = [
   { id: 2, name: 'Motivation to Act',         description: 'What business outcome is expected and what is the cost of inaction?' },
   { id: 3, name: 'Information Search',        description: 'Who initiates the search and where do they look first?' },
   { id: 4, name: 'Evaluation of Alternatives', description: 'Which partner types are considered and what proof is required?' },
-  { id: 5, name: 'Narrowing Down Process',    description: 'How many make the shortlist and what eliminates a partner?' },
+  { id: 5, name: 'Select Set',    description: 'Which partners made the shortlist and what eliminated the others?' },
   { id: 6, name: 'Purchase Decision',         description: 'Who controls budget and what is the typical investment range?' },
   { id: 7, name: 'Confirmation',              description: 'Who has final approval and what determines success within 90 days?' },
 ]
