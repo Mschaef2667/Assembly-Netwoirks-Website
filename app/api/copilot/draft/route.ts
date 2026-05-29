@@ -583,13 +583,13 @@ Your task: Generate a tailored Decision Clarity Process (DCP) survey with EXACTL
 
 ${audienceInstructions}
 REQUIRED DISTRIBUTION (must be exact):
-- Stage 1 Need Recognition: 3 questions
-- Stage 2 Information Search: 2 questions
-- Stage 3 Evaluation of Alternatives: 2 questions
-- Stage 4 Purchase Decision: 3 questions
-- Stage 5 Purchase Process: 2 questions
-- Stage 6 Post-Purchase Evaluation: 2 questions
-- Stage 7 Loyalty and Advocacy: 1 question
+- Stage 1 — Need Recognition (What triggers the search for outside help?): 2 questions
+- Stage 2 — Motivation to Act (What outcome is expected and what is the cost of inaction?): 2 questions
+- Stage 3 — Information Search (Who initiates the search and where do they look?): 2 questions
+- Stage 4 — Evaluation of Alternatives (Which options are considered and what proof is required?): 3 questions
+- Stage 5 — Select Set (Which made the shortlist and what eliminated the others?): 2 questions
+- Stage 6 — Purchase Decision (Who controls budget and what is the investment range?): 2 questions
+- Stage 7 — Confirmation (Who has final approval and what determines success?): 2 questions
 
 REQUIRED TYPE DISTRIBUTION (total across all 15 questions):
 - open: 10 questions
@@ -619,13 +619,13 @@ Return ONLY valid JSON with no markdown fences in this exact shape:
   "open_questions": ["<something the user should verify before sending the survey>"],
   "verification_checks": ["<factual claim to verify>"],
   "survey": {
-    "stage_1": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
+    "stage_1": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}],
     "stage_2": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
-    "stage_3": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}],
-    "stage_4": [{"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
-    "stage_5": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
+    "stage_3": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "open"}],
+    "stage_4": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
+    "stage_5": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}],
     "stage_6": [{"text": "<question>", "type": "scale"}, {"text": "<question>", "type": "open"}],
-    "stage_7": [{"text": "<question>", "type": "multiple_choice"}]
+    "stage_7": [{"text": "<question>", "type": "open"}, {"text": "<question>", "type": "multiple_choice"}]
   }
 }
 
