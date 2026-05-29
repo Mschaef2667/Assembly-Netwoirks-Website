@@ -28,14 +28,46 @@ type CopilotStatus = 'idle' | 'generating' | 'done' | 'error'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STAGES = [
-  { id: 1, name: 'Need Recognition',          description: 'When did buyers realize they had a problem?' },
-  { id: 2, name: 'Information Search',         description: 'How did buyers research solutions?' },
-  { id: 3, name: 'Evaluation of Alternatives', description: 'How did buyers compare options?' },
-  { id: 4, name: 'Purchase Decision',          description: 'What made buyers choose?' },
-  { id: 5, name: 'Purchase Process',           description: 'What was the buying experience like?' },
-  { id: 6, name: 'Post-Purchase Evaluation',   description: 'What happened after they bought?' },
-  { id: 7, name: 'Loyalty and Advocacy',       description: 'Why do they stay and refer?' },
+  { id: 1, name: 'Need Recognition',          description: 'What most often triggers the search for outside GTM help?' },
+  { id: 2, name: 'Motivation to Act',         description: 'What business outcome is expected and what is the cost of inaction?' },
+  { id: 3, name: 'Information Search',        description: 'Who initiates the search and where do they look first?' },
+  { id: 4, name: 'Evaluation of Alternatives', description: 'Which partner types are considered and what proof is required?' },
+  { id: 5, name: 'Narrowing Down Process',    description: 'How many make the shortlist and what eliminates a partner?' },
+  { id: 6, name: 'Purchase Decision',         description: 'Who controls budget and what is the typical investment range?' },
+  { id: 7, name: 'Confirmation',              description: 'Who has final approval and what determines success within 90 days?' },
 ]
+
+const DEFAULT_SURVEY_QUESTIONS: Record<number, Array<{ text: string; type: QuestionType }>> = {
+  1: [
+    { text: 'What most often triggers your organization to consider outside GTM strategy help?', type: 'multiple_choice' },
+    { text: 'How urgent is the need once it is recognized?', type: 'multiple_choice' },
+  ],
+  2: [
+    { text: 'What is the primary business outcome you expect from a GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'What happens if you do nothing for the next 90 days?', type: 'scale' },
+  ],
+  3: [
+    { text: 'Who typically initiates the search for an outside GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'Where do you look first to find or validate potential partners?', type: 'multiple_choice' },
+  ],
+  4: [
+    { text: 'Which partner type are you most likely to hire for GTM strategy?', type: 'multiple_choice' },
+    { text: 'Rank the top 5 criteria you use to evaluate potential partners.', type: 'multiple_choice' },
+    { text: 'What proof do you require before moving a partner to the shortlist?', type: 'multiple_choice' },
+  ],
+  5: [
+    { text: 'How many partners typically make your shortlist?', type: 'multiple_choice' },
+    { text: 'What most often eliminates a partner during shortlisting?', type: 'multiple_choice' },
+  ],
+  6: [
+    { text: 'Who controls the budget for hiring the GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'What is your typical budget range for GTM strategy support (initial engagement)?', type: 'multiple_choice' },
+  ],
+  7: [
+    { text: 'Who has final approval or veto on selecting the GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'Within 90 days, what most determines whether you would rehire or refer the partner?', type: 'multiple_choice' },
+  ],
+}
 
 const TYPE_ORDER: QuestionType[] = ['open', 'scale', 'multiple_choice']
 
@@ -308,6 +340,26 @@ export default function SurveyBuilderPage() {
       setTimeout(() => setSaveState('idle'), 2500)
     } catch { /* non-fatal */ }
     finally { setMarkingComplete(false) }
+  }
+
+  // ── Load recommended questions ────────────────────────────────────────────
+
+  function handleLoadRecommended() {
+    const newSurvey: SurveyState = {}
+    for (const [stageKey, questions] of Object.entries(DEFAULT_SURVEY_QUESTIONS)) {
+      const stageId = parseInt(stageKey, 10)
+      newSurvey[stageId] = questions.map(q => ({
+        id: uid(),
+        text: q.text,
+        type: q.type,
+        stageId,
+      }))
+    }
+    updateSurvey(newSurvey)
+    const counts: Record<number, number> = {}
+    for (const [k, v] of Object.entries(newSurvey)) counts[parseInt(k, 10)] = v.length
+    setStageCounts(counts)
+    setCopilotStatus('done')
   }
 
   // ── Copilot generate ──────────────────────────────────────────────────────
@@ -776,22 +828,54 @@ export default function SurveyBuilderPage() {
               Generating survey for: {AUDIENCES.find(a => a.id === selectedAudience)!.label}
             </p>
 
-            <button
-              onClick={() => void handleGenerate()}
-              disabled={copilotStatus === 'generating' || !orgId}
-              style={{
-                width: '100%', minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                backgroundColor: copilotStatus === 'generating' ? 'rgba(232,82,10,0.55)' : '#E8520A',
-                color: '#FFFFFF', border: 'none', borderRadius: '8px',
-                cursor: copilotStatus === 'generating' ? 'not-allowed' : 'pointer',
-                fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
-              }}
-            >
-              {copilotStatus === 'generating'
-                ? <><Loader2 size={18} className="animate-spin" /> Generating…</>
-                : <><Wand2 size={18} /> Generate Survey</>
-              }
-            </button>
+            {selectedAudience === 'current' && total === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  onClick={handleLoadRecommended}
+                  style={{
+                    width: '100%', minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    backgroundColor: '#E8520A', color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                    cursor: 'pointer', fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
+                  }}
+                >
+                  <CheckCircle2 size={18} /> Load Recommended Questions
+                </button>
+                <button
+                  onClick={() => void handleGenerate()}
+                  disabled={copilotStatus === 'generating' || !orgId}
+                  style={{
+                    width: '100%', minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    backgroundColor: copilotStatus === 'generating' ? 'rgba(255,255,255,0.08)' : '#1E3A5F',
+                    color: copilotStatus === 'generating' ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                    cursor: copilotStatus === 'generating' ? 'not-allowed' : 'pointer',
+                    fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
+                  }}
+                >
+                  {copilotStatus === 'generating'
+                    ? <><Loader2 size={18} className="animate-spin" /> Generating…</>
+                    : <><Wand2 size={18} /> Generate with Copilot</>
+                  }
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => void handleGenerate()}
+                disabled={copilotStatus === 'generating' || !orgId}
+                style={{
+                  width: '100%', minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  backgroundColor: copilotStatus === 'generating' ? 'rgba(232,82,10,0.55)' : '#E8520A',
+                  color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                  cursor: copilotStatus === 'generating' ? 'not-allowed' : 'pointer',
+                  fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
+                }}
+              >
+                {copilotStatus === 'generating'
+                  ? <><Loader2 size={18} className="animate-spin" /> Generating…</>
+                  : <><Wand2 size={18} /> Generate with Copilot</>
+                }
+              </button>
+            )}
 
             {/* Success state */}
             {copilotStatus === 'done' && stageCounts && (
