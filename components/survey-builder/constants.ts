@@ -1,4 +1,4 @@
-import type { QuestionType, AudienceOption, SurveyState } from './types'
+import type { QuestionType, AudienceOption, SurveyState, Question } from './types'
 
 export const STAGES = [
   { id: 1, name: 'Need Recognition',           description: 'What most often triggers the search for outside GTM help?' },
@@ -11,6 +11,40 @@ export const STAGES = [
 ]
 
 export const DEFAULT_SURVEY_QUESTIONS: Record<number, Array<{ text: string; type: QuestionType }>> = {
+  1: [
+    { text: 'What most often triggers your organization to consider outside GTM strategy help?', type: 'multiple_choice' },
+    { text: 'How urgent is the need once it is recognized?', type: 'multiple_choice' },
+  ],
+  2: [
+    { text: 'What is the primary business outcome you expect from a GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'What happens if you do nothing for the next 90 days?', type: 'scale' },
+  ],
+  3: [
+    { text: 'Who typically initiates the search for an outside GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'Where do you look first to find or validate potential partners?', type: 'multiple_choice' },
+  ],
+  4: [
+    { text: 'Which partner type are you most likely to hire for GTM strategy?', type: 'multiple_choice' },
+    { text: 'Rank the top 5 criteria you use to evaluate potential partners.', type: 'multiple_choice' },
+    { text: 'What proof do you require before moving a partner to the shortlist?', type: 'multiple_choice' },
+  ],
+  5: [
+    { text: 'How many partners typically make your shortlist?', type: 'multiple_choice' },
+    { text: 'What most often eliminates a partner during shortlisting?', type: 'multiple_choice' },
+  ],
+  6: [
+    { text: 'Who controls the budget for hiring the GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'What is your typical budget range for GTM strategy support (initial engagement)?', type: 'multiple_choice' },
+  ],
+  7: [
+    { text: 'Who has final approval or veto on selecting the GTM strategy partner?', type: 'multiple_choice' },
+    { text: 'Within 90 days, what most determines whether you would rehire or refer the partner?', type: 'multiple_choice' },
+  ],
+}
+
+// Same 15 questions as DEFAULT_SURVEY_QUESTIONS but flagged locked: true.
+// These are the core DCP questions that must always be present in every survey.
+export const LOCKED_QUESTIONS: Record<number, Array<Pick<Question, 'text' | 'type'>>> = {
   1: [
     { text: 'What most often triggers your organization to consider outside GTM strategy help?', type: 'multiple_choice' },
     { text: 'How urgent is the need once it is recognized?', type: 'multiple_choice' },

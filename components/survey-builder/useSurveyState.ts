@@ -2,85 +2,259 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import type { Question, SurveyState, CopilotStatus, Audience, QuestionType } from './types'
+import type { Question, SurveyState, CopilotStatus, Audience, QuestionType, Segment } from './types'
 import {
-  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, DEFAULT_SURVEY_QUESTIONS,
+  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, DEFAULT_SURVEY_QUESTIONS, LOCKED_QUESTIONS,
   uid, countAll,
 } from './constants'
 
-export function useSurveyState() {
-  const [survey, setSurvey]                   = useState<SurveyState>({})
-  const [openStages, setOpenStages]           = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7]))
-  const [editingId, setEditingId]             = useState<string | null>(null)
-  const [editText, setEditText]               = useState('')
-  const [copilotStatus, setCopilotStatus]     = useState<CopilotStatus>('idle')
-  const [stageCounts, setStageCounts]         = useState<Record<number, number> | null>(null)
-  const [copilotError, setCopilotError]       = useState<string | null>(null)
-  const [orgId, setOrgId]                     = useState<string | null>(null)
-  const [preferredModel, setPreferredModel]   = useState('claude-sonnet-4-5')
-  const [saveState, setSaveState]             = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [copyDone, setCopyDone]               = useState(false)
-  const [loading, setLoading]                 = useState(true)
-  const [selectedAudience, setSelectedAudience] = useState<Audience>('current')
-  const [hoveringQId, setHoveringQId]         = useState<string | null>(null)
-  const [isApproved, setIsApproved]           = useState(false)
-  const [markingComplete, setMarkingComplete] = useState(false)
+function parseSegmentsFromStep2(content: Record<string, unknown>): Segment[] {
+  if (Array.isArray(content['segments'])) {
+    return (content['segments'] as Array<Record<string, unknown>>)
+      .filter(s => typeof s['name'] === 'string' && (s['name'] as string).trim())
+      .slice(0, 3)
+      .map(s => {
+        const name = (s['name'] as string).trim()
+        return { id: name, name, slug: name.toLowerCase().replace(/\s+/g, '-') }
+      })
+  }
+  // Try individual field format: segment_1_name, segment_2_name, etc.
+  const segs: Segment[] = []
+  for (let i = 1; i <= 3; i++) {
+    const raw = content[`segment_${i}_name`] ?? content[`segment_name_${i}`]
+    if (typeof raw === 'string' && raw.trim()) {
+      const name = raw.trim()
+      segs.push({ id: name, name, slug: name.toLowerCase().replace(/\s+/g, '-') })
+    }
+  }
+  return segs
+}
 
-  const orgIdRef          = useRef<string | null>(null)
-  const outputIdRef       = useRef<string | null>(null)
-  const surveyRef         = useRef<SurveyState>({})
-  const saveTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const audienceStepIdRef = useRef<string>('survey-builder-current')
+function computeStepId(audience: Audience, segment: Segment | null): string {
+  const slug = segment?.slug ?? 'all-segments'
+  return `survey-builder-${audience}-${slug}`
+}
+
+export function useSurveyState() {
+  const [survey, setSurvey]                         = useState<SurveyState>({})
+  const [openStages, setOpenStages]                 = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7]))
+  const [editingId, setEditingId]                   = useState<string | null>(null)
+  const [editText, setEditText]                     = useState('')
+  const [copilotStatus, setCopilotStatus]           = useState<CopilotStatus>('idle')
+  const [stageCounts, setStageCounts]               = useState<Record<number, number> | null>(null)
+  const [copilotError, setCopilotError]             = useState<string | null>(null)
+  const [orgId, setOrgId]                           = useState<string | null>(null)
+  const [preferredModel, setPreferredModel]         = useState('claude-sonnet-4-5')
+  const [saveState, setSaveState]                   = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [copyDone, setCopyDone]                     = useState(false)
+  const [loading, setLoading]                       = useState(true)
+  const [selectedAudience, setSelectedAudience]     = useState<Audience>('current')
+  const [hoveringQId, setHoveringQId]               = useState<string | null>(null)
+  const [isApproved, setIsApproved]                 = useState(false)
+  const [markingComplete, setMarkingComplete]       = useState(false)
+  const [segments, setSegments]                     = useState<Segment[]>([])
+  const [selectedSegment, setSelectedSegment]       = useState<Segment | null>(null)
+  const [autoWordingStatus, setAutoWordingStatus]   = useState<'idle' | 'loading' | 'done'>('idle')
+  const [autoWordingLabel, setAutoWordingLabel]     = useState('')
+
+  const orgIdRef            = useRef<string | null>(null)
+  const outputIdRef         = useRef<string | null>(null)
+  const surveyRef           = useRef<SurveyState>({})
+  const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audienceStepIdRef   = useRef<string>('survey-builder-current-all-segments')
+  const preferredModelRef   = useRef('claude-sonnet-4-5')
+  const selectedAudienceRef = useRef<Audience>('current')
+  const selectedSegmentRef  = useRef<Segment | null>(null)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: userRow } = await supabase
-          .from('users').select('org_id').eq('id', user.id).single()
-        if (!userRow) return
-
-        const oid = (userRow as Record<string, unknown>)['org_id'] as string
-        orgIdRef.current = oid
-        setOrgId(oid)
-
-        const { data: orgRow } = await supabase
-          .from('organizations').select('preferred_model').eq('id', oid).single()
-        if (orgRow) {
-          setPreferredModel(String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5'))
-        }
-
-        const { data: outputRow } = await supabase
-          .from('step_output')
-          .select('id, content, status')
-          .eq('workspace_id', oid)
-          .eq('step_id', 'survey-builder-current')
-          .order('version', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (outputRow) {
-          const row = outputRow as Record<string, unknown>
-          outputIdRef.current = String(row['id'] ?? '')
-          if (row['status'] === 'approved') setIsApproved(true)
-          const content = row['content'] as Record<string, unknown> | null
-          if (content?.['questions']) {
-            const raw = content['questions'] as Record<string, unknown[]>
-            const parsed: SurveyState = {}
-            for (const [k, v] of Object.entries(raw)) {
-              parsed[parseInt(k, 10)] = v as Question[]
-            }
-            surveyRef.current = parsed
-            setSurvey(parsed)
-          }
-        }
-      } catch { /* non-fatal */ }
-      finally { setLoading(false) }
-    }
     void load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function load() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: userRow } = await supabase
+        .from('users').select('org_id').eq('id', user.id).single()
+      if (!userRow) return
+
+      const oid = (userRow as Record<string, unknown>)['org_id'] as string
+      orgIdRef.current = oid
+      setOrgId(oid)
+
+      const { data: orgRow } = await supabase
+        .from('organizations').select('preferred_model').eq('id', oid).single()
+      if (orgRow) {
+        const model = String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5')
+        preferredModelRef.current = model
+        setPreferredModel(model)
+      }
+
+      // Load segments from Step 2
+      const { data: step2Row } = await supabase
+        .from('step_output')
+        .select('content')
+        .eq('workspace_id', oid)
+        .eq('step_id', '2')
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      let loadedSegments: Segment[] = []
+      if (step2Row) {
+        const content = (step2Row as Record<string, unknown>)['content'] as Record<string, unknown> | null
+        if (content) loadedSegments = parseSegmentsFromStep2(content)
+      }
+      setSegments(loadedSegments)
+
+      const initialSegment = loadedSegments.length > 0 ? loadedSegments[0] : null
+      setSelectedSegment(initialSegment)
+      selectedSegmentRef.current = initialSegment
+
+      const stepId = computeStepId('current', initialSegment)
+      audienceStepIdRef.current = stepId
+
+      const { data: outputRow } = await supabase
+        .from('step_output')
+        .select('id, content, status')
+        .eq('workspace_id', oid)
+        .eq('step_id', stepId)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (outputRow) {
+        const row = outputRow as Record<string, unknown>
+        outputIdRef.current = String(row['id'] ?? '')
+        if (row['status'] === 'approved') setIsApproved(true)
+        const content = row['content'] as Record<string, unknown> | null
+        if (content?.['questions']) {
+          const raw = content['questions'] as Record<string, unknown[]>
+          const parsed: SurveyState = {}
+          for (const [k, v] of Object.entries(raw)) {
+            parsed[parseInt(k, 10)] = v as Question[]
+          }
+          surveyRef.current = parsed
+          setSurvey(parsed)
+          return
+        }
+      }
+
+      // No saved questions — trigger auto-wording silently
+      void triggerAutoWording(oid, 'current', initialSegment)
+    } catch { /* non-fatal */ }
+    finally { setLoading(false) }
+  }
+
+  async function triggerAutoWording(oid: string, audience: Audience, segment: Segment | null) {
+    const audienceLabel = AUDIENCES.find(a => a.id === audience)!.label
+    const segmentLabel  = segment?.name ?? 'All Segments'
+    setAutoWordingStatus('loading')
+    setAutoWordingLabel(`${segmentLabel} — ${audienceLabel}`)
+
+    try {
+      const lockedQTexts = Object.entries(LOCKED_QUESTIONS).flatMap(([stageKey, qs]) =>
+        qs.map(q => ({ stage: parseInt(stageKey, 10), text: q.text }))
+      )
+
+      const res = await fetch('/api/copilot/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId: 'survey-builder-autowording',
+          workspaceId: oid,
+          stepTitle: 'Survey Auto-Wording',
+          stepDescription: 'Reword core survey questions for segment and audience',
+          currentContent: '',
+          preferredModel: preferredModelRef.current,
+          extraContext: JSON.stringify({ segment: segmentLabel, audience: audienceLabel, questions: lockedQTexts }),
+        }),
+      })
+
+      if (!res.ok || !res.body) {
+        loadDefaultLockedQuestions()
+        setAutoWordingStatus('idle')
+        return
+      }
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+
+      if (accumulated.includes('__STREAM_ERROR__')) {
+        loadDefaultLockedQuestions()
+        setAutoWordingStatus('idle')
+        return
+      }
+
+      const firstBrace = accumulated.indexOf('{')
+      const lastBrace  = accumulated.lastIndexOf('}')
+      const jsonStr    = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? accumulated.slice(firstBrace, lastBrace + 1)
+        : accumulated.trim()
+
+      const parsed = JSON.parse(jsonStr) as { questions?: Array<{ stage: number; text: string }> }
+
+      if (!parsed.questions || parsed.questions.length < 15) {
+        loadDefaultLockedQuestions()
+        setAutoWordingStatus('idle')
+        return
+      }
+
+      // Build survey with auto-worded locked questions
+      const newSurvey: SurveyState = {}
+      let qIndex = 0
+      for (const [stageKey, lockedQs] of Object.entries(LOCKED_QUESTIONS)) {
+        const stageId = parseInt(stageKey, 10)
+        newSurvey[stageId] = lockedQs.map(lockedQ => {
+          const rewording = parsed.questions![qIndex++]
+          return {
+            id: uid(),
+            text: rewording?.text ?? lockedQ.text,
+            type: lockedQ.type,
+            stageId,
+            locked: true,
+            modified: false,
+            originalText: lockedQ.text,
+          }
+        })
+      }
+
+      surveyRef.current = newSurvey
+      setSurvey(newSurvey)
+      scheduleSave(newSurvey)
+      setAutoWordingStatus('done')
+    } catch {
+      loadDefaultLockedQuestions()
+      setAutoWordingStatus('idle')
+    }
+  }
+
+  function loadDefaultLockedQuestions() {
+    const newSurvey: SurveyState = {}
+    for (const [stageKey, lockedQs] of Object.entries(LOCKED_QUESTIONS)) {
+      const stageId = parseInt(stageKey, 10)
+      newSurvey[stageId] = lockedQs.map(q => ({
+        id: uid(),
+        text: q.text,
+        type: q.type,
+        stageId,
+        locked: true,
+        modified: false,
+        originalText: q.text,
+      }))
+    }
+    surveyRef.current = newSurvey
+    setSurvey(newSurvey)
+    scheduleSave(newSurvey)
+  }
 
   function scheduleSave(updated: SurveyState) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -115,11 +289,10 @@ export function useSurveyState() {
     scheduleSave(updated)
   }
 
-  async function handleAudienceSwitch(audience: Audience) {
+  async function loadSurveyForCombo(oid: string, audience: Audience, segment: Segment | null) {
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
-    const aud = AUDIENCES.find(a => a.id === audience)!
-    audienceStepIdRef.current = aud.stepId
-    setSelectedAudience(audience)
+    const stepId = computeStepId(audience, segment)
+    audienceStepIdRef.current = stepId
     outputIdRef.current = null
     surveyRef.current = {}
     setSurvey({})
@@ -127,18 +300,18 @@ export function useSurveyState() {
     setCopilotError(null)
     setStageCounts(null)
     setIsApproved(false)
+    setAutoWordingStatus('idle')
 
-    const oid = orgIdRef.current
-    if (!oid) return
     try {
       const { data: outputRow } = await supabase
         .from('step_output')
-        .select('id, content')
+        .select('id, content, status')
         .eq('workspace_id', oid)
-        .eq('step_id', aud.stepId)
+        .eq('step_id', stepId)
         .order('version', { ascending: false })
         .limit(1)
         .maybeSingle()
+
       if (outputRow) {
         const row = outputRow as Record<string, unknown>
         outputIdRef.current = String(row['id'] ?? '')
@@ -152,9 +325,28 @@ export function useSurveyState() {
           }
           surveyRef.current = parsed
           setSurvey(parsed)
+          return
         }
       }
+      // No saved questions — trigger auto-wording
+      void triggerAutoWording(oid, audience, segment)
     } catch { /* non-fatal */ }
+  }
+
+  async function handleAudienceSwitch(audience: Audience) {
+    const oid = orgIdRef.current
+    if (!oid) return
+    setSelectedAudience(audience)
+    selectedAudienceRef.current = audience
+    await loadSurveyForCombo(oid, audience, selectedSegmentRef.current)
+  }
+
+  async function handleSegmentSwitch(segment: Segment | null) {
+    const oid = orgIdRef.current
+    if (!oid) return
+    setSelectedSegment(segment)
+    selectedSegmentRef.current = segment
+    await loadSurveyForCombo(oid, selectedAudienceRef.current, segment)
   }
 
   function toggleStage(id: number) {
@@ -184,10 +376,50 @@ export function useSurveyState() {
     const val = editText.trim()
     const updated = {
       ...survey,
-      [stageId]: (survey[stageId] ?? []).map(q => q.id === qId ? { ...q, text: val } : q),
+      [stageId]: (survey[stageId] ?? []).map(q => {
+        if (q.id !== qId) return q
+        if (q.locked) {
+          const isModified = val !== (q.originalText ?? '')
+          return { ...q, text: val, modified: isModified }
+        }
+        return { ...q, text: val }
+      }),
     }
     updateSurvey(updated)
     setEditingId(null)
+  }
+
+  function restoreQuestion(stageId: number, qId: string) {
+    const updated = {
+      ...survey,
+      [stageId]: (survey[stageId] ?? []).map(q => {
+        if (q.id !== qId || !q.locked) return q
+        return { ...q, text: q.originalText ?? q.text, modified: false }
+      }),
+    }
+    updateSurvey(updated)
+  }
+
+  function addMissingLockedQuestions() {
+    const newSurvey = { ...survey }
+    for (const [stageKey, lockedQs] of Object.entries(LOCKED_QUESTIONS)) {
+      const stageId = parseInt(stageKey, 10)
+      const existingQs  = newSurvey[stageId] ?? []
+      const lockedCount = existingQs.filter(q => q.locked).length
+      if (lockedCount < lockedQs.length) {
+        const toAdd = lockedQs.slice(lockedCount).map(q => ({
+          id: uid(),
+          text: q.text,
+          type: q.type,
+          stageId,
+          locked: true,
+          modified: false,
+          originalText: q.text,
+        }))
+        newSurvey[stageId] = [...existingQs, ...toAdd]
+      }
+    }
+    updateSurvey(newSurvey)
   }
 
   function cycleType(stageId: number, qId: string) {
@@ -231,13 +463,16 @@ export function useSurveyState() {
 
   function handleLoadRecommended() {
     const newSurvey: SurveyState = {}
-    for (const [stageKey, questions] of Object.entries(DEFAULT_SURVEY_QUESTIONS)) {
+    for (const [stageKey, questions] of Object.entries(LOCKED_QUESTIONS)) {
       const stageId = parseInt(stageKey, 10)
       newSurvey[stageId] = questions.map(q => ({
         id: uid(),
         text: q.text,
         type: q.type,
         stageId,
+        locked: true,
+        modified: false,
+        originalText: q.text,
       }))
     }
     updateSurvey(newSurvey)
@@ -256,6 +491,7 @@ export function useSurveyState() {
 
     try {
       const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
+      const segmentLabel  = selectedSegment?.name ?? 'All Segments'
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,7 +502,7 @@ export function useSurveyState() {
           stepDescription: 'Generate buyer research questions across all 7 buying stages',
           currentContent: '',
           preferredModel,
-          extraContext: `Audience: ${audienceLabel}`,
+          extraContext: `Audience: ${audienceLabel}\nSegment: ${segmentLabel}`,
         }),
       })
 
@@ -276,7 +512,7 @@ export function useSurveyState() {
         return
       }
 
-      const reader = res.body.getReader()
+      const reader  = res.body.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
       while (true) {
@@ -307,18 +543,25 @@ export function useSurveyState() {
         return
       }
 
+      // Keep existing locked questions, replace unlocked with generated ones
+      const existingLocked: SurveyState = {}
+      for (const stage of STAGES) {
+        existingLocked[stage.id] = (surveyRef.current[stage.id] ?? []).filter(q => q.locked)
+      }
+
       const newSurvey: SurveyState = {}
       const counts: Record<number, number> = {}
       const validTypes = new Set<string>(['open', 'scale', 'multiple_choice'])
 
       for (let i = 1; i <= 7; i++) {
         const qs = parsed.survey[`stage_${i}`] ?? []
-        newSurvey[i] = qs.map(q => ({
+        const generatedUnlocked = qs.map(q => ({
           id: uid(),
           text: String(q.text ?? ''),
           type: validTypes.has(q.type) ? (q.type as QuestionType) : 'open',
           stageId: i,
         }))
+        newSurvey[i] = [...(existingLocked[i] ?? []), ...generatedUnlocked]
         counts[i] = newSurvey[i].length
       }
 
@@ -367,11 +610,11 @@ export function useSurveyState() {
   function handleDownloadCSV() {
     const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
     const blob = new Blob([buildCSV()], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
     a.download = `dcp-survey-${selectedAudience}.csv`
-    a.title = `DCP Survey — ${audienceLabel}`
+    a.title    = `DCP Survey — ${audienceLabel}`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -392,14 +635,21 @@ export function useSurveyState() {
     hoveringQId,
     isApproved,
     markingComplete,
+    segments,
+    selectedSegment,
+    autoWordingStatus,
+    autoWordingLabel,
     setEditingId,
     setEditText,
     setHoveringQId,
     handleAudienceSwitch,
+    handleSegmentSwitch,
     toggleStage,
     addQuestion,
     deleteQuestion,
     commitEdit,
+    restoreQuestion,
+    addMissingLockedQuestions,
     cycleType,
     handleMarkComplete,
     handleLoadRecommended,

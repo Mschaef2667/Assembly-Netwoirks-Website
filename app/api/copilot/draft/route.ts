@@ -140,11 +140,11 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     } catch { /* non-fatal */ }
   }
 
-  // ── Survey-builder: fetch Steps 1, 2, 3 directly (no step_dependency entry needed) ──
+  // ── Survey-builder (main + autowording): fetch Steps 1, 2, 3 directly ──────────
   let surveyBuilderStep1 = ''
   let surveyBuilderStep2 = ''
   let surveyBuilderStep3 = ''
-  if (stepId === 'survey-builder') {
+  if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording') {
     try {
       const { data: sbOutputs } = await supabase
         .from('step_output')
@@ -624,6 +624,43 @@ ${surveyBuilderStep2 || 'Not yet available.'}
 STEP 3 — Key Decision Makers Per Segment:
 ${surveyBuilderStep3 || 'Not yet available.'}`
 
+  } else if (stepId === 'survey-builder-autowording') {
+    // Parse extraContext JSON: { segment, audience, questions: [{stage, text}] }
+    let segmentName  = 'All Segments'
+    let audienceLabel = 'Current Customers'
+    let questionTexts: Array<{ stage: number; text: string }> = []
+    try {
+      const ctx = JSON.parse(extraContext ?? '{}') as {
+        segment?: string
+        audience?: string
+        questions?: Array<{ stage: number; text: string }>
+      }
+      if (ctx.segment)   segmentName   = ctx.segment
+      if (ctx.audience)  audienceLabel = ctx.audience
+      if (ctx.questions) questionTexts = ctx.questions
+    } catch { /* non-fatal — proceed with defaults */ }
+
+    const questionsBlock = questionTexts
+      .map((q, i) => `${i + 1}. [Stage ${q.stage}] ${q.text}`)
+      .join('\n')
+
+    systemPrompt = `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question slightly to fit the specific context — replace generic terms with the company name, product/service description, and segment-specific language. Keep the core meaning and structure identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
+
+COMPANY PROFILE (Step 1):
+${surveyBuilderStep1 || 'Not yet available.'}
+
+TARGET SEGMENTS (Step 2):
+${surveyBuilderStep2 || 'Not yet available.'}
+
+KEY DECISION MAKERS (Step 3):
+${surveyBuilderStep3 || 'Not yet available.'}
+
+TARGET SEGMENT: ${segmentName}
+AUDIENCE: ${audienceLabel}
+
+QUESTIONS TO REWORD (keep the same order, return exactly 15):
+${questionsBlock || '(no questions provided — return the 15 standard DCP questions unchanged)'}`
+
   } else {
     // Generic prompt for all other steps
     const prerequisiteBlock = contextPacket.prerequisites.length > 0
@@ -674,7 +711,9 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
 
   // Stream the response to the client
   const anthropic = new Anthropic({ apiKey })
-  const maxTokens = stepId === 'survey-builder' ? 4000 : 1500
+  const maxTokens = stepId === 'survey-builder' ? 4000
+    : stepId === 'survey-builder-autowording' ? 2000
+    : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
   let webSearchResults = ''

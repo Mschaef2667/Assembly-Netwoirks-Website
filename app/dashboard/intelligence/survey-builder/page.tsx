@@ -12,10 +12,13 @@ export default function SurveyBuilderPage() {
     survey, openStages, editingId, editText, copilotStatus, stageCounts,
     copilotError, orgId, saveState, copyDone, loading, selectedAudience,
     hoveringQId, isApproved, markingComplete,
+    segments, selectedSegment, autoWordingStatus, autoWordingLabel,
     setEditingId, setEditText, setHoveringQId,
-    handleAudienceSwitch, toggleStage, addQuestion, deleteQuestion,
+    handleAudienceSwitch, handleSegmentSwitch,
+    toggleStage, addQuestion, deleteQuestion, restoreQuestion,
     commitEdit, cycleType, handleMarkComplete, handleLoadRecommended,
     handleGenerate, handleCopy, handleDownloadCSV,
+    addMissingLockedQuestions,
   } = useSurveyState()
 
   if (loading) {
@@ -64,6 +67,9 @@ export default function SurveyBuilderPage() {
           <SurveyAudienceTabs
             selectedAudience={selectedAudience}
             onSwitch={audience => void handleAudienceSwitch(audience)}
+            segments={segments}
+            selectedSegment={selectedSegment}
+            onSegmentChange={segment => void handleSegmentSwitch(segment)}
           />
 
           {/* Question counter */}
@@ -99,25 +105,38 @@ export default function SurveyBuilderPage() {
             )}
           </div>
 
-          <SurveyStageList
-            survey={survey}
-            openStages={openStages}
-            editingId={editingId}
-            editText={editText}
-            hoveringQId={hoveringQId}
-            isApproved={isApproved}
-            markingComplete={markingComplete}
-            total={total}
-            onToggleStage={toggleStage}
-            onAddQuestion={addQuestion}
-            onDeleteQuestion={deleteQuestion}
-            onCommitEdit={commitEdit}
-            onCycleType={cycleType}
-            onSetEditingId={setEditingId}
-            onSetEditText={setEditText}
-            onSetHoveringQId={setHoveringQId}
-            onMarkComplete={() => void handleMarkComplete()}
-          />
+          {/* Auto-wording loading state */}
+          {autoWordingStatus === 'loading' ? (
+            <div style={{
+              backgroundColor: '#0F2140', borderRadius: '10px',
+              border: '1px solid rgba(255,255,255,0.1)', padding: '40px 24px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px',
+            }}>
+              <Loader2 size={28} className="animate-spin" style={{ color: '#0EA5E9' }} />
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', margin: 0, textAlign: 'center' }}>
+                Tailoring questions for <strong style={{ color: '#FFFFFF' }}>{autoWordingLabel}</strong>…
+              </p>
+            </div>
+          ) : (
+            <SurveyStageList
+              survey={survey}
+              openStages={openStages}
+              editingId={editingId}
+              editText={editText}
+              hoveringQId={hoveringQId}
+              isApproved={isApproved}
+              total={total}
+              onToggleStage={toggleStage}
+              onAddQuestion={addQuestion}
+              onDeleteQuestion={deleteQuestion}
+              onRestoreQuestion={restoreQuestion}
+              onCommitEdit={commitEdit}
+              onCycleType={cycleType}
+              onSetEditingId={setEditingId}
+              onSetEditText={setEditText}
+              onSetHoveringQId={setHoveringQId}
+            />
+          )}
         </div>
 
         {/* Right: Copilot panel (40%) */}
@@ -127,12 +146,17 @@ export default function SurveyBuilderPage() {
           copilotError={copilotError}
           orgId={orgId}
           selectedAudience={selectedAudience}
+          survey={survey}
           total={total}
           copyDone={copyDone}
+          isApproved={isApproved}
+          markingComplete={markingComplete}
           onGenerate={handleGenerate}
           onLoadRecommended={handleLoadRecommended}
           onCopy={handleCopy}
           onDownloadCSV={handleDownloadCSV}
+          onMarkComplete={() => void handleMarkComplete()}
+          onAddMissingLockedQuestions={addMissingLockedQuestions}
         />
       </div>
     </div>

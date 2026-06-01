@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight, Plus, Loader2, CheckCircle2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import type { SurveyState } from './types'
 import { STAGES } from './constants'
@@ -13,17 +13,16 @@ interface Props {
   editText: string
   hoveringQId: string | null
   isApproved: boolean
-  markingComplete: boolean
   total: number
   onToggleStage: (id: number) => void
   onAddQuestion: (stageId: number) => void
   onDeleteQuestion: (stageId: number, qId: string) => void
+  onRestoreQuestion: (stageId: number, qId: string) => void
   onCommitEdit: (stageId: number, qId: string) => void
   onCycleType: (stageId: number, qId: string) => void
   onSetEditingId: (id: string | null) => void
   onSetEditText: (text: string) => void
   onSetHoveringQId: (id: string | null) => void
-  onMarkComplete: () => void
 }
 
 export default function SurveyStageList({
@@ -33,17 +32,16 @@ export default function SurveyStageList({
   editText,
   hoveringQId,
   isApproved,
-  markingComplete,
   total,
   onToggleStage,
   onAddQuestion,
   onDeleteQuestion,
+  onRestoreQuestion,
   onCommitEdit,
   onCycleType,
   onSetEditingId,
   onSetEditText,
   onSetHoveringQId,
-  onMarkComplete,
 }: Props) {
   const atLimit = total >= 20
 
@@ -121,6 +119,7 @@ export default function SurveyStageList({
                       onCommitEdit={onCommitEdit}
                       onCycleType={onCycleType}
                       onDelete={onDeleteQuestion}
+                      onRestore={onRestoreQuestion}
                     />
                   ))}
 
@@ -150,7 +149,7 @@ export default function SurveyStageList({
         })}
       </div>
 
-      {isApproved ? (
+      {isApproved && (
         <div style={{
           marginTop: '20px', backgroundColor: 'rgba(22,163,74,0.08)',
           borderRadius: '12px', padding: '20px 24px',
@@ -170,25 +169,7 @@ export default function SurveyStageList({
             Return to Intelligence
           </Link>
         </div>
-      ) : total > 0 ? (
-        <button
-          onClick={onMarkComplete}
-          disabled={markingComplete}
-          style={{
-            marginTop: '20px', width: '100%', minHeight: '52px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            backgroundColor: markingComplete ? 'rgba(22,163,74,0.55)' : '#16A34A',
-            color: '#FFFFFF', border: 'none', borderRadius: '10px',
-            cursor: markingComplete ? 'not-allowed' : 'pointer',
-            fontSize: '15px', fontWeight: 700, transition: 'background-color 0.15s',
-          }}
-        >
-          {markingComplete
-            ? <><Loader2 size={18} className="animate-spin" /> Saving…</>
-            : <><CheckCircle2 size={18} /> Mark Survey as Complete</>
-          }
-        </button>
-      ) : null}
+      )}
     </>
   )
 }

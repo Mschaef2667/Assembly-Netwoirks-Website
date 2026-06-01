@@ -5,6 +5,9 @@ export interface Question {
   text: string
   type: QuestionType
   stageId: number
+  locked?: boolean
+  modified?: boolean
+  originalText?: string
 }
 
 export type SurveyState = Record<number, Question[]>
@@ -17,4 +20,10 @@ export interface AudienceOption {
   id: Audience
   label: string
   stepId: string
+}
+
+export interface Segment {
+  id: string
+  name: string
+  slug: string
 }

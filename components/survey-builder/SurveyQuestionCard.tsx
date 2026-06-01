@@ -1,6 +1,6 @@
 'use client'
 
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, Lock } from 'lucide-react'
 import type { Question } from './types'
 import { TYPE_LABELS, TYPE_COLORS } from './constants'
 
@@ -16,6 +16,7 @@ interface Props {
   onCommitEdit: (stageId: number, qId: string) => void
   onCycleType: (stageId: number, qId: string) => void
   onDelete: (stageId: number, qId: string) => void
+  onRestore: (stageId: number, qId: string) => void
 }
 
 export default function SurveyQuestionCard({
@@ -30,6 +31,7 @@ export default function SurveyQuestionCard({
   onCommitEdit,
   onCycleType,
   onDelete,
+  onRestore,
 }: Props) {
   return (
     <div
@@ -58,7 +60,7 @@ export default function SurveyQuestionCard({
               }}
             />
           ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '0 0 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '0 0 8px', flexWrap: 'wrap' }}>
               <p
                 onClick={() => { onSetEditingId(q.id); onSetEditText(q.text) }}
                 style={{
@@ -69,37 +71,75 @@ export default function SurveyQuestionCard({
               >
                 {q.text || 'Click to add question text…'}
               </p>
-              {hoveringQId === q.id && (
+              {!q.locked && hoveringQId === q.id && (
                 <Pencil size={12} style={{ color: 'rgba(255,255,255,0.35)', flexShrink: 0, marginTop: '3px' }} />
               )}
             </div>
           )}
 
-          <button
-            onClick={() => onCycleType(stageId, q.id)}
-            title="Click to change type"
-            style={{
-              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
-              backgroundColor: TYPE_COLORS[q.type].bg, color: TYPE_COLORS[q.type].color,
-              border: 'none', cursor: 'pointer',
-            }}
-          >
-            {TYPE_LABELS[q.type]}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onCycleType(stageId, q.id)}
+              title="Click to change type"
+              style={{
+                padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                backgroundColor: TYPE_COLORS[q.type].bg, color: TYPE_COLORS[q.type].color,
+                border: 'none', cursor: 'pointer',
+              }}
+            >
+              {TYPE_LABELS[q.type]}
+            </button>
+
+            {q.locked && q.modified && (
+              <>
+                <span style={{
+                  padding: '2px 7px', borderRadius: '4px', fontSize: '11px', fontWeight: 700,
+                  backgroundColor: 'rgba(232,82,10,0.15)', color: '#E8520A',
+                  border: '1px solid rgba(232,82,10,0.25)',
+                }}>
+                  Modified
+                </span>
+                <button
+                  onClick={() => onRestore(stageId, q.id)}
+                  style={{
+                    fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.45)',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '0',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Restore
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        <button
-          onClick={() => onDelete(stageId, q.id)}
-          title="Delete question"
-          style={{
-            minWidth: '32px', minHeight: '32px', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.3)', borderRadius: '6px',
-          }}
-        >
-          <X size={15} />
-        </button>
+        {/* Right action: lock icon for locked questions, delete X for unlocked */}
+        {q.locked ? (
+          <div
+            title="This is a core DCP question — it can be edited but not removed"
+            style={{
+              minWidth: '32px', minHeight: '32px', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'rgba(255,255,255,0.25)',
+            }}
+          >
+            <Lock size={12} />
+          </div>
+        ) : (
+          <button
+            onClick={() => onDelete(stageId, q.id)}
+            title="Delete question"
+            style={{
+              minWidth: '32px', minHeight: '32px', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'rgba(255,255,255,0.3)', borderRadius: '6px',
+            }}
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
     </div>
   )
