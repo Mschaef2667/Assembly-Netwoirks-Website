@@ -75,79 +75,45 @@ export default function SurveyCopilotPanel({
   const [downloadingGuide, setDownloadingGuide] = useState(false)
 
   async function handleDownloadInterviewGuide() {
-    if (downloadingGuide || total === 0) return
+    if (downloadingGuide || total === 0 || probes.size === 0) return
     setDownloadingGuide(true)
     try {
       const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
       const segmentName   = selectedSegment?.name ?? 'All Segments'
       const company       = orgName || 'Your Company'
-      const today         = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
-      const stagesHtml = STAGES.map(stage => {
-        const qs = survey[stage.id] ?? []
-        if (qs.length === 0) return ''
-        const questionsHtml = qs.map((q, qi) => {
-          const subs = probes.get(q.id) ?? []
-          const subLabels = ['a', 'b', 'c']
-          const fallbackSubs = ['Can you tell me more about that?', 'What was the impact of that?', 'What would have changed that outcome?']
-          const subItems = subs.length > 0 ? subs.slice(0, 3) : fallbackSubs
-          const subsHtml = `<ul style="margin:6px 0 0 24px;padding:0;list-style:none;">${subItems.map((s, si) => `<li style="font-size:12pt;color:#555;margin-bottom:4px;">${subLabels[si]}. ${s}</li>`).join('')}</ul>`
-          return `<div style="margin-bottom:14px;"><p style="font-size:14pt;font-weight:700;color:#0D0D0D;margin:0 0 2px;">${qi + 1}. ${q.text}</p>${subsHtml}</div>`
-        }).join('')
-        return `<div style="margin-bottom:28px;"><h3 style="font-size:14pt;font-weight:700;color:#0A1628;border-bottom:2px solid #E8520A;padding-bottom:6px;margin:0 0 16px;">Stage ${stage.id} — ${stage.name}</h3><p style="font-size:11pt;color:#555;margin:0 0 16px;font-style:italic;">${stage.description}</p>${questionsHtml}</div>`
-      }).join('')
+      // Flatten survey into a question array with stageId
+      const questions = STAGES.flatMap(stage =>
+        (survey[stage.id] ?? []).map(q => ({ id: q.id, text: q.text, stageId: stage.id }))
+      )
 
-      const html = `<div style="font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:40px;">
-        <div style="text-align:center;padding:60px 40px;border-bottom:3px solid #E8520A;margin-bottom:40px;">
-          <p style="font-size:11pt;font-weight:700;color:#E8520A;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;">Assembly AI</p>
-          <h1 style="font-size:26pt;font-weight:700;color:#0A1628;margin:0 0 20px;line-height:1.2;">Decision Clarity Process<br>Interview Guide</h1>
-          <table style="margin:0 auto;border-collapse:collapse;"><tbody>
-            <tr><td style="font-size:11pt;color:#555;padding:4px 12px;text-align:right;font-weight:600;">Company:</td><td style="font-size:11pt;color:#0D0D0D;padding:4px 12px;">${company}</td></tr>
-            <tr><td style="font-size:11pt;color:#555;padding:4px 12px;text-align:right;font-weight:600;">Segment:</td><td style="font-size:11pt;color:#0D0D0D;padding:4px 12px;">${segmentName}</td></tr>
-            <tr><td style="font-size:11pt;color:#555;padding:4px 12px;text-align:right;font-weight:600;">Audience:</td><td style="font-size:11pt;color:#0D0D0D;padding:4px 12px;">${audienceLabel}</td></tr>
-            <tr><td style="font-size:11pt;color:#555;padding:4px 12px;text-align:right;font-weight:600;">Date:</td><td style="font-size:11pt;color:#0D0D0D;padding:4px 12px;">${today}</td></tr>
-          </tbody></table>
-        </div>
-        <div style="margin-bottom:40px;padding:24px;background:#F8F6F1;border-radius:8px;border-left:4px solid #0EA5E9;">
-          <h2 style="font-size:16pt;font-weight:700;color:#0A1628;margin:0 0 12px;">How to Use This Guide</h2>
-          <p style="font-size:11pt;color:#333;margin:0 0 10px;">This structured guide supports a <strong>45–60 minute</strong> qualitative interview across all 7 stages of the Decision Clarity Process. Each main question is followed by 3 probing sub-questions to help you go deeper.</p>
-          <ul style="font-size:11pt;color:#333;margin:0;padding-left:20px;line-height:1.8;">
-            <li>Ask the main question first, then use probes only if the respondent does not go deep enough.</li>
-            <li>Listen actively — do not lead the witness. Probes should follow the respondent's lead.</li>
-            <li>Take notes or record with permission. Capture exact phrases where possible.</li>
-            <li>Stay curious. Unexpected answers often contain the most valuable insight.</li>
-          </ul>
-        </div>
-        ${stagesHtml}
-        <div style="margin-top:40px;padding-top:16px;border-top:1px solid #ccc;text-align:center;">
-          <p style="font-size:10pt;color:#999;margin:0;">Assembly AI Confidential — ${company}</p>
-        </div>
-      </div>`
+      // Convert Map to plain object for JSON serialisation
+      const probesObj: Record<string, string[]> = {}
+      probes.forEach((subs, qId) => { probesObj[qId] = subs })
 
-      const container = document.createElement('div')
-      container.innerHTML = html
-      container.style.position = 'absolute'
-      container.style.left = '-9999px'
-      container.style.top = '0'
-      document.body.appendChild(container)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const res = await fetch('/api/survey-builder/interview-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions,
+          probes:      probesObj,
+          segmentName,
+          audienceName: audienceLabel,
+          companyName:  company,
+          stages:       STAGES,
+        }),
+      })
 
-      const html2pdf = (await import('html2pdf.js')).default
+      if (!res.ok) throw new Error(`Server returned ${res.status}`)
+
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
       const slug = `${company.replace(/\s+/g, '-')}-interview-guide-${segmentName.replace(/\s+/g, '-')}`
-      console.log('[InterviewGuide] Starting html2pdf export:', slug)
-      await html2pdf()
-        .set({
-          margin: [15, 15, 20, 15] as [number, number, number, number],
-          filename: `${slug}.pdf`,
-          image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
-        })
-        .from(container)
-        .save()
-      console.log('[InterviewGuide] html2pdf export complete')
-
-      container.remove()
+      a.href     = url
+      a.download = `${slug}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (e) {
       console.error('Interview guide PDF export failed:', e)
     } finally {
@@ -291,23 +257,37 @@ export default function SurveyCopilotPanel({
           }
         </p>
         {mode === 'interview' ? (
-          <button
-            onClick={() => void handleDownloadInterviewGuide()}
-            disabled={downloadingGuide || total === 0}
-            style={{
-              width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              backgroundColor: downloadingGuide || total === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(14,165,233,0.12)',
-              color: downloadingGuide || total === 0 ? 'rgba(255,255,255,0.25)' : '#0EA5E9',
-              border: `1px solid ${downloadingGuide || total === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(14,165,233,0.3)'}`,
-              borderRadius: '8px', cursor: downloadingGuide || total === 0 ? 'not-allowed' : 'pointer',
-              fontSize: '14px', fontWeight: 700,
-            }}
-          >
-            {downloadingGuide
-              ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
-              : <><FileText size={15} /> Download Interview Guide</>
-            }
-          </button>
+          <>
+            {probes.size === 0 && (
+              <div style={{
+                marginBottom: '12px', padding: '10px 14px',
+                backgroundColor: 'rgba(217,119,6,0.1)',
+                border: '1px solid rgba(217,119,6,0.4)',
+                borderRadius: '8px',
+              }}>
+                <p style={{ fontSize: '12px', color: '#D97706', margin: 0, lineHeight: '1.5' }}>
+                  Please wait for interview probes to finish generating before downloading.
+                </p>
+              </div>
+            )}
+            <button
+              onClick={() => void handleDownloadInterviewGuide()}
+              disabled={downloadingGuide || total === 0 || probes.size === 0}
+              style={{
+                width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                backgroundColor: downloadingGuide || total === 0 || probes.size === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(14,165,233,0.12)',
+                color: downloadingGuide || total === 0 || probes.size === 0 ? 'rgba(255,255,255,0.25)' : '#0EA5E9',
+                border: `1px solid ${downloadingGuide || total === 0 || probes.size === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(14,165,233,0.3)'}`,
+                borderRadius: '8px', cursor: downloadingGuide || total === 0 || probes.size === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '14px', fontWeight: 700,
+              }}
+            >
+              {downloadingGuide
+                ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
+                : <><FileText size={15} /> Download Interview Guide</>
+              }
+            </button>
+          </>
         ) : (
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
