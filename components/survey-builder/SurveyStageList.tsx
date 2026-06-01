@@ -14,6 +14,8 @@ interface Props {
   hoveringQId: string | null
   isApproved: boolean
   total: number
+  mode: 'survey' | 'interview'
+  probes: Map<string, string[]>
   onToggleStage: (id: number) => void
   onAddQuestion: (stageId: number) => void
   onDeleteQuestion: (stageId: number, qId: string) => void
@@ -33,6 +35,8 @@ export default function SurveyStageList({
   hoveringQId,
   isApproved,
   total,
+  mode,
+  probes,
   onToggleStage,
   onAddQuestion,
   onDeleteQuestion,
@@ -105,43 +109,84 @@ export default function SurveyStageList({
                     </p>
                   )}
 
-                  {qs.map(q => (
-                    <SurveyQuestionCard
-                      key={q.id}
-                      question={q}
-                      stageId={stage.id}
-                      editingId={editingId}
-                      editText={editText}
-                      hoveringQId={hoveringQId}
-                      onSetEditingId={onSetEditingId}
-                      onSetEditText={onSetEditText}
-                      onSetHoveringQId={onSetHoveringQId}
-                      onCommitEdit={onCommitEdit}
-                      onCycleType={onCycleType}
-                      onDelete={onDeleteQuestion}
-                      onRestore={onRestoreQuestion}
-                    />
-                  ))}
+                  {mode === 'interview' ? (
+                    qs.map((q, qi) => {
+                      const subs = probes.get(q.id)
+                      const subLabels = ['a', 'b', 'c']
+                      return (
+                        <div
+                          key={q.id}
+                          style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                        >
+                          <p style={{
+                            fontSize: '14px', fontWeight: 700, color: '#FFFFFF',
+                            lineHeight: '1.5', margin: '0 0 8px',
+                          }}>
+                            {qi + 1}. {q.text || '(no question text)'}
+                          </p>
+                          {subs ? (
+                            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {subs.slice(0, 3).map((sub, si) => (
+                                <li key={si} style={{
+                                  paddingLeft: '16px', fontSize: '13px',
+                                  color: 'rgba(255,255,255,0.5)', lineHeight: '1.4',
+                                }}>
+                                  {subLabels[si]}. {sub}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p style={{
+                              paddingLeft: '16px', fontSize: '13px',
+                              color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0,
+                            }}>
+                              Generating probes…
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })
+                  ) : (
+                    qs.map(q => (
+                      <SurveyQuestionCard
+                        key={q.id}
+                        question={q}
+                        stageId={stage.id}
+                        editingId={editingId}
+                        editText={editText}
+                        hoveringQId={hoveringQId}
+                        onSetEditingId={onSetEditingId}
+                        onSetEditText={onSetEditText}
+                        onSetHoveringQId={onSetHoveringQId}
+                        onCommitEdit={onCommitEdit}
+                        onCycleType={onCycleType}
+                        onDelete={onDeleteQuestion}
+                        onRestore={onRestoreQuestion}
+                      />
+                    ))
+                  )}
 
-                  <div style={{ padding: '10px 20px' }}>
-                    <button
-                      onClick={() => onAddQuestion(stage.id)}
-                      disabled={atLimit}
-                      title={atLimit ? 'Maximum 20 questions reached' : undefined}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 14px', minHeight: '36px',
-                        backgroundColor: atLimit ? 'rgba(255,255,255,0.03)' : 'rgba(14,165,233,0.07)',
-                        color: atLimit ? 'rgba(255,255,255,0.2)' : '#0EA5E9',
-                        border: `1px solid ${atLimit ? 'rgba(255,255,255,0.06)' : 'rgba(14,165,233,0.2)'}`,
-                        borderRadius: '6px', cursor: atLimit ? 'not-allowed' : 'pointer',
-                        fontSize: '13px', fontWeight: 600,
-                      }}
-                    >
-                      <Plus size={14} />
-                      Add question
-                    </button>
-                  </div>
+                  {mode === 'survey' && (
+                    <div style={{ padding: '10px 20px' }}>
+                      <button
+                        onClick={() => onAddQuestion(stage.id)}
+                        disabled={atLimit}
+                        title={atLimit ? 'Maximum 20 questions reached' : undefined}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          padding: '6px 14px', minHeight: '36px',
+                          backgroundColor: atLimit ? 'rgba(255,255,255,0.03)' : 'rgba(14,165,233,0.07)',
+                          color: atLimit ? 'rgba(255,255,255,0.2)' : '#0EA5E9',
+                          border: `1px solid ${atLimit ? 'rgba(255,255,255,0.06)' : 'rgba(14,165,233,0.2)'}`,
+                          borderRadius: '6px', cursor: atLimit ? 'not-allowed' : 'pointer',
+                          fontSize: '13px', fontWeight: 600,
+                        }}
+                      >
+                        <Plus size={14} />
+                        Add question
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

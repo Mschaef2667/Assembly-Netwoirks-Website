@@ -1,6 +1,7 @@
 'use client'
 
-import { Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, ClipboardList, Mic } from 'lucide-react'
 import { useSurveyState } from '@/components/survey-builder/useSurveyState'
 import { countAll } from '@/components/survey-builder/constants'
 import SurveyAudienceTabs from '@/components/survey-builder/SurveyAudienceTabs'
@@ -8,18 +9,29 @@ import SurveyStageList from '@/components/survey-builder/SurveyStageList'
 import SurveyCopilotPanel from '@/components/survey-builder/SurveyCopilotPanel'
 
 export default function SurveyBuilderPage() {
+  const [selectedMode, setSelectedMode] = useState<'survey' | 'interview'>('survey')
+
   const {
     survey, openStages, editingId, editText, copilotStatus, stageCounts,
-    copilotError, orgId, saveState, copyDone, loading, selectedAudience,
+    copilotError, orgId, orgName, saveState, copyDone, loading, selectedAudience,
     hoveringQId, isApproved, markingComplete,
     segments, selectedSegment, autoWordingStatus, autoWordingLabel,
+    probes,
     setEditingId, setEditText, setHoveringQId,
     handleAudienceSwitch, handleSegmentSwitch,
     toggleStage, addQuestion, deleteQuestion, restoreQuestion,
     commitEdit, cycleType, handleMarkComplete, handleLoadRecommended,
     handleGenerate, handleCopy, handleDownloadCSV,
     addMissingLockedQuestions,
+    generateInterviewProbes,
   } = useSurveyState()
+
+  function handleModeSwitch(mode: 'survey' | 'interview') {
+    setSelectedMode(mode)
+    if (mode === 'interview') {
+      void generateInterviewProbes()
+    }
+  }
 
   if (loading) {
     return (
@@ -58,6 +70,30 @@ export default function SurveyBuilderPage() {
           </span>
         </div>
       </header>
+
+      {/* Mode toggle */}
+      <div style={{ padding: '16px 32px 0', display: 'flex', gap: '8px' }}>
+        {(['survey', 'interview'] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => handleModeSwitch(m)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '8px 18px', minHeight: '40px',
+              borderRadius: '8px', border: 'none', cursor: 'pointer',
+              fontSize: '14px', fontWeight: 700,
+              backgroundColor: selectedMode === m ? '#E8520A' : 'rgba(255,255,255,0.07)',
+              color: selectedMode === m ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            {m === 'survey'
+              ? <><ClipboardList size={15} /> Survey Mode</>
+              : <><Mic size={15} /> Interview Mode</>
+            }
+          </button>
+        ))}
+      </div>
 
       <div style={{ display: 'flex', gap: '24px', padding: '28px 32px', alignItems: 'flex-start' }}>
 
@@ -126,6 +162,8 @@ export default function SurveyBuilderPage() {
               hoveringQId={hoveringQId}
               isApproved={isApproved}
               total={total}
+              mode={selectedMode}
+              probes={probes}
               onToggleStage={toggleStage}
               onAddQuestion={addQuestion}
               onDeleteQuestion={deleteQuestion}
@@ -151,6 +189,10 @@ export default function SurveyBuilderPage() {
           copyDone={copyDone}
           isApproved={isApproved}
           markingComplete={markingComplete}
+          mode={selectedMode}
+          probes={probes}
+          selectedSegment={selectedSegment}
+          orgName={orgName}
           onGenerate={handleGenerate}
           onLoadRecommended={handleLoadRecommended}
           onCopy={handleCopy}

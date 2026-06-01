@@ -44,6 +44,7 @@ export function useSurveyState() {
   const [stageCounts, setStageCounts]               = useState<Record<number, number> | null>(null)
   const [copilotError, setCopilotError]             = useState<string | null>(null)
   const [orgId, setOrgId]                           = useState<string | null>(null)
+  const [orgName, setOrgName]                       = useState<string>('')
   const [preferredModel, setPreferredModel]         = useState('claude-sonnet-4-5')
   const [saveState, setSaveState]                   = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [copyDone, setCopyDone]                     = useState(false)
@@ -56,15 +57,17 @@ export function useSurveyState() {
   const [selectedSegment, setSelectedSegment]       = useState<Segment | null>(null)
   const [autoWordingStatus, setAutoWordingStatus]   = useState<'idle' | 'loading' | 'done'>('idle')
   const [autoWordingLabel, setAutoWordingLabel]     = useState('')
+  const [probes, setProbes]                         = useState<Map<string, string[]>>(new Map())
 
-  const orgIdRef            = useRef<string | null>(null)
-  const outputIdRef         = useRef<string | null>(null)
-  const surveyRef           = useRef<SurveyState>({})
-  const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const audienceStepIdRef   = useRef<string>('survey-builder-current-all-segments')
-  const preferredModelRef   = useRef('claude-sonnet-4-5')
-  const selectedAudienceRef = useRef<Audience>('current')
-  const selectedSegmentRef  = useRef<Segment | null>(null)
+  const orgIdRef             = useRef<string | null>(null)
+  const outputIdRef          = useRef<string | null>(null)
+  const surveyRef            = useRef<SurveyState>({})
+  const saveTimerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audienceStepIdRef    = useRef<string>('survey-builder-current-all-segments')
+  const preferredModelRef    = useRef('claude-sonnet-4-5')
+  const selectedAudienceRef  = useRef<Audience>('current')
+  const selectedSegmentRef   = useRef<Segment | null>(null)
+  const autoProbesGenerated  = useRef(false)
 
   useEffect(() => {
     void load()
@@ -85,11 +88,13 @@ export function useSurveyState() {
       setOrgId(oid)
 
       const { data: orgRow } = await supabase
-        .from('organizations').select('preferred_model').eq('id', oid).single()
+        .from('organizations').select('preferred_model, name').eq('id', oid).single()
       if (orgRow) {
         const model = String((orgRow as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5')
         preferredModelRef.current = model
         setPreferredModel(model)
+        const name = String((orgRow as Record<string, unknown>)['name'] ?? '')
+        setOrgName(name)
       }
 
       // Load segments from Step 2
@@ -607,6 +612,66 @@ export function useSurveyState() {
     } catch { /* non-fatal */ }
   }
 
+  async function generateInterviewProbes() {
+    if (autoProbesGenerated.current) return
+    autoProbesGenerated.current = true
+
+    const oid = orgIdRef.current
+    if (!oid) return
+
+    const allQuestions: Array<{ question_id: string; text: string; stage: number }> = []
+    for (const [stageKey, qs] of Object.entries(surveyRef.current)) {
+      for (const q of qs) {
+        allQuestions.push({ question_id: q.id, text: q.text, stage: parseInt(stageKey, 10) })
+      }
+    }
+    if (allQuestions.length === 0) return
+
+    try {
+      const res = await fetch('/api/copilot/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId: 'survey-builder-interview-probes',
+          workspaceId: oid,
+          stepTitle: 'Interview Probes',
+          stepDescription: 'Generate probing sub-questions for interview guide',
+          currentContent: '',
+          preferredModel: preferredModelRef.current,
+          extraContext: JSON.stringify({ questions: allQuestions }),
+        }),
+      })
+
+      if (!res.ok || !res.body) return
+
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+
+      if (accumulated.includes('__STREAM_ERROR__')) return
+
+      const firstBrace = accumulated.indexOf('{')
+      const lastBrace  = accumulated.lastIndexOf('}')
+      const jsonStr    = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? accumulated.slice(firstBrace, lastBrace + 1)
+        : accumulated.trim()
+
+      const parsed = JSON.parse(jsonStr) as { probes?: Array<{ question_id: string; subs: string[] }> }
+      if (!parsed.probes) return
+
+      const newProbes = new Map<string, string[]>()
+      for (const probe of parsed.probes) {
+        newProbes.set(probe.question_id, probe.subs)
+      }
+      setProbes(newProbes)
+    } catch { /* non-fatal */ }
+  }
+
   function handleDownloadCSV() {
     const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
     const blob = new Blob([buildCSV()], { type: 'text/csv' })
@@ -628,6 +693,7 @@ export function useSurveyState() {
     stageCounts,
     copilotError,
     orgId,
+    orgName,
     saveState,
     copyDone,
     loading,
@@ -639,6 +705,7 @@ export function useSurveyState() {
     selectedSegment,
     autoWordingStatus,
     autoWordingLabel,
+    probes,
     setEditingId,
     setEditText,
     setHoveringQId,
@@ -656,5 +723,6 @@ export function useSurveyState() {
     handleGenerate,
     handleCopy,
     handleDownloadCSV,
+    generateInterviewProbes,
   }
 }

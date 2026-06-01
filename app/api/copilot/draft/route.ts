@@ -661,6 +661,25 @@ AUDIENCE: ${audienceLabel}
 QUESTIONS TO REWORD (keep the same order, return exactly 15):
 ${questionsBlock || '(no questions provided — return the 15 standard DCP questions unchanged)'}`
 
+  } else if (stepId === 'survey-builder-interview-probes') {
+    // Parse extraContext: { questions: [{ question_id, text, stage }] }
+    let interviewQuestions: Array<{ question_id: string; text: string; stage: number }> = []
+    try {
+      const ctx = JSON.parse(extraContext ?? '{}') as {
+        questions?: Array<{ question_id: string; text: string; stage: number }>
+      }
+      if (ctx.questions) interviewQuestions = ctx.questions
+    } catch { /* non-fatal */ }
+
+    const questionsBlock = interviewQuestions
+      .map((q, i) => `${i + 1}. [ID: ${q.question_id}] [Stage ${q.stage}] ${q.text}`)
+      .join('\n')
+
+    systemPrompt = `You are an expert qualitative researcher using the C3 Method buyer decision journey. You will receive a list of survey questions. For each question generate exactly 3 probing follow-up sub-questions a skilled interviewer would ask to go deeper. Sub-questions must be behavioral and specific. Keep each sub-question under 15 words. Return ONLY valid JSON starting with { and ending with }: { "probes": [{ "question_id": "<id>", "subs": ["<sub1>", "<sub2>", "<sub3>"] }] } with exactly one entry per question received. No markdown no prose no explanation.
+
+QUESTIONS:
+${questionsBlock || '(no questions provided)'}`
+
   } else {
     // Generic prompt for all other steps
     const prerequisiteBlock = contextPacket.prerequisites.length > 0
@@ -713,6 +732,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
   const anthropic = new Anthropic({ apiKey })
   const maxTokens = stepId === 'survey-builder' ? 4000
     : stepId === 'survey-builder-autowording' ? 2000
+    : stepId === 'survey-builder-interview-probes' ? 3000
     : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
