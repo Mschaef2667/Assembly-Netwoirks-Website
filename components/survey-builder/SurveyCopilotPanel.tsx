@@ -89,9 +89,9 @@ export default function SurveyCopilotPanel({
         const questionsHtml = qs.map((q, qi) => {
           const subs = probes.get(q.id) ?? []
           const subLabels = ['a', 'b', 'c']
-          const subsHtml = subs.length > 0
-            ? `<ul style="margin:6px 0 0 24px;padding:0;list-style:none;">${subs.slice(0, 3).map((s, si) => `<li style="font-size:12pt;color:#555;margin-bottom:4px;">${subLabels[si]}. ${s}</li>`).join('')}</ul>`
-            : ''
+          const fallbackSubs = ['Can you tell me more about that?', 'What was the impact of that?', 'What would have changed that outcome?']
+          const subItems = subs.length > 0 ? subs.slice(0, 3) : fallbackSubs
+          const subsHtml = `<ul style="margin:6px 0 0 24px;padding:0;list-style:none;">${subItems.map((s, si) => `<li style="font-size:12pt;color:#555;margin-bottom:4px;">${subLabels[si]}. ${s}</li>`).join('')}</ul>`
           return `<div style="margin-bottom:14px;"><p style="font-size:14pt;font-weight:700;color:#0D0D0D;margin:0 0 2px;">${qi + 1}. ${q.text}</p>${subsHtml}</div>`
         }).join('')
         return `<div style="margin-bottom:28px;"><h3 style="font-size:14pt;font-weight:700;color:#0A1628;border-bottom:2px solid #E8520A;padding-bottom:6px;margin:0 0 16px;">Stage ${stage.id} — ${stage.name}</h3><p style="font-size:11pt;color:#555;margin:0 0 16px;font-style:italic;">${stage.description}</p>${questionsHtml}</div>`
@@ -130,9 +130,11 @@ export default function SurveyCopilotPanel({
       container.style.left = '-9999px'
       container.style.top = '0'
       document.body.appendChild(container)
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const html2pdf = (await import('html2pdf.js')).default
       const slug = `${company.replace(/\s+/g, '-')}-interview-guide-${segmentName.replace(/\s+/g, '-')}`
+      console.log('[InterviewGuide] Starting html2pdf export:', slug)
       await html2pdf()
         .set({
           margin: [15, 15, 20, 15] as [number, number, number, number],
@@ -143,8 +145,9 @@ export default function SurveyCopilotPanel({
         })
         .from(container)
         .save()
+      console.log('[InterviewGuide] html2pdf export complete')
 
-      document.body.removeChild(container)
+      container.remove()
     } catch (e) {
       console.error('Interview guide PDF export failed:', e)
     } finally {
