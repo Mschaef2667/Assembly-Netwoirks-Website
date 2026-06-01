@@ -78,42 +78,255 @@ export default function SurveyCopilotPanel({
     if (downloadingGuide || total === 0 || probes.size === 0) return
     setDownloadingGuide(true)
     try {
+      const { jsPDF } = await import('jspdf')
+
       const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
       const segmentName   = selectedSegment?.name ?? 'All Segments'
       const company       = orgName || 'Your Company'
+      const today         = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
-      // Flatten survey into a question array with stageId
-      const questions = STAGES.flatMap(stage =>
-        (survey[stage.id] ?? []).map(q => ({ id: q.id, text: q.text, stageId: stage.id }))
+      const NAVY   = '#0A1628'
+      const ORANGE = '#E8520A'
+      const BLUE   = '#0EA5E9'
+      const GREY   = '#6B7280'
+      const BLACK  = '#0D0D0D'
+
+      const doc     = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
+      const pageW   = doc.internal.pageSize.getWidth()
+      const pageH   = doc.internal.pageSize.getHeight()
+      const margin  = 50
+      const contentW = pageW - margin * 2
+
+      // ── helpers ──────────────────────────────────────────────────────────────
+
+      function hexToRgb(hex: string): [number, number, number] {
+        const r = parseInt(hex.slice(1, 3), 16)
+        const g = parseInt(hex.slice(3, 5), 16)
+        const b = parseInt(hex.slice(5, 7), 16)
+        return [r, g, b]
+      }
+
+      function setFill(hex: string) { doc.setFillColor(...hexToRgb(hex)) }
+      function setStroke(hex: string) { doc.setDrawColor(...hexToRgb(hex)) }
+      function setTextColor(hex: string) { doc.setTextColor(...hexToRgb(hex)) }
+
+      // wrappedText returns the y position after the last line
+      function wrappedText(
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        lineHeight: number,
+      ): number {
+        const lines = doc.splitTextToSize(text, maxWidth) as string[]
+        for (const line of lines) {
+          doc.text(line, x, y)
+          y += lineHeight
+        }
+        return y
+      }
+
+      let y = margin
+
+      // ── Cover ────────────────────────────────────────────────────────────────
+
+      // Orange top bar
+      setFill(ORANGE)
+      doc.rect(0, 0, pageW, 5, 'F')
+
+      y = 80
+
+      // "ASSEMBLY AI" small caps
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      setTextColor(ORANGE)
+      doc.text('ASSEMBLY AI', pageW / 2, y, { align: 'center', charSpace: 2 })
+      y += 28
+
+      // Title
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(24)
+      setTextColor(NAVY)
+      doc.text('Decision Clarity Process', pageW / 2, y, { align: 'center' })
+      y += 30
+      doc.text('Interview Guide', pageW / 2, y, { align: 'center' })
+      y += 28
+
+      // Orange divider
+      setStroke(ORANGE)
+      doc.setLineWidth(1.5)
+      doc.line(margin + 60, y, pageW - margin - 60, y)
+      y += 28
+
+      // Meta rows
+      const labelX = pageW / 2 - 110
+      const valueX = pageW / 2 + 14
+      const metaRows: [string, string][] = [
+        ['Company:', company],
+        ['Segment:', segmentName],
+        ['Audience:', audienceLabel],
+        ['Date:', today],
+      ]
+      doc.setFontSize(11)
+      for (const [label, value] of metaRows) {
+        doc.setFont('helvetica', 'bold')
+        setTextColor(GREY)
+        doc.text(label, labelX + 108, y, { align: 'right' })
+        doc.setFont('helvetica', 'normal')
+        setTextColor(BLACK)
+        doc.text(value, valueX, y)
+        y += 18
+      }
+      y += 28
+
+      // ── How to Use This Guide box ─────────────────────────────────────────────
+
+      const boxHeight = 148
+      const boxPad    = 14
+
+      // Light blue tinted background
+      const [br, bg, bb] = hexToRgb(BLUE)
+      doc.setFillColor(br, bg, bb)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      doc.setGState(new (doc as any).GState({ opacity: 0.07 }))
+      doc.rect(margin, y, contentW, boxHeight, 'F')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      doc.setGState(new (doc as any).GState({ opacity: 1 }))
+
+      // Border
+      setStroke(BLUE)
+      doc.setLineWidth(0.75)
+      doc.rect(margin, y, contentW, boxHeight, 'S')
+
+      // Left accent bar
+      setFill(BLUE)
+      doc.rect(margin, y, 4, boxHeight, 'F')
+
+      const textX = margin + boxPad + 4
+      const innerW = contentW - boxPad * 2 - 4
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(12)
+      setTextColor(NAVY)
+      doc.text('How to Use This Guide', textX, y + boxPad + 10)
+
+      let by = y + boxPad + 26
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      setTextColor('#333333')
+      by = wrappedText(
+        'This structured guide supports a 45–60 minute qualitative interview across all 7 stages of the Decision Clarity Process. Each main question is followed by 3 probing sub-questions to help you go deeper.',
+        textX, by, innerW, 13,
       )
+      by += 6
 
-      // Convert Map to plain object for JSON serialisation
-      const probesObj: Record<string, string[]> = {}
-      probes.forEach((subs, qId) => { probesObj[qId] = subs })
+      const bullets = [
+        'Ask the main question first, then use probes only if the respondent does not go deep enough.',
+        'Listen actively — do not lead the witness. Probes should follow the respondent\'s lead.',
+        'Take notes or record with permission. Capture exact phrases where possible.',
+        'Stay curious. Unexpected answers often contain the most valuable insight.',
+      ]
+      for (const bullet of bullets) {
+        by = wrappedText(`• ${bullet}`, textX, by, innerW, 13)
+        by += 3
+      }
 
-      const res = await fetch('/api/survey-builder/interview-guide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questions,
-          probes:      probesObj,
-          segmentName,
-          audienceName: audienceLabel,
-          companyName:  company,
-          stages:       STAGES,
-        }),
-      })
+      y = y + boxHeight + 24
 
-      if (!res.ok) throw new Error(`Server returned ${res.status}`)
+      // ── Stages + questions ────────────────────────────────────────────────────
 
-      const blob = await res.blob()
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
+      const subLabels     = ['a', 'b', 'c']
+      const fallbackProbes = [
+        'Can you tell me more about that?',
+        'What was the impact of that?',
+        'What would have changed that outcome?',
+      ]
+
+      const pages: number[] = [1]
+
+      function addPageIfNeeded(spaceNeeded: number) {
+        if (y + spaceNeeded > pageH - 60) {
+          doc.addPage()
+          pages.push(pages.length + 1)
+          y = margin
+        }
+      }
+
+      for (const stage of STAGES) {
+        const stageQs = STAGES.flatMap(s =>
+          s.id === stage.id ? (survey[s.id] ?? []).map(q => ({ id: q.id, text: q.text, stageId: s.id })) : []
+        )
+        if (stageQs.length === 0) continue
+
+        addPageIfNeeded(120)
+
+        // Stage header
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        setTextColor(NAVY)
+        doc.text(`Stage ${stage.id} — ${stage.name}`, margin, y)
+        y += 8
+
+        // Orange underline
+        setStroke(ORANGE)
+        doc.setLineWidth(1.5)
+        doc.line(margin, y, pageW - margin, y)
+        y += 12
+
+        // Stage description
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(10)
+        setTextColor(GREY)
+        y = wrappedText(stage.description, margin, y, contentW, 13)
+        y += 14
+
+        stageQs.forEach((q, qi) => {
+          addPageIfNeeded(80)
+
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(12)
+          setTextColor(BLACK)
+          y = wrappedText(`${qi + 1}. ${q.text}`, margin, y, contentW, 15)
+          y += 6
+
+          const subs  = (probes.get(q.id) ?? []).slice(0, 3)
+          const items = subs.length > 0 ? subs : fallbackProbes
+
+          items.forEach((sub, si) => {
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(GREY)
+            y = wrappedText(`   ${subLabels[si]}. ${sub}`, margin + 16, y, contentW - 16, 13)
+            y += 4
+          })
+
+          y += 10
+        })
+
+        y += 12
+      }
+
+      // ── Page footers ──────────────────────────────────────────────────────────
+
+      const totalPages = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        const footerY = pageH - 28
+
+        doc.setDrawColor(204, 204, 204)
+        doc.setLineWidth(0.5)
+        doc.line(margin, footerY - 8, pageW - margin, footerY - 8)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        setTextColor('#999999')
+        doc.text(`Assembly AI Confidential — ${company}`, margin, footerY)
+        doc.text(`Page ${i} of ${totalPages}`, pageW - margin, footerY, { align: 'right' })
+      }
+
       const slug = `${company.replace(/\s+/g, '-')}-interview-guide-${segmentName.replace(/\s+/g, '-')}`
-      a.href     = url
-      a.download = `${slug}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
+      doc.save(`${slug}.pdf`)
     } catch (e) {
       console.error('Interview guide PDF export failed:', e)
     } finally {
