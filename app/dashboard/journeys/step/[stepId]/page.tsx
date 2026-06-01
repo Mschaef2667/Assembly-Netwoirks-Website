@@ -1353,6 +1353,10 @@ export default function StepPage() {
   // Segment names loaded from Step 2 content for display in Steps 3 and 3.5
   const [segmentNames, setSegmentNames] = useState<string[]>(['Segment 1', 'Segment 2', 'Segment 3'])
 
+  // Multi-segment pill — shown on all steps when workspace has >1 segment
+  const [primarySegmentName, setPrimarySegmentName] = useState<string | null>(null)
+  const [hasMultipleSegments, setHasMultipleSegments] = useState(false)
+
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [activeAction, setActiveAction] = useState<CopilotAction | null>(null)
   const [streamBuffer, setStreamBuffer] = useState('')
@@ -1542,8 +1546,8 @@ export default function StepPage() {
           }
         }
 
-        // Load Step 2 segment names for Steps 3 and 3.5
-        if (stepId === '3' || stepId === '3.5') {
+        // Load Step 2 segment names — always needed for multi-segment pill; also for Steps 3/3.5 editor tabs
+        {
           const { data: s2Rows } = await supabase
             .from('step_output')
             .select('content')
@@ -1554,10 +1558,19 @@ export default function StepPage() {
           if (s2Rows && s2Rows.length > 0) {
             const s2c = (s2Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown>
             if (Array.isArray(s2c?.['segments'])) {
-              const names = (s2c['segments'] as Array<Record<string, unknown>>)
+              const allNames = (s2c['segments'] as Array<Record<string, unknown>>)
                 .slice(0, 3)
                 .map((s, i) => String(s['name'] ?? '').trim() || `Segment ${i + 1}`)
-              setSegmentNames(names)
+              if (stepId === '3' || stepId === '3.5') {
+                setSegmentNames(allNames)
+              }
+              const namedCount = (s2c['segments'] as Array<Record<string, unknown>>)
+                .filter(s => typeof s['name'] === 'string' && (s['name'] as string).trim())
+                .length
+              if (namedCount > 1) {
+                setHasMultipleSegments(true)
+                setPrimarySegmentName(allNames[0] || null)
+              }
             }
           }
         }
@@ -2160,6 +2173,23 @@ export default function StepPage() {
         <span style={{ color: 'rgba(255,255,255,0.8)' }}>Step {stepId}</span>
       </div>
       <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>{stepTitle}</h1>
+      {hasMultipleSegments && primarySegmentName && (
+        <div style={{ marginTop: '8px' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 10px',
+            borderRadius: '999px',
+            backgroundColor: 'rgba(14,165,233,0.15)',
+            color: '#0EA5E9',
+            fontSize: '12px',
+            fontWeight: 600,
+            border: '1px solid rgba(14,165,233,0.3)',
+          }}>
+            Working on: {primarySegmentName}
+          </span>
+        </div>
+      )}
       {stepDesc && (
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
           {stepDesc}

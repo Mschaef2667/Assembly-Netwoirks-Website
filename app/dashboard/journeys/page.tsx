@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Loader2, CheckCircle2, AlertTriangle, Lock, ChevronRight,
-  Clock, ArrowRight, ChevronDown, ChevronUp,
+  Clock, ArrowRight, ChevronDown, ChevronUp, Info, X,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
@@ -236,6 +236,8 @@ export default function JourneysPage() {
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
   const [continueStepId, setContinueStepId] = useState<string | null>(null)
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]))
+  const [multiSegmentNames, setMultiSegmentNames] = useState<string[]>([])
+  const [bannerDismissed, setBannerDismissed] = useState(false)
 
   function togglePhase(phase: number) {
     setExpandedPhases(prev => {
@@ -323,6 +325,25 @@ export default function JourneysPage() {
         }
 
         setContinueStepId(getContinueStepId(parsedSteps, dm, om))
+
+        // Fetch Step 2 segments for multi-segment banner
+        const { data: step2Rows } = await supabase
+          .from('step_output')
+          .select('content')
+          .eq('workspace_id', wsId)
+          .eq('step_id', '2')
+          .order('version', { ascending: false })
+          .limit(1)
+        if (step2Rows && step2Rows.length > 0) {
+          const s2c = (step2Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown>
+          if (Array.isArray(s2c?.['segments'])) {
+            const names = (s2c['segments'] as Array<Record<string, unknown>>)
+              .filter(s => typeof s['name'] === 'string' && (s['name'] as string).trim())
+              .map(s => String(s['name'] ?? '').trim())
+            setMultiSegmentNames(names)
+          }
+        }
+        setBannerDismissed(localStorage.getItem('journeys_multisegment_banner_dismissed') === '1')
       } catch {
         // non-fatal
       } finally {
@@ -405,6 +426,51 @@ export default function JourneysPage() {
       </header>
 
       <div style={{ padding: '24px 32px' }}>
+
+        {multiSegmentNames.length > 1 && !bannerDismissed && (
+          <div style={{
+            position: 'relative',
+            borderLeft: '3px solid #0EA5E9',
+            backgroundColor: '#0F2140',
+            borderRadius: '8px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+          }}>
+            <Info size={16} style={{ color: '#0EA5E9', flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
+                Multi-Segment Journey — Coming Soon
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: '1.55' }}>
+                You have defined {multiSegmentNames.length} target market segments. Currently the Journey supports one segment at a time. Complete your full journey for your primary segment first. Multi-segment journeys are coming in a future update.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setBannerDismissed(true)
+                localStorage.setItem('journeys_multisegment_banner_dismissed', '1')
+              }}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                color: 'rgba(255,255,255,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {!hasAnyProgress && <StartHereBanner />}
 
