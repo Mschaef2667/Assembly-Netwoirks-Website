@@ -26,6 +26,11 @@ interface DcpRow {
   overall_confidence: number | null
 }
 
+interface AudienceCount {
+  audience: string
+  count: number
+}
+
 interface ScoreBreakdown {
   total: number
   stepPts: number
@@ -202,6 +207,7 @@ export default function DashboardPage() {
   const [depsMap, setDepsMap] = useState<Map<string, string[]>>(new Map())
   const [dcpRow, setDcpRow] = useState<DcpRow | null>(null)
   const [icpRows, setIcpRows] = useState<Array<Record<string, unknown>>>([])
+  const [audienceCounts, setAudienceCounts] = useState<AudienceCount[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
@@ -219,7 +225,7 @@ export default function DashboardPage() {
         if (!userRow) throw new Error('User not found')
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [defsRes, outputsRes, depsRes, dcpRes, icpRes] = await Promise.all([
+        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes] = await Promise.all([
           supabase.from('step_definition').select('id,title,section,phase'),
           supabase.from('step_output')
             .select('step_id,version,status,original_confidence')
@@ -230,6 +236,7 @@ export default function DashboardPage() {
             .eq('org_id', orgId)
             .maybeSingle(),
           supabase.from('icp_definition').select('*').eq('org_id', orgId),
+          supabase.from('survey_link_responses').select('audience').eq('org_id', orgId),
         ])
 
         // Latest version per step_id
@@ -247,11 +254,22 @@ export default function DashboardPage() {
           dm.set(d.step_id, arr)
         }
 
+        // Audience counts from survey_link_responses
+        const rawResponses = (surveyRes.data ?? []) as Array<{ audience: string }>
+        const countMap = new Map<string, number>()
+        for (const r of rawResponses) {
+          countMap.set(r.audience, (countMap.get(r.audience) ?? 0) + 1)
+        }
+        const counts: AudienceCount[] = [
+          'internal_stakeholders', 'current_customers', 'lost_customers', 'potential_customers',
+        ].map(a => ({ audience: a, count: countMap.get(a) ?? 0 }))
+
         setStepDefs((defsRes.data ?? []) as StepDef[])
         setLatestOutputs(outMap)
         setDepsMap(dm)
         setDcpRow(dcpRes.data as DcpRow | null)
         setIcpRows((icpRes.data ?? []) as Array<Record<string, unknown>>)
+        setAudienceCounts(counts)
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
@@ -577,6 +595,96 @@ export default function DashboardPage() {
           </div>
 
         </div>
+
+        {/* ── Widget 5: Intelligence Status (full width) ─────────────────── */}
+        {(() => {
+          const AUDIENCE_LABELS: Record<string, string> = {
+            internal_stakeholders: 'Internal Stakeholders',
+            current_customers:     'Current Customers',
+            lost_customers:        'Lost Customers',
+            potential_customers:   'Potential Customers',
+          }
+          const totalResponses = audienceCounts.reduce((s, a) => s + a.count, 0)
+          const dcpStatus = dcpRow?.status === 'approved'
+            ? 'Approved'
+            : dcpRow?.status === 'pending_approval'
+            ? 'Pending'
+            : 'Not started'
+          const dcpStatusColor = dcpRow?.status === 'approved'
+            ? '#0EA5E9'
+            : dcpRow?.status === 'pending_approval'
+            ? '#D97706'
+            : 'rgba(255,255,255,0.35)'
+          const gate1StatusLabel = gate1 === 'approved' ? 'Approved' : gate1 === 'pending' ? 'Pending' : 'Locked'
+          const gate1StatusColor = gate1 === 'approved' ? '#0EA5E9' : gate1 === 'pending' ? '#D97706' : 'rgba(255,255,255,0.35)'
+
+          return (
+            <div id="widget-intelligence" style={CARD}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <p style={{ ...CARD_HDR, margin: 0 }}>Intelligence Status</p>
+                <Link
+                  href="/dashboard/intelligence"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    minHeight: '36px', padding: '0 16px', borderRadius: '7px',
+                    backgroundColor: '#0EA5E9', color: '#FFFFFF',
+                    textDecoration: 'none', fontSize: '12px', fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  Go to Intelligence
+                  <ChevronRight size={13} />
+                </Link>
+              </div>
+
+              {totalResponses === 0 ? (
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: '0 0 20px' }}>
+                  No survey responses yet. Share your survey links to start collecting buyer intelligence.
+                </p>
+              ) : null}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                {audienceCounts.map(({ audience, count }) => (
+                  <div key={audience} style={{
+                    padding: '14px 16px', borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    display: 'flex', flexDirection: 'column', gap: '6px',
+                  }}>
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {AUDIENCE_LABELS[audience] ?? audience}
+                    </span>
+                    <span style={{ fontSize: '24px', fontWeight: 700, color: count > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.25)', lineHeight: 1 }}>
+                      {count}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
+                      {count === 1 ? 'response' : 'responses'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    DCP Map
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: dcpStatusColor }}>
+                    {dcpStatus}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Gate 1
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: gate1StatusColor }}>
+                    {gate1StatusLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── Phase 1 Complete banner ──────────────────────────────────────── */}
         {showPhase1Banner && (
