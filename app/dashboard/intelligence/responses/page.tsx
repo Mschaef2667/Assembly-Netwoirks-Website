@@ -670,8 +670,8 @@ export default function ResponseImportPage() {
     if (viewFilterAudience && r.audience !== viewFilterAudience) return false
     if (viewFilterSegment && r.segment_slug !== viewFilterSegment) return false
     if (viewFilterSource) {
-      const matchesSource = viewFilterSource === 'manual'
-        ? (r.source === 'manual' || r.source === null)
+      const matchesSource = viewFilterSource === 'unknown'
+        ? r.source === null
         : r.source === viewFilterSource
       if (!matchesSource) return false
     }
@@ -1143,6 +1143,7 @@ export default function ResponseImportPage() {
                     { value: 'link', label: 'Survey Link' },
                     { value: 'manual', label: 'Manual Entry' },
                     { value: 'csv', label: 'CSV Upload' },
+                    { value: 'unknown', label: 'Unknown' },
                   ]}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1194,7 +1195,7 @@ export default function ResponseImportPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead style={{ backgroundColor: '#0A1628' }}>
                       <tr>
-                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Source', 'Responses', 'Date', 'Actions'] as const).map(col => (
+                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Source', 'Date', 'Actions'] as const).map(col => (
                           <th
                             key={col}
                             style={{
@@ -1243,9 +1244,6 @@ export default function ResponseImportPage() {
                             }}>
                               {SOURCE_LABELS[r.source ?? ''] ?? (r.source ?? '—')}
                             </span>
-                          </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {countAnswers(r.answers)}
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {formatDate(r.submitted_at)}
