@@ -34,7 +34,6 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-  const { pathname } = request.nextUrl
   const isPublic = PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
 
   if (!session && !isPublic) {
