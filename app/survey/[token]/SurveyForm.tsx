@@ -32,26 +32,15 @@ const COMPANY_SIZES = [
   '5,000+ employees',
 ]
 
-const INDUSTRIES = [
-  'Technology / Software',
-  'Professional Services',
-  'Financial Services',
-  'Healthcare',
-  'Manufacturing',
-  'Retail / E-commerce',
-  'Media / Marketing',
-  'Education',
-  'Non-profit',
-  'Government',
-  'Other',
+const DECISION_ROLES = [
+  'Final Decision Maker',
+  'Strong Influence',
+  'Evaluator / Analyst',
+  'Champion (internal advocate)',
+  'Gatekeeper / Procurement',
+  'End User',
+  'Observer / No direct role',
 ]
-
-const AUDIENCE_LABELS: Record<string, string> = {
-  internal: 'Internal Stakeholders',
-  current: 'Current Customers',
-  lost: 'Lost Customers',
-  potential: 'Potential Customers',
-}
 
 function groupByStage(questions: SurveyQuestion[]): Map<number, { stageName: string; questions: SurveyQuestion[] }> {
   const map = new Map<number, { stageName: string; questions: SurveyQuestion[] }>()
@@ -67,12 +56,12 @@ function groupByStage(questions: SurveyQuestion[]): Map<number, { stageName: str
 }
 
 export default function SurveyForm({ link }: Props) {
-  const [respondentName,     setRespondentName]     = useState('')
-  const [respondentTitle,    setRespondentTitle]     = useState('')
-  const [respondentCompany,  setRespondentCompany]   = useState('')
-  const [respondentSize,     setRespondentSize]      = useState('')
-  const [respondentIndustry, setRespondentIndustry]  = useState('')
-  const [answers,            setAnswers]             = useState<Record<string, string>>({})
+  const [respondentName,    setRespondentName]    = useState('')
+  const [respondentTitle,   setRespondentTitle]   = useState('')
+  const [respondentCompany, setRespondentCompany] = useState('')
+  const [respondentSize,    setRespondentSize]    = useState('')
+  const [decisionRole,      setDecisionRole]      = useState('')
+  const [answers,           setAnswers]           = useState<Record<string, string>>({})
   const [scaleValues,        setScaleValues]         = useState<Record<string, number>>({})
   const [submitting,         setSubmitting]          = useState(false)
   const [submitted,          setSubmitted]           = useState(false)
@@ -105,7 +94,7 @@ export default function SurveyForm({ link }: Props) {
           respondentTitle,
           respondentCompany,
           respondentSize,
-          respondentIndustry,
+          decisionRole,
           answers,
         }),
       })
@@ -174,27 +163,9 @@ export default function SurveyForm({ link }: Props) {
 
         {/* Intro */}
         <div style={{ marginBottom: '36px' }}>
-          <h1 style={{ color: '#FFFFFF', fontSize: '28px', fontWeight: 700, margin: '0 0 10px' }}>
+          <h1 style={{ color: '#FFFFFF', fontSize: '28px', fontWeight: 700, margin: '0 0 12px' }}>
             Decision Clarity Survey
           </h1>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
-            <span style={{
-              fontSize: '12px', fontWeight: 600, color: '#0EA5E9',
-              backgroundColor: 'rgba(14,165,233,0.1)',
-              border: '1px solid rgba(14,165,233,0.2)',
-              borderRadius: '20px', padding: '3px 10px',
-            }}>
-              {link.segmentName}
-            </span>
-            <span style={{
-              fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '20px', padding: '3px 10px',
-            }}>
-              {AUDIENCE_LABELS[link.audience] ?? link.audience}
-            </span>
-          </div>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
             This short survey helps us better understand your buying experience. Your honest answers are invaluable.
             It takes approximately 5–10 minutes to complete.
@@ -247,6 +218,27 @@ export default function SurveyForm({ link }: Props) {
                   }}
                 />
               </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Your Role in This Decision
+                </label>
+                <select
+                  value={decisionRole}
+                  onChange={e => setDecisionRole(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '8px',
+                    backgroundColor: '#0F2140', border: '1px solid rgba(255,255,255,0.12)',
+                    color: decisionRole ? '#FFFFFF' : 'rgba(255,255,255,0.35)',
+                    fontSize: '14px', boxSizing: 'border-box', outline: 'none',
+                    appearance: 'none',
+                  }}
+                >
+                  <option value="">Select your role</option>
+                  {DECISION_ROLES.map(r => (
+                    <option key={r} value={r} style={{ backgroundColor: '#0F2140', color: '#FFFFFF' }}>{r}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Company Name
@@ -282,27 +274,6 @@ export default function SurveyForm({ link }: Props) {
                   <option value="">Select size…</option>
                   {COMPANY_SIZES.map(s => (
                     <option key={s} value={s} style={{ backgroundColor: '#0F2140', color: '#FFFFFF' }}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Industry
-                </label>
-                <select
-                  value={respondentIndustry}
-                  onChange={e => setRespondentIndustry(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '8px',
-                    backgroundColor: '#0F2140', border: '1px solid rgba(255,255,255,0.12)',
-                    color: respondentIndustry ? '#FFFFFF' : 'rgba(255,255,255,0.35)',
-                    fontSize: '14px', boxSizing: 'border-box', outline: 'none',
-                    appearance: 'none',
-                  }}
-                >
-                  <option value="">Select industry…</option>
-                  {INDUSTRIES.map(i => (
-                    <option key={i} value={i} style={{ backgroundColor: '#0F2140', color: '#FFFFFF' }}>{i}</option>
                   ))}
                 </select>
               </div>
