@@ -820,23 +820,21 @@ export default function ResponseImportPage() {
                     />
                   </div>
                 ))}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
-                  <label style={{
-                    fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)',
-                    textTransform: 'uppercase', letterSpacing: '0.07em',
-                  }}>
-                    Decision Role
-                  </label>
-                  <input
-                    type="text"
+                <div style={{ gridColumn: 'span 2' }}>
+                  <LabeledSelect
+                    label="Decision Role"
                     value={manDecisionRole}
-                    onChange={e => setManDecisionRole(e.target.value)}
-                    placeholder="Final approver / Champion / Influencer / Budget holder"
-                    style={{
-                      padding: '10px 12px', fontSize: '14px',
-                      color: '#0D0D0D', backgroundColor: '#FFFFFF',
-                      border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', outline: 'none',
-                    }}
+                    onChange={v => setManDecisionRole(v)}
+                    options={[
+                      { value: '', label: 'Select your role' },
+                      { value: 'Final Decision Maker', label: 'Final Decision Maker' },
+                      { value: 'Strong Influence', label: 'Strong Influence' },
+                      { value: 'Evaluator / Analyst', label: 'Evaluator / Analyst' },
+                      { value: 'Champion (internal advocate)', label: 'Champion (internal advocate)' },
+                      { value: 'Gatekeeper / Procurement', label: 'Gatekeeper / Procurement' },
+                      { value: 'End User', label: 'End User' },
+                      { value: 'Observer / No direct role', label: 'Observer / No direct role' },
+                    ]}
                   />
                 </div>
               </div>
