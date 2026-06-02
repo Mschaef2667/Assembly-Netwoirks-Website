@@ -499,7 +499,11 @@ export default function ResponseImportPage() {
         .order('submitted_at', { ascending: false })
 
       if (!error && data) {
-        setViewResponses(data as unknown as ViewResponse[])
+        const rows = (data as unknown as ViewResponse[]).map(r => ({
+          ...r,
+          source: r.source ?? (r.survey_link_id ? 'link' : 'manual'),
+        }))
+        setViewResponses(rows)
       }
     } catch {
       // non-fatal
@@ -1216,7 +1220,7 @@ export default function ResponseImportPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead style={{ backgroundColor: '#0A1628' }}>
                       <tr>
-                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Source', 'Date', 'Actions'] as const).map(col => (
+                        {(['Name', 'Title', 'Role', 'Audience', 'Segment', 'Date', 'Actions'] as const).map(col => (
                           <th
                             key={col}
                             style={{
@@ -1235,14 +1239,14 @@ export default function ResponseImportPage() {
                     <tbody>
                       {pagedResponses.map(r => (
                         <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                          <td style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          <td
+                            onClick={() => setSelectedResponse(r)}
+                            style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                          >
                             {r.respondent_name ?? <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>—</span>}
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.respondent_title ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
-                          </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {r.respondent_company ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.decision_role ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
@@ -1257,15 +1261,6 @@ export default function ResponseImportPage() {
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {segmentNameFromSlug(r.segment_slug)}
-                          </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                            <span style={{
-                              padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
-                              backgroundColor: r.source === 'link' ? 'rgba(22,163,74,0.12)' : r.source === 'manual' ? 'rgba(232,82,10,0.12)' : r.source === 'csv' ? 'rgba(107,114,128,0.15)' : 'transparent',
-                              color: r.source === 'link' ? '#16A34A' : r.source === 'manual' ? '#E8520A' : r.source === 'csv' ? '#6B7280' : 'rgba(255,255,255,0.25)',
-                            }}>
-                              {SOURCE_LABELS[r.source ?? ''] ?? (r.source ?? '—')}
-                            </span>
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {formatDate(r.submitted_at)}
