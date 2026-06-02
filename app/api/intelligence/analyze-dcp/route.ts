@@ -198,7 +198,9 @@ async function handleAnalyzeDcp(_req: NextRequest): Promise<Response> {
     return `Stage ${stage_number}: ${stage_name}\n${lines.join('\n')}`
   }).join('\n\n---\n\n')
 
-  const systemPrompt = `You are Assembly AI Copilot analyzing buyer decision intelligence using the C3 Method. You will receive survey responses from multiple audiences (internal, current, lost, potential) organized by the 7 stages of the Decision Clarity Process.
+  const systemPrompt = `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose before or after the JSON.
+
+You are Assembly AI Copilot analyzing buyer decision intelligence using the C3 Method. You will receive survey responses from multiple audiences (internal, current, lost, potential) organized by the 7 stages of the Decision Clarity Process.
 
 For each stage analyze ALL responses and generate:
 1) A stage summary (2-3 sentences describing the key patterns across audiences)
@@ -239,7 +241,7 @@ Return ONLY valid JSON (no markdown fences, no prose):
   try {
     const message = await anthropic.messages.create({
       model,
-      max_tokens: 4000,
+      max_tokens: 5000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })
@@ -268,8 +270,16 @@ Return ONLY valid JSON (no markdown fences, no prose):
 
   let parsed: ClaudePayload
   try {
-    parsed = JSON.parse(rawText) as ClaudePayload
-  } catch {
+    const firstBrace = rawText.indexOf('{')
+    const lastBrace = rawText.lastIndexOf('}')
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error('No JSON object found in response')
+    }
+    const jsonSubstring = rawText.slice(firstBrace, lastBrace + 1)
+    parsed = JSON.parse(jsonSubstring) as ClaudePayload
+  } catch (parseErr) {
+    console.error('[analyze-dcp] JSON parse error:', parseErr instanceof Error ? parseErr.message : String(parseErr))
+    console.error('[analyze-dcp] Raw response (first 500 chars):', rawText.slice(0, 500))
     return NextResponse.json({ error: 'Copilot returned invalid JSON', raw: rawText }, { status: 502 })
   }
 
