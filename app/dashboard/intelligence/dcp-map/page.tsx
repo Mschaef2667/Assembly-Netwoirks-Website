@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, RefreshCw, Send, CheckCircle2, Lock, AlertTriangle, Download, ChevronDown, ChevronRight } from 'lucide-react'
+import { Loader2, Wand2, RotateCcw, Send, CheckCircle2, Lock, AlertTriangle, Download, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -367,7 +367,7 @@ export default function DcpMapPage() {
         doc.text(`${confLabel} Confidence · ${conf}/100`, pageW - margin, 28, { align: 'right' })
 
         if (stage.response_count !== undefined) {
-          setTextColor('rgba(255,255,255,0.6)')
+          setTextColor('#9CA3AF')
           doc.setFontSize(9)
           doc.text(`${stage.response_count} response${stage.response_count !== 1 ? 's' : ''}`, margin, 40)
         }
@@ -437,6 +437,18 @@ export default function DcpMapPage() {
         }
       }
 
+      // Add footer to every page
+      const totalPages = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p)
+        setFill(NAVY)
+        doc.rect(0, pageH - 24, pageW, 24, 'F')
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        setTextColor(GREY)
+        doc.text(`Assembly AI Confidential — ${company}`, pageW / 2, pageH - 8, { align: 'center' })
+      }
+
       const slug = company.toLowerCase().replace(/\s+/g, '-')
       doc.save(`${slug}-decision-clarity-profile.pdf`)
     } catch (err) {
@@ -490,30 +502,34 @@ export default function DcpMapPage() {
                 {downloading ? 'Generating…' : 'Download PDF'}
               </button>
             )}
-
-            <button
-              onClick={() => void analyze()}
-              disabled={analyzing || responseCount === 0}
-              title={responseCount === 0 ? 'Import survey responses first' : ''}
-              style={{
-                minHeight: '44px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px',
-                backgroundColor: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.1)' : '#E8520A',
-                color: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
-                border: 'none', borderRadius: '8px',
-                cursor: (analyzing || responseCount === 0) ? 'not-allowed' : 'pointer',
-                fontSize: '14px', fontWeight: 600,
-              }}
-            >
-              {analyzing
-                ? <><Loader2 size={15} className="animate-spin" /> Analyzing…</>
-                : <><RefreshCw size={15} /> {stages.length > 0 ? 'Re-analyze' : 'Analyze with Copilot'}</>
-              }
-            </button>
           </div>
         </div>
       </header>
 
       <div style={{ padding: '24px 32px', maxWidth: '920px' }}>
+
+        {/* ── Generate button (no analysis yet) ── */}
+        {!dcpRow && (
+          <button
+            onClick={() => void analyze()}
+            disabled={analyzing || responseCount === 0}
+            title={responseCount === 0 ? 'Import survey responses first' : ''}
+            style={{
+              width: '100%', minHeight: '56px', marginBottom: '20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              backgroundColor: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.08)' : '#E8520A',
+              color: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.35)' : '#FFFFFF',
+              border: 'none', borderRadius: '10px',
+              cursor: (analyzing || responseCount === 0) ? 'not-allowed' : 'pointer',
+              fontSize: '16px', fontWeight: 700,
+            }}
+          >
+            {analyzing
+              ? <><Loader2 size={18} className="animate-spin" /> Analyzing…</>
+              : <><Wand2 size={18} /> Generate Decision Clarity Profile</>
+            }
+          </button>
+        )}
 
         {/* ── No responses yet ── */}
         {responseCount === 0 && !dcpRow && (
@@ -559,6 +575,31 @@ export default function DcpMapPage() {
               </p>
             </div>
             <ConfidenceBar score={overallConf} />
+          </div>
+        )}
+
+        {/* ── Regenerate button (analysis already exists) ── */}
+        {dcpRow && (
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-start' }}>
+            <button
+              onClick={() => void analyze()}
+              disabled={analyzing || responseCount === 0}
+              title={responseCount === 0 ? 'Import survey responses first' : ''}
+              style={{
+                minHeight: '44px', padding: '0 18px',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                backgroundColor: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.08)' : '#0A1628',
+                color: (analyzing || responseCount === 0) ? 'rgba(255,255,255,0.35)' : '#FFFFFF',
+                border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px',
+                cursor: (analyzing || responseCount === 0) ? 'not-allowed' : 'pointer',
+                fontSize: '13px', fontWeight: 600,
+              }}
+            >
+              {analyzing
+                ? <><Loader2 size={14} className="animate-spin" /> Analyzing…</>
+                : <><RotateCcw size={14} /> Regenerate</>
+              }
+            </button>
           </div>
         )}
 
