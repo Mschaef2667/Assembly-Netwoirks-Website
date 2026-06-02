@@ -684,6 +684,11 @@ export function useSurveyState() {
     URL.revokeObjectURL(url)
   }
 
+  function handleAutoWord() {
+    if (!orgId) return
+    void triggerAutoWording(orgId, selectedAudience, selectedSegment)
+  }
+
   return {
     survey,
     openStages,
@@ -724,5 +729,6 @@ export function useSurveyState() {
     handleCopy,
     handleDownloadCSV,
     generateInterviewProbes,
+    handleAutoWord,
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText, Link2, Users } from 'lucide-react'
+import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText, Link2, Users, RotateCcw } from 'lucide-react'
 import TipsPanel from '@/components/ui/TipsPanel'
 import { STEP_TIPS } from '@/lib/tips'
 import type { CopilotStatus, Audience, SurveyState, Segment } from './types'
@@ -27,6 +27,8 @@ interface Props {
   probes: Map<string, string[]>
   selectedSegment: Segment | null
   orgName: string
+  autoWordingStatus: 'idle' | 'loading' | 'done'
+  onAutoWord: () => void
   onGenerate: () => Promise<void>
   onLoadRecommended: () => void
   onCopy: () => Promise<void>
@@ -63,6 +65,8 @@ export default function SurveyCopilotPanel({
   probes,
   selectedSegment,
   orgName,
+  autoWordingStatus,
+  onAutoWord,
   onGenerate,
   onLoadRecommended,
   onCopy,
@@ -466,6 +470,34 @@ export default function SurveyCopilotPanel({
             {copilotStatus === 'generating'
               ? <><Loader2 size={18} className="animate-spin" /> Generating…</>
               : <><Wand2 size={18} /> Generate with Copilot</>
+            }
+          </button>
+        )}
+
+        {total > 0 && (
+          <button
+            onClick={onAutoWord}
+            disabled={autoWordingStatus === 'loading' || copilotStatus === 'generating'}
+            style={{
+              width: '100%', marginTop: '10px', minHeight: '44px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              backgroundColor: 'transparent',
+              color: autoWordingStatus === 'loading' || copilotStatus === 'generating'
+                ? 'rgba(255,255,255,0.25)'
+                : 'rgba(255,255,255,0.55)',
+              border: `1px solid ${autoWordingStatus === 'loading' || copilotStatus === 'generating'
+                ? 'rgba(255,255,255,0.08)'
+                : 'rgba(255,255,255,0.15)'}`,
+              borderRadius: '8px',
+              cursor: autoWordingStatus === 'loading' || copilotStatus === 'generating'
+                ? 'not-allowed'
+                : 'pointer',
+              fontSize: '13px', fontWeight: 600, transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            {autoWordingStatus === 'loading'
+              ? <><Loader2 size={14} className="animate-spin" /> Refreshing Wording…</>
+              : <><RotateCcw size={14} /> Refresh Question Wording</>
             }
           </button>
         )}

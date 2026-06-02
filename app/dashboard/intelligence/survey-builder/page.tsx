@@ -24,6 +24,7 @@ export default function SurveyBuilderPage() {
     handleGenerate, handleCopy, handleDownloadCSV,
     addMissingLockedQuestions,
     generateInterviewProbes,
+    handleAutoWord,
   } = useSurveyState()
 
   function handleModeSwitch(mode: 'survey' | 'interview') {
@@ -193,6 +194,8 @@ export default function SurveyBuilderPage() {
           probes={probes}
           selectedSegment={selectedSegment}
           orgName={orgName}
+          autoWordingStatus={autoWordingStatus}
+          onAutoWord={handleAutoWord}
           onGenerate={handleGenerate}
           onLoadRecommended={handleLoadRecommended}
           onCopy={handleCopy}
