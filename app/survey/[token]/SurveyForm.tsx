@@ -42,6 +42,18 @@ const DECISION_ROLES = [
   'Observer / No direct role',
 ]
 
+const INTERNAL_ROLES = [
+  'Founder / CEO',
+  'Sales Leadership (CRO / VP Sales)',
+  'Marketing Leadership (CMO / VP Marketing)',
+  'Revenue Operations',
+  'Account Executive',
+  'Business Development',
+  'Customer Success',
+  'Product',
+  'Other',
+]
+
 function groupByStage(questions: SurveyQuestion[]): Map<number, { stageName: string; questions: SurveyQuestion[] }> {
   const map = new Map<number, { stageName: string; questions: SurveyQuestion[] }>()
   for (const q of questions) {
@@ -220,7 +232,7 @@ export default function SurveyForm({ link }: Props) {
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Your Role in This Decision
+                  {link.audience === 'internal' ? 'Your Role at Your Company' : 'Your Role in This Decision'}
                 </label>
                 <select
                   value={decisionRole}
@@ -234,7 +246,7 @@ export default function SurveyForm({ link }: Props) {
                   }}
                 >
                   <option value="">Select your role</option>
-                  {DECISION_ROLES.map(r => (
+                  {(link.audience === 'internal' ? INTERNAL_ROLES : DECISION_ROLES).map(r => (
                     <option key={r} value={r} style={{ backgroundColor: '#0F2140', color: '#FFFFFF' }}>{r}</option>
                   ))}
                 </select>

@@ -1034,10 +1034,21 @@ export default function ResponseImportPage() {
                 />
                 <div style={{ gridColumn: 'span 2' }}>
                   <LabeledSelect
-                    label="Decision Role"
+                    label={manAudience === 'internal' ? 'Internal Role' : 'Decision Role'}
                     value={manDecisionRole}
                     onChange={v => setManDecisionRole(v)}
-                    options={[
+                    options={manAudience === 'internal' ? [
+                      { value: '', label: 'Select your role' },
+                      { value: 'Founder / CEO', label: 'Founder / CEO' },
+                      { value: 'Sales Leadership (CRO / VP Sales)', label: 'Sales Leadership (CRO / VP Sales)' },
+                      { value: 'Marketing Leadership (CMO / VP Marketing)', label: 'Marketing Leadership (CMO / VP Marketing)' },
+                      { value: 'Revenue Operations', label: 'Revenue Operations' },
+                      { value: 'Account Executive', label: 'Account Executive' },
+                      { value: 'Business Development', label: 'Business Development' },
+                      { value: 'Customer Success', label: 'Customer Success' },
+                      { value: 'Product', label: 'Product' },
+                      { value: 'Other', label: 'Other' },
+                    ] : [
                       { value: '', label: 'Select your role' },
                       { value: 'Final Decision Maker', label: 'Final Decision Maker' },
                       { value: 'Strong Influence', label: 'Strong Influence' },
