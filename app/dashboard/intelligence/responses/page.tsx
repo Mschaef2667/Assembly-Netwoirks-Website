@@ -333,6 +333,7 @@ export default function ResponseImportPage() {
   const [detailQuestionsLoading, setDetailQuestionsLoading] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [viewFilterSource, setViewFilterSource] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -516,8 +517,14 @@ export default function ResponseImportPage() {
     if (!orgId) return
     const deleted = viewResponses.find(r => r.id === id)
     setDeletingId(id)
+    setDeleteError(null)
     try {
-      await supabase.from('survey_link_responses').delete().eq('id', id)
+      const { error } = await supabase
+        .from('survey_link_responses')
+        .delete()
+        .eq('id', id)
+        .eq('org_id', orgId)
+      if (error) throw new Error(error.message)
       setViewResponses(prev => prev.filter(r => r.id !== id))
       if (deleted) {
         const a = deleted.audience as Audience
@@ -529,8 +536,9 @@ export default function ResponseImportPage() {
       }
       if (selectedResponse?.id === id) setSelectedResponse(null)
       setDeleteConfirmId(null)
-    } catch {
-      // non-fatal
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Delete failed. Please try again.')
+      setDeleteConfirmId(null)
     } finally {
       setDeletingId(null)
     }
@@ -1221,6 +1229,10 @@ export default function ResponseImportPage() {
                 </div>
               </div>
             </div>
+
+            {deleteError && (
+              <p style={{ fontSize: '13px', color: '#EF4444', margin: 0 }}>{deleteError}</p>
+            )}
 
             {/* Table */}
             {viewLoading ? (
