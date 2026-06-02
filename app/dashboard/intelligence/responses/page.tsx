@@ -71,6 +71,7 @@ const SOURCE_LABELS: Record<string, string> = {
   link: 'Survey Link',
   manual: 'Manual Entry',
   csv: 'CSV Upload',
+  simulated: 'Copilot Simulated',
 }
 
 const STAGE_NAMES: Record<number, string> = {
@@ -336,6 +337,7 @@ export default function ResponseImportPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
+  const hasBackfilledRef = useRef(false)
 
   // ── Init ─────────────────────────────────────────────────────────────────────
 
@@ -343,6 +345,30 @@ export default function ResponseImportPage() {
     void init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Backfill null source values for existing records
+  useEffect(() => {
+    if (!orgId || hasBackfilledRef.current) return
+    hasBackfilledRef.current = true
+    void (async () => {
+      try {
+        await supabase
+          .from('survey_link_responses')
+          .update({ source: 'link' })
+          .eq('org_id', orgId)
+          .is('source', null)
+          .not('survey_link_id', 'is', null)
+        await supabase
+          .from('survey_link_responses')
+          .update({ source: 'manual' })
+          .eq('org_id', orgId)
+          .is('source', null)
+          .is('survey_link_id', null)
+      } catch {
+        // non-fatal
+      }
+    })()
+  }, [orgId])
 
   async function init() {
     try {
@@ -669,12 +695,7 @@ export default function ResponseImportPage() {
   const filteredResponses = viewResponses.filter(r => {
     if (viewFilterAudience && r.audience !== viewFilterAudience) return false
     if (viewFilterSegment && r.segment_slug !== viewFilterSegment) return false
-    if (viewFilterSource) {
-      const matchesSource = viewFilterSource === 'unknown'
-        ? r.source === null
-        : r.source === viewFilterSource
-      if (!matchesSource) return false
-    }
+    if (viewFilterSource && r.source !== viewFilterSource) return false
     if (viewSearch.trim()) {
       const q = viewSearch.toLowerCase()
       const haystack = [r.respondent_name, r.respondent_title, r.respondent_company]
@@ -1143,7 +1164,7 @@ export default function ResponseImportPage() {
                     { value: 'link', label: 'Survey Link' },
                     { value: 'manual', label: 'Manual Entry' },
                     { value: 'csv', label: 'CSV Upload' },
-                    { value: 'unknown', label: 'Unknown' },
+                    { value: 'simulated', label: 'Copilot Simulated' },
                   ]}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1203,6 +1224,7 @@ export default function ResponseImportPage() {
                               color: 'rgba(255,255,255,0.45)', fontSize: '11px',
                               fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
                               whiteSpace: 'nowrap',
+                              ...(col === 'Actions' ? { minWidth: '120px' } : {}),
                             }}
                           >
                             {col}
@@ -1248,7 +1270,7 @@ export default function ResponseImportPage() {
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {formatDate(r.submitted_at)}
                           </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', minWidth: '120px' }}>
                             {deleteConfirmId === r.id ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>Delete?</span>
