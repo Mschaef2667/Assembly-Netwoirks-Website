@@ -14,6 +14,7 @@ interface PhaseStatus {
   surveyInProgress: boolean
   responsesImported: boolean
   dcpMapGenerated: boolean
+  dcpMapInProgress: boolean
   gate1Status: GateStatus
 }
 
@@ -101,6 +102,7 @@ export default function IntelligencePage() {
     surveyInProgress: false,
     responsesImported: false,
     dcpMapGenerated: false,
+    dcpMapInProgress: false,
     gate1Status: 'locked',
   })
   const [loading, setLoading] = useState(true)
@@ -136,7 +138,8 @@ export default function IntelligencePage() {
           surveyBuilt,
           surveyInProgress,
           responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
-          dcpMapGenerated: !!dcpRow,
+          dcpMapGenerated: dcpStatus === 'approved',
+          dcpMapInProgress: dcpStatus === 'draft' || dcpStatus === 'pending_approval',
           gate1Status: dcpStatus === 'approved' ? 'approved'
             : dcpStatus === 'pending_approval' ? 'pending'
             : 'locked',
@@ -177,7 +180,7 @@ export default function IntelligencePage() {
       description: 'Copilot analyzes responses across all 7 stages and generates your Decision Clarity Profile. Submit for Gate 1 approval to unlock Phase 2.',
       href: '/dashboard/intelligence/dcp-map',
       done: status.dcpMapGenerated,
-      inProgress: false,
+      inProgress: status.dcpMapInProgress,
       step: 3,
       domId: 'intelligence-dcp',
     },
