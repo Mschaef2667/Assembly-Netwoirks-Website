@@ -5,6 +5,12 @@ import type { NextRequest } from 'next/server'
 const PUBLIC_PREFIXES = ['/auth/', '/survey/']
 
 export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl
+  const hostname = request.headers.get('host') ?? ''
+  if (hostname === 'assemblyai.net' && pathname.startsWith('/survey/')) {
+    return NextResponse.redirect(`https://www.assemblyai.net${pathname}${search}`)
+  }
+
   const response = NextResponse.next({ request: { headers: request.headers } })
 
   const supabase = createServerClient(
