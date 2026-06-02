@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown } from 'lucide-react'
+import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +41,19 @@ interface RecentResponse {
   submitted_at: string
 }
 
+interface ViewResponse {
+  id: string
+  respondent_name: string | null
+  respondent_title: string | null
+  respondent_company: string | null
+  respondent_size: string | null
+  decision_role: string | null
+  audience: string
+  segment_slug: string
+  answers: Record<string, string>
+  submitted_at: string
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUDIENCE_LABELS: Record<Audience, string> = {
@@ -61,6 +74,8 @@ const STAGE_NAMES: Record<number, string> = {
   6: 'Purchase Decision',
   7: 'Confirmation',
 }
+
+const PAGE_SIZE = 20
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -200,6 +215,10 @@ function formatDate(iso: string): string {
   })
 }
 
+function countAnswers(answers: Record<string, string>): number {
+  return Object.values(answers).filter(v => typeof v === 'string' && v.trim().length > 0).length
+}
+
 // ── Shared select component ───────────────────────────────────────────────────
 
 function LabeledSelect({
@@ -256,7 +275,7 @@ export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Segment[]>([])
-  const [activeTab, setActiveTab] = useState<'csv' | 'manual'>('csv')
+  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'view'>('csv')
 
   // CSV tab
   const [csvAudience, setCsvAudience] = useState<Audience>('current')
@@ -292,6 +311,19 @@ export default function ResponseImportPage() {
   })
   const [recentResponses, setRecentResponses] = useState<RecentResponse[]>([])
   const [statsLoading, setStatsLoading] = useState(true)
+
+  // View Responses tab
+  const [viewResponses, setViewResponses] = useState<ViewResponse[]>([])
+  const [viewLoading, setViewLoading] = useState(false)
+  const [viewFilterAudience, setViewFilterAudience] = useState('')
+  const [viewFilterSegment, setViewFilterSegment] = useState('')
+  const [viewSearch, setViewSearch] = useState('')
+  const [viewPage, setViewPage] = useState(0)
+  const [selectedResponse, setSelectedResponse] = useState<ViewResponse | null>(null)
+  const [detailQuestions, setDetailQuestions] = useState<SurveyQuestion[]>([])
+  const [detailQuestionsLoading, setDetailQuestionsLoading] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
@@ -365,6 +397,78 @@ export default function ResponseImportPage() {
       // non-fatal — table may not exist yet
     } finally {
       setStatsLoading(false)
+    }
+  }
+
+  // ── View Responses tab — load data ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (activeTab === 'view' && orgId) {
+      void loadViewResponses(orgId)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, orgId])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setViewPage(0)
+  }, [viewFilterAudience, viewFilterSegment, viewSearch])
+
+  // Load detail questions when a response is selected
+  useEffect(() => {
+    if (!selectedResponse || !orgId) {
+      setDetailQuestions([])
+      return
+    }
+    const seg = segments.find(s => s.slug === selectedResponse.segment_slug) ?? null
+    setDetailQuestionsLoading(true)
+    void fetchQuestionsForAudience(orgId, selectedResponse.audience as Audience, seg).then(qs => {
+      setDetailQuestions(qs)
+      setDetailQuestionsLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedResponse, orgId])
+
+  async function loadViewResponses(oid: string) {
+    setViewLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('survey_link_responses')
+        .select('id, respondent_name, respondent_title, respondent_company, respondent_size, decision_role, audience, segment_slug, answers, submitted_at')
+        .eq('org_id', oid)
+        .order('submitted_at', { ascending: false })
+
+      if (!error && data) {
+        setViewResponses(data as unknown as ViewResponse[])
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!orgId) return
+    const deleted = viewResponses.find(r => r.id === id)
+    setDeletingId(id)
+    try {
+      await supabase.from('survey_link_responses').delete().eq('id', id)
+      setViewResponses(prev => prev.filter(r => r.id !== id))
+      if (deleted) {
+        const a = deleted.audience as Audience
+        setAudienceCounts(prev => ({
+          ...prev,
+          [a]: Math.max(0, (prev[a] ?? 0) - 1),
+        }))
+        setRecentResponses(prev => prev.filter(r => r.id !== id))
+      }
+      if (selectedResponse?.id === id) setSelectedResponse(null)
+      setDeleteConfirmId(null)
+    } catch {
+      // non-fatal
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -526,11 +630,39 @@ export default function ResponseImportPage() {
 
   const totalResponses = Object.values(audienceCounts).reduce((a, b) => a + b, 0)
 
+  // View tab computed values
+  const filteredResponses = viewResponses.filter(r => {
+    if (viewFilterAudience && r.audience !== viewFilterAudience) return false
+    if (viewFilterSegment && r.segment_slug !== viewFilterSegment) return false
+    if (viewSearch.trim()) {
+      const q = viewSearch.toLowerCase()
+      const haystack = [r.respondent_name, r.respondent_title, r.respondent_company]
+        .filter(Boolean).join(' ').toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    return true
+  })
+  const totalPages = Math.ceil(filteredResponses.length / PAGE_SIZE)
+  const pagedResponses = filteredResponses.slice(viewPage * PAGE_SIZE, (viewPage + 1) * PAGE_SIZE)
+
+  function segmentNameFromSlug(slug: string): string {
+    const seg = segments.find(s => s.slug === slug)
+    if (seg) return seg.name
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  }
+
   const CARD: React.CSSProperties = {
     backgroundColor: '#0F2140',
     borderRadius: '12px',
     border: '1px solid rgba(255,255,255,0.1)',
     padding: '24px',
+  }
+
+  // Detail panel: group questions by stage
+  const stageGroups: Record<number, SurveyQuestion[]> = {}
+  for (const q of detailQuestions) {
+    if (!stageGroups[q.stageId]) stageGroups[q.stageId] = []
+    stageGroups[q.stageId].push(q)
   }
 
   return (
@@ -553,6 +685,7 @@ export default function ResponseImportPage() {
           {([
             { key: 'csv' as const, icon: Upload, label: 'Upload CSV' },
             { key: 'manual' as const, icon: UserPlus, label: 'Add Manually' },
+            { key: 'view' as const, icon: List, label: 'View Responses' },
           ]).map(({ key, icon: Icon, label }) => (
             <button
               key={key}
@@ -932,6 +1065,236 @@ export default function ResponseImportPage() {
           </div>
         )}
 
+        {/* ── View Responses Tab ───────────────────────────────────────────────── */}
+        {activeTab === 'view' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Filters */}
+            <div style={CARD}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '16px', alignItems: 'end' }}>
+                <LabeledSelect
+                  label="Audience"
+                  value={viewFilterAudience}
+                  onChange={setViewFilterAudience}
+                  options={[
+                    { value: '', label: 'All Audiences' },
+                    { value: 'internal', label: 'Internal Stakeholders' },
+                    { value: 'current', label: 'Current Customers' },
+                    { value: 'lost', label: 'Lost Customers' },
+                    { value: 'potential', label: 'Potential Customers' },
+                  ]}
+                />
+                <LabeledSelect
+                  label="Segment"
+                  value={viewFilterSegment}
+                  onChange={setViewFilterSegment}
+                  options={[
+                    { value: '', label: 'All Segments' },
+                    ...segments.map(s => ({ value: s.slug, label: s.name })),
+                  ]}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{
+                    fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)',
+                    textTransform: 'uppercase', letterSpacing: '0.07em',
+                  }}>
+                    Search
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Search
+                      size={14}
+                      style={{
+                        position: 'absolute', left: '12px', top: '50%',
+                        transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={viewSearch}
+                      onChange={e => setViewSearch(e.target.value)}
+                      placeholder="Search by name, title, or company…"
+                      style={{
+                        width: '100%', padding: '10px 12px 10px 34px', fontSize: '14px',
+                        color: '#FFFFFF', backgroundColor: '#1A3050',
+                        border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            {viewLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+              </div>
+            ) : filteredResponses.length === 0 ? (
+              <div style={{ ...CARD, textAlign: 'center', padding: '48px' }}>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', margin: 0 }}>
+                  No responses found. Adjust your filters or add responses using the other tabs.
+                </p>
+              </div>
+            ) : (
+              <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead style={{ backgroundColor: '#0A1628' }}>
+                      <tr>
+                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Responses', 'Date', 'Actions'] as const).map(col => (
+                          <th
+                            key={col}
+                            style={{
+                              padding: '11px 16px', textAlign: 'left',
+                              color: 'rgba(255,255,255,0.45)', fontSize: '11px',
+                              fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedResponses.map(r => (
+                        <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          <td style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            {r.respondent_name ?? <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>—</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.respondent_title ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.respondent_company ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.decision_role ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
+                              backgroundColor: 'rgba(14,165,233,0.15)', color: '#0EA5E9',
+                            }}>
+                              {AUDIENCE_LABELS[r.audience as Audience] ?? r.audience}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                            {segmentNameFromSlug(r.segment_slug)}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {countAnswers(r.answers)}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                            {formatDate(r.submitted_at)}
+                          </td>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            {deleteConfirmId === r.id ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>Delete?</span>
+                                <button
+                                  onClick={() => void handleDelete(r.id)}
+                                  disabled={deletingId === r.id}
+                                  style={{
+                                    minHeight: '32px', padding: '0 12px', fontSize: '12px', fontWeight: 600,
+                                    borderRadius: '6px', border: 'none', cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
+                                    backgroundColor: '#EF4444', color: '#FFFFFF',
+                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  {deletingId === r.id ? <Loader2 size={11} className="animate-spin" /> : null}
+                                  Yes
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmId(null)}
+                                  style={{
+                                    minHeight: '32px', padding: '0 10px', fontSize: '12px', fontWeight: 600,
+                                    borderRadius: '6px', border: '1px solid rgba(255,255,255,0.2)',
+                                    cursor: 'pointer', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)',
+                                  }}
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  onClick={() => setSelectedResponse(r)}
+                                  style={{
+                                    minHeight: '32px', padding: '0 12px', fontSize: '12px', fontWeight: 600,
+                                    borderRadius: '6px', border: '1px solid rgba(14,165,233,0.4)',
+                                    cursor: 'pointer', backgroundColor: 'rgba(14,165,233,0.1)',
+                                    color: '#0EA5E9', display: 'flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  <Eye size={12} />
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmId(r.id)}
+                                  style={{
+                                    minHeight: '32px', padding: '0 10px', fontSize: '12px', fontWeight: 600,
+                                    borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)',
+                                    cursor: 'pointer', backgroundColor: 'rgba(239,68,68,0.08)',
+                                    color: '#EF4444', display: 'flex', alignItems: 'center', gap: '4px',
+                                  }}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div style={{
+                    padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>
+                      {filteredResponses.length} responses · page {viewPage + 1} of {totalPages}
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => setViewPage(p => Math.max(0, p - 1))}
+                        disabled={viewPage === 0}
+                        style={{
+                          minHeight: '36px', padding: '0 16px', fontSize: '13px', fontWeight: 600,
+                          borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)',
+                          cursor: viewPage === 0 ? 'not-allowed' : 'pointer',
+                          backgroundColor: 'transparent',
+                          color: viewPage === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
+                        }}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setViewPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={viewPage >= totalPages - 1}
+                        style={{
+                          minHeight: '36px', padding: '0 16px', fontSize: '13px', fontWeight: 600,
+                          borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)',
+                          cursor: viewPage >= totalPages - 1 ? 'not-allowed' : 'pointer',
+                          backgroundColor: 'transparent',
+                          color: viewPage >= totalPages - 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
+                        }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Summary ──────────────────────────────────────────────────────────── */}
         <div style={{ marginTop: '48px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -1043,6 +1406,150 @@ export default function ResponseImportPage() {
           )}
         </div>
       </div>
+
+      {/* ── Detail Slide-out Panel ───────────────────────────────────────────────── */}
+      {selectedResponse && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50,
+          display: 'flex', alignItems: 'stretch',
+        }}>
+          {/* Backdrop */}
+          <div
+            onClick={() => setSelectedResponse(null)}
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', cursor: 'pointer' }}
+          />
+          {/* Panel */}
+          <div style={{
+            width: '560px', maxWidth: '90vw',
+            backgroundColor: '#0F2140',
+            borderLeft: '1px solid rgba(255,255,255,0.12)',
+            display: 'flex', flexDirection: 'column',
+            overflowY: 'auto',
+          }}>
+            {/* Panel header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              position: 'sticky', top: 0, backgroundColor: '#0F2140', zIndex: 1,
+            }}>
+              <div>
+                <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                  {selectedResponse.respondent_name ?? 'Unnamed Respondent'}
+                </p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>
+                  Response detail
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedResponse(null)}
+                style={{
+                  minHeight: '44px', minWidth: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', backgroundColor: 'transparent', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.5)', borderRadius: '8px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Respondent profile */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 14px' }}>
+                Respondent Profile
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {([
+                  { label: 'Name', value: selectedResponse.respondent_name },
+                  { label: 'Title', value: selectedResponse.respondent_title },
+                  { label: 'Company', value: selectedResponse.respondent_company },
+                  { label: 'Company Size', value: selectedResponse.respondent_size },
+                  { label: 'Decision Role', value: selectedResponse.decision_role },
+                  { label: 'Audience', value: AUDIENCE_LABELS[selectedResponse.audience as Audience] ?? selectedResponse.audience },
+                  { label: 'Segment', value: segmentNameFromSlug(selectedResponse.segment_slug) },
+                  { label: 'Date Submitted', value: formatDate(selectedResponse.submitted_at) },
+                ] as { label: string; value: string | null }[]).map(({ label, value }) => (
+                  <div key={label}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                      {label}
+                    </p>
+                    <p style={{ fontSize: '13px', color: value ? '#FFFFFF' : 'rgba(255,255,255,0.25)', margin: 0 }}>
+                      {value ?? '—'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Q&A by stage */}
+            <div style={{ padding: '20px 24px', flex: 1 }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 16px' }}>
+                Survey Answers — {countAnswers(selectedResponse.answers)} answered
+              </p>
+
+              {detailQuestionsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
+                  <Loader2 size={24} className="animate-spin" style={{ color: '#0EA5E9' }} />
+                </div>
+              ) : detailQuestions.length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                  No survey questions found for this audience and segment.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(stageNum => {
+                    const stageQs = stageGroups[stageNum]
+                    if (!stageQs || stageQs.length === 0) return null
+                    return (
+                      <div key={stageNum}>
+                        <p style={{
+                          fontSize: '11px', fontWeight: 700, color: '#0EA5E9',
+                          textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 12px',
+                        }}>
+                          Stage {stageNum} — {STAGE_NAMES[stageNum] ?? `Stage ${stageNum}`}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {stageQs.map((q, qi) => {
+                            const answer = selectedResponse.answers[q.id]
+                            const hasAnswer = typeof answer === 'string' && answer.trim().length > 0
+                            return (
+                              <div
+                                key={q.id}
+                                style={{
+                                  backgroundColor: '#0A1628',
+                                  borderRadius: '8px',
+                                  padding: '14px 16px',
+                                  border: `1px solid ${hasAnswer ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'}`,
+                                }}
+                              >
+                                <p style={{
+                                  fontSize: '12px', fontWeight: 600,
+                                  color: hasAnswer ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
+                                  margin: '0 0 8px', lineHeight: '1.5',
+                                }}>
+                                  Q{qi + 1}. {q.text}
+                                </p>
+                                <p style={{
+                                  fontSize: '13px',
+                                  color: hasAnswer ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+                                  margin: 0, lineHeight: '1.6',
+                                  fontStyle: hasAnswer ? 'normal' : 'italic',
+                                }}>
+                                  {hasAnswer ? answer : 'No answer provided'}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
