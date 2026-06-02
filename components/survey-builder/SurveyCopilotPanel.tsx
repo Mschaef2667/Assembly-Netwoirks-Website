@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText } from 'lucide-react'
+import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText, Link2, Users } from 'lucide-react'
 import TipsPanel from '@/components/ui/TipsPanel'
 import { STEP_TIPS } from '@/lib/tips'
 import type { CopilotStatus, Audience, SurveyState, Segment } from './types'
@@ -73,6 +73,55 @@ export default function SurveyCopilotPanel({
   const [showWarning, setShowWarning]           = useState(false)
   const [missingQs, setMissingQs]               = useState<MissingQuestion[]>([])
   const [downloadingGuide, setDownloadingGuide] = useState(false)
+  const [linkStatus, setLinkStatus]             = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
+  const [surveyUrl, setSurveyUrl]               = useState<string | null>(null)
+  const [responseCount, setResponseCount]       = useState<number>(0)
+  const [urlCopied, setUrlCopied]               = useState(false)
+
+  async function handleGenerateLink() {
+    if (linkStatus === 'generating' || !orgId || !selectedSegment) return
+    setLinkStatus('generating')
+    try {
+      const flatQuestions = STAGES.flatMap(stage =>
+        (survey[stage.id] ?? []).map(q => ({
+          id: q.id,
+          stageId: stage.id,
+          stageName: stage.name,
+          text: q.text,
+          type: q.type,
+        }))
+      )
+      const res = await fetch('/api/survey-builder/generate-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId,
+          audience: selectedAudience,
+          segmentSlug: selectedSegment.slug,
+          segmentName: selectedSegment.name,
+          questions: flatQuestions,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        throw new Error(data.error ?? 'Failed to generate link')
+      }
+      const data = await res.json() as { url: string; responseCount: number }
+      setSurveyUrl(data.url)
+      setResponseCount(data.responseCount)
+      setLinkStatus('done')
+    } catch (err) {
+      console.error('generate-link error:', err)
+      setLinkStatus('error')
+    }
+  }
+
+  async function handleCopyUrl() {
+    if (!surveyUrl) return
+    await navigator.clipboard.writeText(surveyUrl)
+    setUrlCopied(true)
+    setTimeout(() => setUrlCopied(false), 2000)
+  }
 
   async function handleDownloadInterviewGuide() {
     if (downloadingGuide || total === 0 || probes.size === 0) return
@@ -535,6 +584,97 @@ export default function SurveyCopilotPanel({
           </div>
         )}
       </div>
+
+      {/* Share Survey Link card — survey mode only */}
+      {mode === 'survey' && (
+        <div style={{
+          backgroundColor: '#0F2140', borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.1)', padding: '24px', marginBottom: '16px',
+        }}>
+          <h3 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>
+            Share Survey Link
+          </h3>
+          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', margin: '0 0 16px' }}>
+            Generate a unique link to send to respondents. Responses collected automatically.
+          </p>
+
+          {linkStatus !== 'done' ? (
+            <button
+              onClick={() => void handleGenerateLink()}
+              disabled={linkStatus === 'generating' || !orgId || !selectedSegment || total === 0}
+              style={{
+                width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                backgroundColor: linkStatus === 'generating' || !orgId || !selectedSegment || total === 0
+                  ? 'rgba(14,165,233,0.2)'
+                  : 'rgba(14,165,233,0.15)',
+                color: linkStatus === 'generating' || !orgId || !selectedSegment || total === 0
+                  ? 'rgba(14,165,233,0.4)'
+                  : '#0EA5E9',
+                border: `1px solid ${linkStatus === 'generating' || !orgId || !selectedSegment || total === 0 ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.3)'}`,
+                borderRadius: '8px',
+                cursor: linkStatus === 'generating' || !orgId || !selectedSegment || total === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '14px', fontWeight: 700,
+              }}
+            >
+              {linkStatus === 'generating'
+                ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
+                : <><Link2 size={15} /> Generate Link</>
+              }
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.08)', padding: '10px 12px',
+                fontSize: '12px', color: '#0EA5E9', wordBreak: 'break-all', lineHeight: '1.5',
+              }}>
+                {surveyUrl}
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => void handleCopyUrl()}
+                  style={{
+                    flex: 1, minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    backgroundColor: urlCopied ? 'rgba(22,163,74,0.12)' : 'rgba(14,165,233,0.12)',
+                    color: urlCopied ? '#16A34A' : '#0EA5E9',
+                    border: `1px solid ${urlCopied ? 'rgba(22,163,74,0.25)' : 'rgba(14,165,233,0.25)'}`,
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  }}
+                >
+                  {urlCopied
+                    ? <><CheckCircle2 size={13} /> Copied!</>
+                    : <><Copy size={13} /> Copy Link</>
+                  }
+                </button>
+                <button
+                  onClick={() => void handleGenerateLink()}
+                  style={{
+                    flex: 1, minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  }}
+                >
+                  <Link2 size={13} /> New Link
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Users size={13} style={{ color: 'rgba(255,255,255,0.35)' }} />
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
+                  {responseCount} response{responseCount !== 1 ? 's' : ''} collected
+                </span>
+              </div>
+            </div>
+          )}
+
+          {linkStatus === 'error' && (
+            <p style={{ fontSize: '12px', color: '#EF4444', margin: '8px 0 0' }}>
+              Failed to generate link. Please try again.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Mark Complete card */}
       <div style={{
