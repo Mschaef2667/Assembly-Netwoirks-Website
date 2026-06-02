@@ -519,12 +519,13 @@ export default function ResponseImportPage() {
     setDeletingId(id)
     setDeleteError(null)
     try {
-      const { error } = await supabase
-        .from('survey_link_responses')
-        .delete()
-        .eq('id', id)
-        .eq('org_id', orgId)
-      if (error) throw new Error(error.message)
+      const res = await fetch('/api/intelligence/delete-response', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ responseId: id }),
+      })
+      const body = await res.json() as { success?: boolean; error?: string }
+      if (!res.ok) throw new Error(body.error ?? 'Delete failed')
       setViewResponses(prev => prev.filter(r => r.id !== id))
       if (deleted) {
         const a = deleted.audience as Audience
