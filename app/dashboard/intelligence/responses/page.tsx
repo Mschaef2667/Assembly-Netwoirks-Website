@@ -219,7 +219,7 @@ async function fetchQuestionsForAudience(
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
+    month: 'short', day: 'numeric',
   })
 }
 
@@ -669,7 +669,12 @@ export default function ResponseImportPage() {
   const filteredResponses = viewResponses.filter(r => {
     if (viewFilterAudience && r.audience !== viewFilterAudience) return false
     if (viewFilterSegment && r.segment_slug !== viewFilterSegment) return false
-    if (viewFilterSource && r.source !== viewFilterSource) return false
+    if (viewFilterSource) {
+      const matchesSource = viewFilterSource === 'manual'
+        ? (r.source === 'manual' || r.source === null)
+        : r.source === viewFilterSource
+      if (!matchesSource) return false
+    }
     if (viewSearch.trim()) {
       const q = viewSearch.toLowerCase()
       const haystack = [r.respondent_name, r.respondent_title, r.respondent_company]
@@ -1276,7 +1281,10 @@ export default function ResponseImportPage() {
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button
-                                  onClick={() => setSelectedResponse(r)}
+                                  onClick={() => {
+                                    console.log('[ResponseImport] View clicked, opening panel for:', r.id, r.respondent_name)
+                                    setSelectedResponse(r)
+                                  }}
                                   style={{
                                     minHeight: '32px', padding: '0 12px', fontSize: '12px', fontWeight: 600,
                                     borderRadius: '6px', border: '1px solid rgba(14,165,233,0.4)',
