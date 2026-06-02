@@ -658,6 +658,12 @@ ${surveyBuilderStep3 || 'Not yet available.'}
 TARGET SEGMENT: ${segmentName}
 AUDIENCE: ${audienceLabel}
 
+AUDIENCE FRAMING RULES:
+- Current Customers: reword so the respondent reflects on their own past buying experience with this company.
+- Lost Customers: reword so the respondent reflects on why they left or chose a competitor.
+- Prospects / Never Customers: reword so the respondent describes their own evaluation and buying process.
+- CRITICAL for Internal Stakeholders: Every question must be reframed from a third-person perspective. The respondent is an internal team member describing what they BELIEVE about their prospects/buyers — NOT a buyer describing their own experience. Replace "you/your" with "they/their/prospects/buyers/a typical buyer". Add context like "your prospects", "their leadership team", "a typical buyer" before key phrases. Example transformations: "What most often triggers your organization to consider outside GTM help?" → "What most often triggers your B2B prospects to consider hiring a GTM strategy partner like [Company]?" | "How urgent is the need once recognized?" → "How urgent is the need for [Company's solution] once a prospect recognizes it?" | "Who typically initiates the search?" → "Who in a prospect organization typically initiates the search for a solution like [Company's]?"
+
 QUESTIONS TO REWORD (keep the same order, return exactly 15):
 ${questionsBlock || '(no questions provided — return the 15 standard DCP questions unchanged)'}`
 
