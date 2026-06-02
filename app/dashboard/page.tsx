@@ -261,7 +261,7 @@ export default function DashboardPage() {
           countMap.set(r.audience, (countMap.get(r.audience) ?? 0) + 1)
         }
         const counts: AudienceCount[] = [
-          'internal_stakeholders', 'current_customers', 'lost_customers', 'potential_customers',
+          'internal', 'current', 'lost', 'potential',
         ].map(a => ({ audience: a, count: countMap.get(a) ?? 0 }))
 
         setStepDefs((defsRes.data ?? []) as StepDef[])
@@ -599,10 +599,10 @@ export default function DashboardPage() {
         {/* ── Widget 5: Intelligence Status (full width) ─────────────────── */}
         {(() => {
           const AUDIENCE_LABELS: Record<string, string> = {
-            internal_stakeholders: 'Internal Stakeholders',
-            current_customers:     'Current Customers',
-            lost_customers:        'Lost Customers',
-            potential_customers:   'Potential Customers',
+            internal: 'Internal Stakeholders',
+            current:  'Current Customers',
+            lost:     'Lost Customers',
+            potential: 'Potential Customers',
           }
           const totalResponses = audienceCounts.reduce((s, a) => s + a.count, 0)
           const dcpStatus = dcpRow?.status === 'approved'
