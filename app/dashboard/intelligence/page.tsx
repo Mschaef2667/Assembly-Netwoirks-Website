@@ -163,8 +163,8 @@ export default function IntelligencePage() {
     },
     {
       icon: Upload,
-      title: 'Response Import',
-      description: 'Import completed survey responses via Google Sheets URL or CSV upload. Responses fuel the Decision Clarity Profile analysis.',
+      title: 'Response Manager',
+      description: 'Collect responses via shareable survey links, manual entry, or CSV upload. View and manage all responses before generating your DCP Map.',
       href: '/dashboard/intelligence/responses',
       done: status.responsesImported,
       inProgress: false,

@@ -65,6 +65,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         respondent_industry: org?.industry ?? null,
         decision_role: decisionRole ?? null,
         answers: answers ?? {},
+        source: 'link',
       })
 
     if (insertError) {

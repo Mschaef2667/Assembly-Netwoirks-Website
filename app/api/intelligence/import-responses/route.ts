@@ -18,6 +18,7 @@ interface ImportBody {
   segmentSlug: string
   segmentName: string
   responses: ImportResponseRow[]
+  source?: string
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       respondent_size: r.respondent_size ?? null,
       decision_role: r.decision_role ?? null,
       answers: r.answers ?? {},
+      source: body.source ?? null,
       submitted_at: new Date().toISOString(),
     }))
 

@@ -43,6 +43,7 @@ interface RecentResponse {
 
 interface ViewResponse {
   id: string
+  survey_link_id: string
   respondent_name: string | null
   respondent_title: string | null
   respondent_company: string | null
@@ -52,6 +53,7 @@ interface ViewResponse {
   segment_slug: string
   answers: Record<string, string>
   submitted_at: string
+  source: string | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -64,6 +66,12 @@ const AUDIENCE_LABELS: Record<Audience, string> = {
 }
 
 const AUDIENCES: Audience[] = ['internal', 'current', 'lost', 'potential']
+
+const SOURCE_LABELS: Record<string, string> = {
+  link: 'Survey Link',
+  manual: 'Manual Entry',
+  csv: 'CSV Upload',
+}
 
 const STAGE_NAMES: Record<number, string> = {
   1: 'Need Recognition',
@@ -324,6 +332,7 @@ export default function ResponseImportPage() {
   const [detailQuestionsLoading, setDetailQuestionsLoading] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewFilterSource, setViewFilterSource] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
@@ -412,20 +421,45 @@ export default function ResponseImportPage() {
   // Reset pagination when filters change
   useEffect(() => {
     setViewPage(0)
-  }, [viewFilterAudience, viewFilterSegment, viewSearch])
+  }, [viewFilterAudience, viewFilterSegment, viewSearch, viewFilterSource])
 
-  // Load detail questions when a response is selected
+  // Load detail questions when a response is selected — try survey_links snapshot first, fall back to step_output
   useEffect(() => {
     if (!selectedResponse || !orgId) {
       setDetailQuestions([])
       return
     }
-    const seg = segments.find(s => s.slug === selectedResponse.segment_slug) ?? null
     setDetailQuestionsLoading(true)
-    void fetchQuestionsForAudience(orgId, selectedResponse.audience as Audience, seg).then(qs => {
+    void (async () => {
+      let qs: SurveyQuestion[] = []
+      if (selectedResponse.survey_link_id) {
+        try {
+          const { data } = await supabase
+            .from('survey_links')
+            .select('questions')
+            .eq('id', selectedResponse.survey_link_id)
+            .maybeSingle()
+          if (data) {
+            const raw = (data as Record<string, unknown>)['questions'] as Array<Record<string, unknown>> | null
+            if (Array.isArray(raw) && raw.length > 0) {
+              qs = raw.map(q => ({
+                id: q['id'] as string,
+                text: q['text'] as string,
+                stageId: (q['stageId'] ?? q['stage_id']) as number,
+              }))
+            }
+          }
+        } catch {
+          // fall through to step_output
+        }
+      }
+      if (qs.length === 0) {
+        const seg = segments.find(s => s.slug === selectedResponse.segment_slug) ?? null
+        qs = await fetchQuestionsForAudience(orgId, selectedResponse.audience as Audience, seg)
+      }
       setDetailQuestions(qs)
       setDetailQuestionsLoading(false)
-    })
+    })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedResponse, orgId])
 
@@ -434,7 +468,7 @@ export default function ResponseImportPage() {
     try {
       const { data, error } = await supabase
         .from('survey_link_responses')
-        .select('id, respondent_name, respondent_title, respondent_company, respondent_size, decision_role, audience, segment_slug, answers, submitted_at')
+        .select('id, survey_link_id, respondent_name, respondent_title, respondent_company, respondent_size, decision_role, audience, segment_slug, answers, submitted_at, source')
         .eq('org_id', oid)
         .order('submitted_at', { ascending: false })
 
@@ -542,7 +576,7 @@ export default function ResponseImportPage() {
       const res = await fetch('/api/intelligence/import-responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId, audience: csvAudience, segmentSlug: segSlug, segmentName: segName, responses }),
+        body: JSON.stringify({ orgId, audience: csvAudience, segmentSlug: segSlug, segmentName: segName, responses, source: 'csv' }),
       })
       const body = await res.json() as { success?: boolean; count?: number; error?: string }
       if (!res.ok) throw new Error(body.error ?? 'Import failed')
@@ -585,6 +619,7 @@ export default function ResponseImportPage() {
             decision_role: manDecisionRole || undefined,
             answers: manAnswers,
           }],
+          source: 'manual',
         }),
       })
       const body = await res.json() as { success?: boolean; error?: string }
@@ -634,6 +669,7 @@ export default function ResponseImportPage() {
   const filteredResponses = viewResponses.filter(r => {
     if (viewFilterAudience && r.audience !== viewFilterAudience) return false
     if (viewFilterSegment && r.segment_slug !== viewFilterSegment) return false
+    if (viewFilterSource && r.source !== viewFilterSource) return false
     if (viewSearch.trim()) {
       const q = viewSearch.toLowerCase()
       const haystack = [r.respondent_name, r.respondent_title, r.respondent_company]
@@ -1071,7 +1107,7 @@ export default function ResponseImportPage() {
 
             {/* Filters */}
             <div style={CARD}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '16px', alignItems: 'end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr', gap: '16px', alignItems: 'end' }}>
                 <LabeledSelect
                   label="Audience"
                   value={viewFilterAudience}
@@ -1091,6 +1127,17 @@ export default function ResponseImportPage() {
                   options={[
                     { value: '', label: 'All Segments' },
                     ...segments.map(s => ({ value: s.slug, label: s.name })),
+                  ]}
+                />
+                <LabeledSelect
+                  label="Source"
+                  value={viewFilterSource}
+                  onChange={setViewFilterSource}
+                  options={[
+                    { value: '', label: 'All Sources' },
+                    { value: 'link', label: 'Survey Link' },
+                    { value: 'manual', label: 'Manual Entry' },
+                    { value: 'csv', label: 'CSV Upload' },
                   ]}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1142,7 +1189,7 @@ export default function ResponseImportPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead style={{ backgroundColor: '#0A1628' }}>
                       <tr>
-                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Responses', 'Date', 'Actions'] as const).map(col => (
+                        {(['Name', 'Title', 'Company', 'Decision Role', 'Audience', 'Segment', 'Source', 'Responses', 'Date', 'Actions'] as const).map(col => (
                           <th
                             key={col}
                             style={{
@@ -1182,6 +1229,15 @@ export default function ResponseImportPage() {
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {segmentNameFromSlug(r.segment_slug)}
+                          </td>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
+                              backgroundColor: r.source === 'link' ? 'rgba(22,163,74,0.12)' : r.source === 'manual' ? 'rgba(232,82,10,0.12)' : r.source === 'csv' ? 'rgba(107,114,128,0.15)' : 'transparent',
+                              color: r.source === 'link' ? '#16A34A' : r.source === 'manual' ? '#E8520A' : r.source === 'csv' ? '#6B7280' : 'rgba(255,255,255,0.25)',
+                            }}>
+                              {SOURCE_LABELS[r.source ?? ''] ?? (r.source ?? '—')}
+                            </span>
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {countAnswers(r.answers)}
@@ -1295,8 +1351,8 @@ export default function ResponseImportPage() {
           </div>
         )}
 
-        {/* ── Summary ──────────────────────────────────────────────────────────── */}
-        <div style={{ marginTop: '48px' }}>
+        {/* ── Summary (View Responses tab only) ────────────────────────────────── */}
+        {activeTab === 'view' && (<div style={{ marginTop: '48px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <Users size={18} style={{ color: '#0EA5E9' }} />
             <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
@@ -1404,7 +1460,7 @@ export default function ResponseImportPage() {
               </div>
             </>
           )}
-        </div>
+        </div>)}
       </div>
 
       {/* ── Detail Slide-out Panel ───────────────────────────────────────────────── */}
