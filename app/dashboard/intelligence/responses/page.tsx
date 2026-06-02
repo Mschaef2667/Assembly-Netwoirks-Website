@@ -798,7 +798,6 @@ export default function ResponseImportPage() {
                   { key: 'name', label: 'Full Name', value: manName, setter: setManName, placeholder: 'Jane Smith' },
                   { key: 'title', label: 'Job Title', value: manTitle, setter: setManTitle, placeholder: 'VP of Marketing' },
                   { key: 'company', label: 'Company', value: manCompany, setter: setManCompany, placeholder: 'Acme Corp' },
-                  { key: 'size', label: 'Company Size', value: manSize, setter: setManSize, placeholder: '50–200 employees' },
                 ] as const).map(({ key, label, value, setter, placeholder }) => (
                   <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <label style={{
@@ -820,6 +819,20 @@ export default function ResponseImportPage() {
                     />
                   </div>
                 ))}
+                <LabeledSelect
+                  label="Company Size"
+                  value={manSize}
+                  onChange={v => setManSize(v)}
+                  options={[
+                    { value: '', label: 'Select company size' },
+                    { value: '1-10 employees', label: '1-10 employees' },
+                    { value: '11-50 employees', label: '11-50 employees' },
+                    { value: '51-200 employees', label: '51-200 employees' },
+                    { value: '201-500 employees', label: '201-500 employees' },
+                    { value: '501-1,000 employees', label: '501-1,000 employees' },
+                    { value: '1,000+ employees', label: '1,000+ employees' },
+                  ]}
+                />
                 <div style={{ gridColumn: 'span 2' }}>
                   <LabeledSelect
                     label="Decision Role"
