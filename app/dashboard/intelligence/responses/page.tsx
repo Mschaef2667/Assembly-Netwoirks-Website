@@ -1052,6 +1052,14 @@ export default function ResponseImportPage() {
               </div>
             </div>
 
+            {/* Questions loading indicator */}
+            {manQuestionsLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                <Loader2 size={14} className="animate-spin" style={{ color: '#0EA5E9' }} />
+                Loading survey questions...
+              </div>
+            )}
+
             {/* Survey answers */}
             <div style={CARD}>
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
