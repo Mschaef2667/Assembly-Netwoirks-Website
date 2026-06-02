@@ -177,9 +177,10 @@ async function fetchQuestionsForAudience(
       .maybeSingle()
     if (!data) return []
     const content = (data as Record<string, unknown>)['content'] as Record<string, unknown>
+    const questionsMap = (content['questions'] ?? content) as Record<string, unknown>
     const questions: SurveyQuestion[] = []
     for (let stage = 1; stage <= 7; stage++) {
-      const stageQs = content[String(stage)]
+      const stageQs = questionsMap[String(stage)]
       if (!Array.isArray(stageQs)) continue
       for (const q of stageQs as Array<Record<string, unknown>>) {
         if (typeof q['id'] === 'string' && typeof q['text'] === 'string') {
@@ -316,7 +317,9 @@ export default function ResponseImportPage() {
         .from('step_output')
         .select('content')
         .eq('workspace_id', oid)
-        .eq('step_id', 'step-2')
+        .eq('step_id', '2')
+        .order('version', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (step2) {
