@@ -544,6 +544,233 @@ ${step13Text}
 ${provisionalNote}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
+  } else if (stepId === '27' || stepId === '28' || stepId === '29' || stepId === '30') {
+    // Steps 27-30: Strategic Messages (Set-Up, Jab, Knock-Out, Clean-Up)
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
+    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
+    const step5 = contextPacket.prerequisites.find(p => p.step_id === '5')
+    const step6 = contextPacket.prerequisites.find(p => p.step_id === '6')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+    const step13 = contextPacket.prerequisites.find(p => p.step_id === '13')
+    const step17 = contextPacket.prerequisites.find(p => p.step_id === '17')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step2Text = step2 ? JSON.stringify(step2.content, null, 2) : 'Not yet available.'
+    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+    const step5Text = step5 ? JSON.stringify(step5.content, null, 2) : 'Not yet available.'
+    const step6Text = step6 ? JSON.stringify(step6.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+    const step13Text = step13 ? JSON.stringify(step13.content, null, 2) : 'Not yet available.'
+    const step17Text = step17 ? JSON.stringify(step17.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    const messageInstructions: Record<string, { name: string; description: string; rules: string }> = {
+      '27': {
+        name: 'The Set-Up',
+        description: `The Set-Up is the opening of a strategic message. It establishes context by naming the endemic problem the buyer is experiencing, stated from their perspective without mentioning the solution. It creates the "yes, that's exactly our problem" moment.`,
+        rules: `Write The Set-Up strategic message for this pain point. The Set-Up should:
+1) Name the endemic problem in the buyer's language
+2) Describe the business consequence if left unsolved
+3) Create recognition without introducing the solution
+2-3 sentences. No product mentions. Write from the buyer's world.`,
+      },
+      '28': {
+        name: 'The Jab',
+        description: `The Jab introduces the solution category (not the specific product) and positions it as the logical response to the problem established in The Set-Up. It bridges the problem to the solution space.`,
+        rules: `Write The Jab strategic message for this pain point. The Jab should:
+1) Introduce the solution category as the logical response to the problem
+2) Describe what the right solution does (not what the product is called)
+3) Set up why the buyer should care about this category of solution
+2-3 sentences. No product name yet — describe the solution category.`,
+      },
+      '29': {
+        name: 'Knock-Out',
+        description: `The Knock-Out is where the specific product/company is introduced as the best implementation of the solution category. It differentiates from alternatives and states the unique value.`,
+        rules: `Write the Knock-Out strategic message for this pain point. The Knock-Out should:
+1) Introduce the company/product by name as the definitive solution
+2) State the specific differentiator that makes it superior to alternatives
+3) Connect directly to the pain point with a specific measurable outcome
+2-3 sentences. This is where you name the company and make the direct claim.`,
+      },
+      '30': {
+        name: 'Clean-Up',
+        description: `The Clean-Up handles the most likely objection or hesitation the buyer has at the moment of decision. It preemptively addresses the risk that would prevent them from moving forward.`,
+        rules: `Write the Clean-Up strategic message for this pain point. The Clean-Up should:
+1) Acknowledge the most likely objection or risk the buyer is feeling
+2) Reframe or directly address that objection with evidence or logic
+3) Make it safe to move forward
+2-3 sentences. Address the specific objection that buyers in this segment typically raise.`,
+      },
+    }
+
+    const inst = messageInstructions[stepId]!
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write ${inst.name} — a strategic message — for the pain point provided in the additional context.
+
+WHAT ${inst.name.toUpperCase()} IS:
+${inst.description}
+
+INSTRUCTIONS:
+${inst.rules}
+
+GLOBAL RULES:
+- 2-3 sentences only. No bullets, no headers, no placeholders.
+- Be specific to the pain point provided. Do not write a generic message.
+- Do not use the words 'revolutionary', 'cutting-edge', 'game-changing', 'leverage', 'empower', or 'unlock'.
+
+CONFIDENCE SCORING:
+- 71-100: Pain point, CVP, KSPs, and competitive context all present and specific
+- 41-70: Pain point present but some upstream context is thin
+- 0-40: Missing critical context, draft is speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<2-3 sentence strategic message>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+PAIN POINT BEING DRAFTED FOR:
+${extraContext || 'No specific pain point provided.'}
+
+STEP 1 — Company Profile (what the company sells):
+${step1Text}
+
+STEP 2 — Product / Service Description:
+${step2Text}
+
+STEP 4 — Endemic Problem (the buyer's market condition):
+${step4Text}
+
+STEP 5 — Root Causes (what creates the problem):
+${step5Text}
+
+STEP 6 — Effects (consequences if the problem goes unsolved):
+${step6Text}
+
+STEP 11 — Compelling Value Proposition:
+${step11Text}
+
+STEP 13 — Key Selling Points:
+${step13Text}
+
+STEP 17 — Competitive Landscape:
+${step17Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
+  } else if (
+    stepId === '31' || stepId === '32' || stepId === '33' || stepId === '34' ||
+    stepId === '35' || stepId === '36' || stepId === '37' || stepId === '38'
+  ) {
+    // Steps 31-38: Action Plan (Strategic Plan execution phases)
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
+    const step3 = contextPacket.prerequisites.find(p => p.step_id === '3')
+    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+    const step13 = contextPacket.prerequisites.find(p => p.step_id === '13')
+    const step17 = contextPacket.prerequisites.find(p => p.step_id === '17')
+    const step27 = contextPacket.prerequisites.find(p => p.step_id === '27')
+    const step28 = contextPacket.prerequisites.find(p => p.step_id === '28')
+    const step29 = contextPacket.prerequisites.find(p => p.step_id === '29')
+    const step30 = contextPacket.prerequisites.find(p => p.step_id === '30')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step2Text = step2 ? JSON.stringify(step2.content, null, 2) : 'Not yet available.'
+    const step3Text = step3 ? JSON.stringify(step3.content, null, 2) : 'Not yet available.'
+    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+    const step13Text = step13 ? JSON.stringify(step13.content, null, 2) : 'Not yet available.'
+    const step17Text = step17 ? JSON.stringify(step17.content, null, 2) : 'Not yet available.'
+    const messagesBlock = [
+      step27 ? `Step 27 — The Set-Up:\n${JSON.stringify(step27.content, null, 2)}` : '',
+      step28 ? `Step 28 — The Jab:\n${JSON.stringify(step28.content, null, 2)}` : '',
+      step29 ? `Step 29 — Knock-Out:\n${JSON.stringify(step29.content, null, 2)}` : '',
+      step30 ? `Step 30 — Clean-Up:\n${JSON.stringify(step30.content, null, 2)}` : '',
+    ].filter(Boolean).join('\n\n') || 'Strategic messages not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    const stepGuidance: Record<string, { name: string; focus: string }> = {
+      '31': { name: 'Create Opportunities',     focus: 'How to generate new pipeline opportunities using the approved messaging and ICP.' },
+      '32': { name: 'Get Into Position',        focus: 'How to establish competitive positioning before entering a sales conversation.' },
+      '33': { name: 'Grow Support',             focus: 'How to build internal champions and expand relationships within target accounts.' },
+      '34': { name: 'Close The Sale',           focus: 'The specific closing approach aligned to how this buyer makes decisions (from DCP).' },
+      '35': { name: 'Pat Them On The Back',     focus: 'Post-sale validation and early success milestones to prevent buyer\'s remorse.' },
+      '36': { name: 'Retrench',                 focus: 'How to re-engage stalled or lost opportunities using competitive intelligence.' },
+      '37': { name: 'Resources and Tools',      focus: 'Specific sales enablement assets needed to execute this GTM strategy.' },
+      '38': { name: 'Opportunity Evaluation',   focus: 'Criteria for qualifying and scoring opportunities against the ICP.' },
+    }
+
+    const guide = stepGuidance[stepId]!
+
+    systemPrompt = `You are Assembly AI Copilot helping complete the Action Plan section of the C3 Method Strategic Plan. Each Action Plan step represents a phase of go-to-market execution. Using the approved strategic messages, CVPs, competitive analysis, and ICP from upstream steps, generate a specific, actionable plan for this step.
+
+THIS STEP — Step ${stepId}: ${guide.name}
+FOCUS: ${guide.focus}
+
+INSTRUCTIONS:
+- Generate 3-5 specific, actionable tactics for this step.
+- Use the upstream context to make recommendations specific to this company, segment, and buyer.
+- Tactics must be concrete (named channels, roles, plays, cadences, artifacts) — not generic best-practice statements.
+- Do not use the words 'revolutionary', 'cutting-edge', 'game-changing', 'leverage', 'empower', or 'unlock'.
+
+CONFIDENCE SCORING:
+- 71-100: Strategic messages, CVP, competitive analysis, and ICP/segments all present and approved
+- 41-70: Some upstream context missing or unapproved
+- 0-40: Major upstream context missing, plan is largely speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<3-5 specific tactics, one per line or short paragraph>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+CONTEXT FOR THIS ACTION PLAN STEP:
+${extraContext || 'No specific pain point or scorecard context provided — generate from upstream strategy.'}
+
+STEP 1 — Company Profile:
+${step1Text}
+
+STEP 2 — Target Market Segments:
+${step2Text}
+
+STEP 3 — Key Decision Makers:
+${step3Text}
+
+STEP 4 — Endemic Problem:
+${step4Text}
+
+STEP 11 — Compelling Value Proposition:
+${step11Text}
+
+STEP 13 — Key Selling Points:
+${step13Text}
+
+STEP 17 — Competitive Landscape:
+${step17Text}
+
+STRATEGIC MESSAGES (Steps 27-30):
+${messagesBlock}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
   } else if (stepId === 'survey-builder') {
     const audienceMatch = typeof extraContext === 'string' ? extraContext.match(/^Audience:\s*(.+)$/m) : null
     const audienceLabel = audienceMatch ? audienceMatch[1].trim() : 'Current Customers'
