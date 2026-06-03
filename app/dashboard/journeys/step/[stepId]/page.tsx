@@ -1318,6 +1318,9 @@ export default function StepPage() {
   // Step 9 state
   const [step9Data, setStep9Data] = useState<Step9State | null>(null)
 
+  // Steps 4-9: DCP research availability banner
+  const [hasDcpAnalysis, setHasDcpAnalysis] = useState(false)
+
   const [allSteps, setAllSteps] = useState<AllStep[]>([])
   const [decayedConfidence, setDecayedConfidence] = useState<number | null>(null)
 
@@ -1573,6 +1576,16 @@ export default function StepPage() {
               }
             }
           }
+        }
+
+        // Steps 4-9 — check whether any DCP analysis row exists for the workspace
+        if (['4', '5', '6', '7', '8', '9'].includes(stepId)) {
+          const { data: dcpExistsRow } = await supabase
+            .from('dcp_analysis')
+            .select('id')
+            .eq('org_id', wsId)
+            .maybeSingle()
+          setHasDcpAnalysis(Boolean(dcpExistsRow))
         }
 
         // Step 9 — load approved DCP analysis, Stage 3
@@ -2161,6 +2174,25 @@ export default function StepPage() {
   const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
   const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
 
+  const showDcpBanner = ['4', '5', '6', '7', '8', '9'].includes(stepId) && hasDcpAnalysis
+  const dcpBanner = showDcpBanner ? (
+    <div style={{
+      padding: '12px 16px',
+      backgroundColor: 'rgba(14,165,233,0.12)',
+      border: '1px solid rgba(14,165,233,0.4)',
+      borderRadius: '8px',
+      display: 'flex',
+      gap: '10px',
+      alignItems: 'flex-start',
+      marginBottom: '16px',
+    }}>
+      <Sparkles size={16} style={{ color: '#0EA5E9', flexShrink: 0, marginTop: '1px' }} />
+      <p style={{ fontSize: '13px', color: '#0EA5E9', margin: 0, lineHeight: '1.5' }}>
+        Buyer research available from your DCP Map. Click Copilot Draft to generate content grounded in real buyer intelligence.
+      </p>
+    </div>
+  ) : null
+
   const header = (
     <header style={{ backgroundColor: '#0A1628', padding: '14px 32px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontSize: '12px' }}>
@@ -2203,6 +2235,7 @@ export default function StepPage() {
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
+          {dcpBanner}
           {step9Data
             ? <Step9Display {...step9Data} />
             : <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
@@ -2359,6 +2392,7 @@ export default function StepPage() {
           id={stepId === '11' ? 'step-cvp' : undefined}
           style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}
         >
+          {dcpBanner}
           <PainPointStepEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -2429,6 +2463,7 @@ export default function StepPage() {
 
         {/* ── Left: Editor ─────────────────────────────────────────────────── */}
         <div>
+          {dcpBanner}
           {isStep4 ? (
             <div id="step-pain-points" style={PANEL_CARD}>
               <Step4Editor

@@ -109,9 +109,13 @@ async function handleDraft(req: NextRequest): Promise<Response> {
 
   const contextPacket = await resolveContextPacket(stepId, workspaceId, serverFetcher)
 
-  // ── Step 4: fetch DCP Stage 1 summary (not in step_output — lives in dcp_analysis) ──
+  // ── Steps 4-9: fetch DCP stage summaries (lives in dcp_analysis) ──
   let dcpStage1Summary = ''
-  if (stepId === '4') {
+  let dcpStage2Summary = ''
+  let dcpStage3Summary = ''
+  let dcpStage4Summary = ''
+  const ENDEMIC_STEPS = new Set(['4', '5', '6', '7', '8', '9'])
+  if (ENDEMIC_STEPS.has(stepId)) {
     try {
       const { data: dcpRow } = await supabase
         .from('dcp_analysis')
@@ -121,11 +125,16 @@ async function handleDraft(req: NextRequest): Promise<Response> {
       if (dcpRow) {
         const summaries = (dcpRow as Record<string, unknown>)['stage_summaries'] as
           Array<{ stage_number: number; summary: string }> | null
-        const stage1 = summaries?.find(s => s.stage_number === 1)
-        if (stage1) dcpStage1Summary = stage1.summary
+        const findStage = (n: number) => summaries?.find(s => s.stage_number === n)?.summary ?? ''
+        dcpStage1Summary = findStage(1)
+        dcpStage2Summary = findStage(2)
+        dcpStage3Summary = findStage(3)
+        dcpStage4Summary = findStage(4)
       }
     } catch { /* non-fatal — proceed with lower confidence */ }
   }
+
+  const DCP_RESEARCH_INSTRUCTION = 'DCP RESEARCH: Use the following buyer research to ground this step in real data rather than assumptions. The research reflects what actual buyers told us about their decision journey.'
 
   // ── Step 1: fetch company name for web search ────────────────────────────────
   let orgName = ''
@@ -347,12 +356,17 @@ RULES FOR THE DRAFT:
 - Be specific to the industry and buyer roles shown. Avoid generic statements.
 
 CONFIDENCE SCORING:
-- 71-100: DCP Stage 1 summary is present and specific; company profile is complete
-- 41-70: DCP Stage 1 present but thin, or company profile is partially complete
+- 71-100: DCP Stage 1 and Stage 2 summaries are present and specific; company profile is complete
+- 41-70: DCP stages present but thin, or company profile is partially complete
 - 0-40: No DCP data available; draft is speculative from company profile alone
+
+${DCP_RESEARCH_INSTRUCTION}
 
 PRIMARY SOURCE — DCP Map, Stage 1 (Need Recognition):
 ${dcpStage1Summary || 'Not yet available — draft from company profile with low confidence.'}
+
+PRIMARY SOURCE — DCP Map, Stage 2 (Motivation to Act):
+${dcpStage2Summary || 'Not yet available — draft from company profile with low confidence.'}
 
 SUPPORTING CONTEXT — Step 1 (What the company sells):
 ${step1Text}
@@ -367,6 +381,91 @@ In the "assumptions" array always include these four entries in addition to any 
 - "Step 6 (Effect) will surface the downstream business consequences if the problem goes unsolved"
 - "Step 7 (Realization) will define the moment buyers recognise they have this problem"
 - "Step 8 (Solution Criteria) will establish what an ideal resolution looks like to the buyer"`
+  } else if (stepId === '5' || stepId === '6' || stepId === '7' || stepId === '8' || stepId === '9') {
+    // Steps 5-9: Endemic Problems — grounded in DCP Map research
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    const endemicConfig: Record<string, { name: string; focus: string; dcpLabel: string; dcpSummary: string }> = {
+      '5': {
+        name: 'The Cause',
+        focus: 'The root causes that create the endemic problem from Step 4. What conditions, gaps, or triggers produce this problem in the buyer\'s world?',
+        dcpLabel: 'DCP Map, Stage 1 (Need Recognition) — root causes and key signals',
+        dcpSummary: dcpStage1Summary,
+      },
+      '6': {
+        name: 'The Effect',
+        focus: 'The downstream business consequences if the endemic problem is left unsolved — quantified where possible.',
+        dcpLabel: 'DCP Map, Stage 2 (Motivation to Act) — consequences and key signals',
+        dcpSummary: dcpStage2Summary,
+      },
+      '7': {
+        name: 'The Realization',
+        focus: 'The specific trigger moment when buyers recognize they have this problem and need to act.',
+        dcpLabel: 'DCP Map, Stage 2 (Motivation to Act) — trigger moments',
+        dcpSummary: dcpStage2Summary,
+      },
+      '8': {
+        name: 'The Solution Criteria',
+        focus: 'The evaluation signals and criteria buyers use to judge an ideal resolution to this problem.',
+        dcpLabel: 'DCP Map, Stage 4 (Evaluation of Alternatives) — evaluation signals and key signals',
+        dcpSummary: dcpStage4Summary,
+      },
+      '9': {
+        name: 'The Search',
+        focus: 'How buyers search for information and solutions — channels, sources, and information search patterns.',
+        dcpLabel: 'DCP Map, Stage 3 (Information Search) — information search patterns and key signals',
+        dcpSummary: dcpStage3Summary,
+      },
+    }
+
+    const cfg = endemicConfig[stepId]!
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write Step ${stepId} — ${cfg.name} — for this workspace.
+
+FOCUS: ${cfg.focus}
+
+RULES FOR THE DRAFT:
+- Write 2-4 sentences of plain prose, no bullets, no questions, no placeholders.
+- Write from the buyer's perspective — do not mention the company's product or solution.
+- Draft directly from the available context below. Do not ask for more information.
+- Be specific to the industry and buyer roles shown. Avoid generic statements.
+
+CONFIDENCE SCORING:
+- 71-100: Relevant DCP stage summary is present and specific; Step 4 endemic problem is defined
+- 41-70: DCP stage data is thin or Step 4 is partially defined
+- 0-40: No DCP data available; draft is speculative
+
+${DCP_RESEARCH_INSTRUCTION}
+
+PRIMARY SOURCE — ${cfg.dcpLabel}:
+${cfg.dcpSummary || 'Not yet available — draft from upstream context with low confidence. If Copilot struggles to populate from DCP data, the research may be incomplete.'}
+
+SUPPORTING CONTEXT — Step 1 (What the company sells):
+${step1Text}
+
+SUPPORTING CONTEXT — Step 4 (The endemic Problem):
+${step4Text}
+${provisionalNote}
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<2-4 sentence ${cfg.name.toLowerCase()} statement>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}${extraContext ? `\n\nADDITIONAL CONTEXT:\n${extraContext}` : ''}`
+
   } else if (stepId === '11') {
     // Step 11: Compelling Value Propositions
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
