@@ -108,6 +108,25 @@ export default function IntelligencePage() {
     gate1Status: 'locked',
   })
   const [loading, setLoading] = useState(true)
+  const [hasIcp, setHasIcp] = useState<boolean | null>(null)
+  const [icpBannerDismissed, setIcpBannerDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem('intelligence_icp_banner_dismissed') === '1') {
+        setIcpBannerDismissed(true)
+      }
+    } catch { /* non-fatal */ }
+  }, [])
+
+  function dismissIcpBanner() {
+    setIcpBannerDismissed(true)
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('intelligence_icp_banner_dismissed', '1')
+      }
+    } catch { /* non-fatal */ }
+  }
 
   useEffect(() => {
     async function load() {
@@ -119,12 +138,15 @@ export default function IntelligencePage() {
         if (!userRow) return
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [surveyRes, responsesRes, dcpRes, insightsRes] = await Promise.all([
+        const [surveyRes, responsesRes, dcpRes, insightsRes, icpRes] = await Promise.all([
           supabase.from('step_output').select('id, content, status').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
           supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
           supabase.from('step_output').select('id, content').eq('workspace_id', orgId).eq('step_id', 'insights').maybeSingle(),
+          supabase.from('icp_definition').select('id').eq('org_id', orgId).limit(1),
         ])
+
+        setHasIcp(!!(icpRes.data && icpRes.data.length > 0))
 
         const dcpRow = dcpRes.data as Record<string, unknown> | null
         const dcpStatus = dcpRow ? String(dcpRow['status'] ?? 'draft') : null
@@ -216,6 +238,47 @@ export default function IntelligencePage() {
       </header>
 
       <div style={{ padding: '28px 32px', maxWidth: '1280px' }}>
+
+        {/* ICP Development soft gate banner */}
+        {!loading && hasIcp === false && !icpBannerDismissed && (
+          <div style={{
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: '10px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+          }}>
+            <p style={{ flex: 1, fontSize: '13px', color: '#FCD34D', lineHeight: '1.55', margin: 0 }}>
+              Recommended: Complete your ICP Development before building your survey. Richer ICP profiles produce more targeted survey questions and more accurate DCP analysis.
+            </p>
+            <Link
+              href="/dashboard/target-markets"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minHeight: '36px', padding: '0 14px', borderRadius: '8px',
+                backgroundColor: '#E8520A', color: '#FFFFFF',
+                fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Go to ICP Development
+            </Link>
+            <button
+              onClick={dismissIcpBanner}
+              aria-label="Dismiss"
+              style={{
+                background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)',
+                cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '4px 8px',
+                minHeight: '36px', minWidth: '36px',
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Phase 2 reminder banner */}
         <div style={{

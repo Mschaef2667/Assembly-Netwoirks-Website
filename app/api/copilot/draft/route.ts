@@ -144,6 +144,7 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   let surveyBuilderStep1 = ''
   let surveyBuilderStep2 = ''
   let surveyBuilderStep3 = ''
+  let surveyBuilderIcpBlock = ''
   if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording') {
     try {
       const { data: sbOutputs } = await supabase
@@ -164,6 +165,34 @@ async function handleDraft(req: NextRequest): Promise<Response> {
         }
       }
     } catch { /* non-fatal — proceed without Phase 1 context */ }
+
+    try {
+      const { data: icpRows } = await supabase
+        .from('icp_definition')
+        .select('segment_name, buyer_type, job_titles, primary_challenges, buying_urgency_trigger')
+        .eq('org_id', workspaceId)
+        .order('segment_index')
+      if (icpRows && icpRows.length > 0) {
+        const parts: string[] = []
+        for (const row of icpRows as Array<Record<string, unknown>>) {
+          const segment = String(row['segment_name'] ?? '').trim()
+          const buyer = String(row['buyer_type'] ?? '').trim()
+          const header = [segment, buyer].filter(Boolean).join(' — ') || 'ICP'
+          const jobTitlesRaw = row['job_titles']
+          const jobTitles = Array.isArray(jobTitlesRaw)
+            ? (jobTitlesRaw as unknown[]).map(v => String(v).trim()).filter(Boolean).join(', ')
+            : ''
+          const challenges = String(row['primary_challenges'] ?? '').trim()
+          const trigger = String(row['buying_urgency_trigger'] ?? '').trim()
+          const lines = [`ICP: ${header}`]
+          if (jobTitles)  lines.push(`  Job Titles: ${jobTitles}`)
+          if (challenges) lines.push(`  Key Challenges: ${challenges}`)
+          if (trigger)    lines.push(`  Buying Trigger: ${trigger}`)
+          parts.push(lines.join('\n'))
+        }
+        surveyBuilderIcpBlock = parts.join('\n\n')
+      }
+    } catch { /* non-fatal — proceed without ICP context */ }
   }
 
   // ── Build system prompt ───────────────────────────────────────────────────────
@@ -871,7 +900,7 @@ ${surveyBuilderStep3 || 'Not yet available.'}`
       .map((q, i) => `${i + 1}. [Stage ${q.stage}] ${q.text}`)
       .join('\n')
 
-    systemPrompt = `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question slightly to fit the specific context — replace generic terms with the company name, product/service description, and segment-specific language. Keep the core meaning and structure identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
+    systemPrompt = `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question to fit the specific context — replace generic terms with the company name, product/service description, ICP-specific job titles, key challenges, and buying triggers. Use the actual ICP profiles below (not just segment names) so questions reference the real roles, pains, and triggers buyers experience. Keep the core meaning and structure of each question identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
 
 COMPANY PROFILE (Step 1):
 ${surveyBuilderStep1 || 'Not yet available.'}
@@ -881,6 +910,9 @@ ${surveyBuilderStep2 || 'Not yet available.'}
 
 KEY DECISION MAKERS (Step 3):
 ${surveyBuilderStep3 || 'Not yet available.'}
+
+ICP PROFILES (use these job titles, key challenges, and buying triggers when rewording questions):
+${surveyBuilderIcpBlock || 'No ICP profiles defined yet — fall back to segment names and decision maker roles above.'}
 
 TARGET SEGMENT: ${segmentName}
 AUDIENCE: ${audienceLabel}
