@@ -107,7 +107,10 @@ async function handleSimulate(req: NextRequest): Promise<Response> {
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
 
   // Fetch Phase 1 (Steps 1, 2, 3) and survey questions in parallel
-  const surveyStepId = `survey-builder-${audience}-${segmentSlug}`
+  // Simulated responses reuse the current-customers question set, since there is no
+  // survey-builder-simulated-* step_id in step_output.
+  const surveyAudience = audience === 'simulated' ? 'current' : audience
+  const surveyStepId = `survey-builder-${surveyAudience}-${segmentSlug}`
   const [phaseRes, surveyRes, orgRes] = await Promise.all([
     supabase
       .from('step_output')
