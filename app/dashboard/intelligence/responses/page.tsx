@@ -69,7 +69,7 @@ interface SimulatedResponseCard {
   respondent: SimulatedRespondent
   answers: Record<string, string>
   questions: SurveyQuestion[]
-  audience: Audience
+  audience: string
   segmentSlug: string
   segmentName: string
   accepted: boolean
@@ -717,7 +717,7 @@ export default function ResponseImportPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          audience: 'potential',
+          audience: 'simulated',
           segmentSlug: segSlug,
           segmentName: segName,
           count: simCount,
@@ -736,7 +736,7 @@ export default function ResponseImportPage() {
         respondent: r.respondent,
         answers: r.answers,
         questions,
-        audience: 'potential',
+        audience: 'simulated',
         segmentSlug: segSlug,
         segmentName: segName,
         accepted: false,
@@ -851,7 +851,7 @@ export default function ResponseImportPage() {
       {/* Header */}
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>
-          Response Import
+          Response Manager
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
           Import survey responses from external tools or add them manually
@@ -865,8 +865,8 @@ export default function ResponseImportPage() {
           {([
             { key: 'csv' as const, icon: Upload, label: 'Upload CSV' },
             { key: 'manual' as const, icon: UserPlus, label: 'Add Manually' },
-            { key: 'view' as const, icon: List, label: 'View Responses' },
             { key: 'simulate' as const, icon: Sparkles, label: 'Simulate with Copilot' },
+            { key: 'view' as const, icon: List, label: 'View Responses' },
           ]).map(({ key, icon: Icon, label }) => (
             <button
               key={key}

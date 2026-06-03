@@ -102,7 +102,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         survey_link_id: linkId,
         org_id: orgId,
         segment_slug: segmentSlug,
-        audience,
+        audience: 'simulated',
         respondent_name: respondent.name ?? null,
         respondent_title: respondent.title ?? null,
         respondent_company: respondent.company ?? null,
