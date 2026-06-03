@@ -23,8 +23,8 @@ import { supabase } from '@/lib/supabase/client'
 const navItems = [
   { label: 'Onboarding',      href: '/dashboard/onboarding',         icon: BookOpen  },
   { label: 'Workspace',       href: '/dashboard',                    icon: Building2 },
-  { label: 'ICP Development', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
   { label: 'Intelligence',    href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
+  { label: 'ICP Development', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
   { label: 'Journeys',        href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },
   { label: 'Lead Generation', href: '/dashboard/lead-generation',    icon: Search    },
   { label: 'Assets Studio',   href: '/dashboard/assets',             icon: Layers    },

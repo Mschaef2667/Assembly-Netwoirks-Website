@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -340,6 +341,7 @@ export default function TargetMarketsPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [preferredModel, setPreferredModel] = useState('claude-sonnet-4-5')
   const [loading, setLoading] = useState(true)
+  const [gate1Approved, setGate1Approved] = useState<boolean | null>(null)
 
   // Segments (from Step 2)
   const [segments, setSegments] = useState<Segment[]>([
@@ -396,6 +398,15 @@ export default function TargetMarketsPage() {
         // Preferred model
         const { data: org } = await supabase.from('organizations').select('preferred_model').eq('id', wsId).single()
         if (org) setPreferredModel(String((org as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5'))
+
+        // Gate 1 status — required to unlock ICP Development
+        const { data: dcpRow } = await supabase
+          .from('dcp_analysis')
+          .select('status')
+          .eq('org_id', wsId)
+          .maybeSingle()
+        const dcpStatus = dcpRow ? String((dcpRow as Record<string, unknown>)['status'] ?? '') : ''
+        setGate1Approved(dcpStatus === 'approved')
 
         // Step 2 segments
         const { data: step2Rows } = await supabase
@@ -877,6 +888,59 @@ export default function TargetMarketsPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+      </div>
+    )
+  }
+
+  if (gate1Approved === false) {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
+        <div style={{
+          maxWidth: '560px', width: '100%',
+          backgroundColor: '#0F2140',
+          borderRadius: '14px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          padding: '40px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: '50%',
+            backgroundColor: 'rgba(232,82,10,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px',
+          }}>
+            <Lock size={26} color="#E8520A" />
+          </div>
+          <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: '0 0 12px' }}>
+            ICP Development Locked
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
+            Complete the Decision Clarity Process and receive Gate 1 approval before building your Ideal Customer Profiles. Your ICP should be grounded in real buyer research, not assumptions.
+          </p>
+          <div style={{
+            backgroundColor: 'rgba(14,165,233,0.1)',
+            border: '1px solid rgba(14,165,233,0.3)',
+            borderRadius: '10px',
+            padding: '14px 18px',
+            margin: '0 0 24px',
+            textAlign: 'left',
+          }}>
+            <p style={{ fontSize: '13px', color: '#7DD3FC', lineHeight: '1.55', margin: 0 }}>
+              <strong style={{ color: '#0EA5E9' }}>Why this order matters:</strong> Building your ICP after buyer research ensures your ideal customer profile reflects how buyers actually make decisions, not how you assume they do.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/intelligence"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              minHeight: '44px', padding: '0 22px', borderRadius: '8px',
+              backgroundColor: '#E8520A', color: '#FFFFFF',
+              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Go to Intelligence
+          </Link>
+        </div>
       </div>
     )
   }

@@ -9,6 +9,15 @@ Multi-tenant C3 Method Operating System for Assembly Networks.
 Repo: Mschaef2667/Assembly-AI
 Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, Claude API
 
+## C3 Method Sequence
+The correct order of work in the platform is:
+1. **Phase 1 — Company Profile (Steps 1–3.5)**: Product/service profile, target market segments, buying center evaluation. Completed during Onboarding.
+2. **Intelligence (DCP Survey → Response Manager → DCP Map → Gate 1)**: Build the buyer research survey, collect responses, generate the Decision Clarity Profile, submit for Gate 1 approval.
+3. **ICP Development (unlocks after Gate 1 approval)**: Build validated Ideal Customer Profiles per segment, grounded in buyer research rather than assumptions. Define aligned offers per ICP.
+4. **Phase 2 — Journeys (Steps 4–38)**: Endemic Problems → CVPs → Key Selling Points → Competitive Analysis → Strategic Messages → Strategic Plan → Deal Scorecard.
+
+Rationale: ICP profiles must be grounded in real buyer decision-making patterns (Intelligence output), not initial assumptions. Sidebar ordering and route gating enforce this sequence — `/dashboard/target-markets` is locked until `dcp_analysis.status = 'approved'`.
+
 ## Brand Tokens (use exactly)
 - Assembly Navy: #0A1628 (sidebar, headers, card headers, dark panels)
 - Signal Orange: #E8520A (CTAs, active states, approve buttons, progress fills)

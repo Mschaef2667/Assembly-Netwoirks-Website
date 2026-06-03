@@ -109,21 +109,21 @@ export default function IntelligencePage() {
   })
   const [loading, setLoading] = useState(true)
   const [hasIcp, setHasIcp] = useState<boolean | null>(null)
-  const [icpBannerDismissed, setIcpBannerDismissed] = useState(false)
+  const [icpSuccessBannerDismissed, setIcpSuccessBannerDismissed] = useState(false)
 
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined' && window.localStorage.getItem('intelligence_icp_banner_dismissed') === '1') {
-        setIcpBannerDismissed(true)
+      if (typeof window !== 'undefined' && window.localStorage.getItem('intelligence_icp_success_banner_dismissed') === '1') {
+        setIcpSuccessBannerDismissed(true)
       }
     } catch { /* non-fatal */ }
   }, [])
 
-  function dismissIcpBanner() {
-    setIcpBannerDismissed(true)
+  function dismissIcpSuccessBanner() {
+    setIcpSuccessBannerDismissed(true)
     try {
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('intelligence_icp_banner_dismissed', '1')
+        window.localStorage.setItem('intelligence_icp_success_banner_dismissed', '1')
       }
     } catch { /* non-fatal */ }
   }
@@ -239,11 +239,11 @@ export default function IntelligencePage() {
 
       <div style={{ padding: '28px 32px', maxWidth: '1280px' }}>
 
-        {/* ICP Development soft gate banner */}
-        {!loading && hasIcp === false && !icpBannerDismissed && (
+        {/* Gate 1 approved success banner — only shown when Gate 1 is approved and no ICPs yet */}
+        {!loading && status.gate1Status === 'approved' && hasIcp === false && !icpSuccessBannerDismissed && (
           <div style={{
-            backgroundColor: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.35)',
+            backgroundColor: 'rgba(22,163,74,0.1)',
+            border: '1px solid rgba(22,163,74,0.35)',
             borderRadius: '10px',
             padding: '16px 20px',
             marginBottom: '20px',
@@ -251,8 +251,9 @@ export default function IntelligencePage() {
             alignItems: 'center',
             gap: '16px',
           }}>
-            <p style={{ flex: 1, fontSize: '13px', color: '#FCD34D', lineHeight: '1.55', margin: 0 }}>
-              Recommended: Complete your ICP Development before building your survey. Richer ICP profiles produce more targeted survey questions and more accurate DCP analysis.
+            <CheckCircle2 size={20} style={{ color: '#16A34A', flexShrink: 0 }} />
+            <p style={{ flex: 1, fontSize: '13px', color: '#86EFAC', lineHeight: '1.55', margin: 0 }}>
+              <strong style={{ color: '#16A34A' }}>Gate 1 Approved.</strong> Your DCP Map is locked in. Next: Build your validated ICP profiles based on your buyer research.
             </p>
             <Link
               href="/dashboard/target-markets"
@@ -267,7 +268,7 @@ export default function IntelligencePage() {
               Go to ICP Development
             </Link>
             <button
-              onClick={dismissIcpBanner}
+              onClick={dismissIcpSuccessBanner}
               aria-label="Dismiss"
               style={{
                 background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)',
