@@ -222,6 +222,9 @@ const STEP4_AUTOSAVE_DELAY_MS = 800
 const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
+// Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
+// the Proposed Draft review panel.
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -1326,9 +1329,10 @@ export default function StepPage() {
 
   // Step 4 state
   const [painPoints, setPainPoints] = useState<PainPoint[]>(DEFAULT_PAIN_POINTS)
-  const [activeCount, setActiveCount] = useState(1)
+  const [activeCount, setActiveCount] = useState(3)
   const [activeTab, setActiveTab] = useState(1)
   const [draftApplied, setDraftApplied] = useState(false)
+  const [showAppliedFlash, setShowAppliedFlash] = useState(false)
 
   // Step 2 state
   const [step2Segments, setStep2Segments] = useState<Segment[]>([
@@ -2087,18 +2091,29 @@ export default function StepPage() {
         return
       }
 
+      let finalOutput: CopilotOutput
       try {
         const parsed = JSON.parse(accumulated) as CopilotOutput
-        setCopilotOutput({ ...parsed, draft: extractDraft(parsed.draft) })
+        finalOutput = { ...parsed, draft: extractDraft(parsed.draft) }
       } catch {
-        setCopilotOutput({
+        finalOutput = {
           draft: extractDraft(accumulated),
           confidence: 0,
           sources: [],
           assumptions: [],
           open_questions: [],
           verification_checks: [],
-        })
+        }
+      }
+
+      if (action === 'draft' && AUTO_APPLY_STEPS.has(stepId)) {
+        // Auto-apply: skip the Proposed Draft review panel for DCP-grounded steps
+        applyDraftFromOutput(finalOutput)
+        setCopilotOutput(null)
+        setShowAppliedFlash(true)
+        window.setTimeout(() => setShowAppliedFlash(false), 2000)
+      } else {
+        setCopilotOutput(finalOutput)
       }
       setStreamBuffer('')
     } catch (err) {
@@ -2114,11 +2129,9 @@ export default function StepPage() {
     }
   }
 
-  function applyDraft() {
-    if (!copilotOutput) return
-
+  function applyDraftFromOutput(output: CopilotOutput) {
     if (stepId === '4') {
-      const draft = copilotOutput.draft.trim()
+      const draft = output.draft.trim()
       // Extract first sentence as title (capped at 70 chars)
       const match = draft.match(/^([^.!?]+[.!?])/)
       const rawTitle = match ? match[1].trim() : draft.split(' ').slice(0, 8).join(' ')
@@ -2128,16 +2141,17 @@ export default function StepPage() {
       )
       setPainPoints(newPoints)
       scheduleStep4Save()
-      if (workspaceId) localStorage.setItem(`copilot_applied_${workspaceId}_${stepId}`, '1')
-      setDraftApplied(true)
-      setCopilotOutput(null)
-      return
+    } else {
+      setContent(output.draft)
+      scheduleSave()
     }
-
-    setContent(copilotOutput.draft)
-    scheduleSave()
     if (workspaceId) localStorage.setItem(`copilot_applied_${workspaceId}_${stepId}`, '1')
     setDraftApplied(true)
+  }
+
+  function applyDraft() {
+    if (!copilotOutput) return
+    applyDraftFromOutput(copilotOutput)
     setCopilotOutput(null)
   }
 
@@ -2690,6 +2704,21 @@ export default function StepPage() {
               >
                 Check AI Status ↗
               </a>
+            </div>
+          )}
+
+          {showAppliedFlash && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(22,163,74,0.15)',
+              border: '1px solid rgba(22,163,74,0.45)',
+              borderRadius: '8px',
+              color: '#86EFAC',
+              fontSize: '13px',
+              fontWeight: 600,
+              transition: 'opacity 300ms ease',
+            }}>
+              Applied to editor
             </div>
           )}
 
