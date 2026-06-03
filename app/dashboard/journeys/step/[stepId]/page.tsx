@@ -224,7 +224,7 @@ const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9'])
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -879,9 +879,13 @@ function buildWarningMessage(
     return null
   }
   if (['27', '28', '29', '30'].includes(stepId)) {
-    const missing4 = prereqs['4']?.status !== 'approved'
-    const missing5 = prereqs['5']?.status !== 'approved'
-    const missing6 = prereqs['6']?.status !== 'approved'
+    const hasPrereq = (id: string) => {
+      const p = prereqs[id]
+      return !!p && (p.status === 'approved' || p.status === 'draft') && p.hasContent
+    }
+    const missing4 = !hasPrereq('4')
+    const missing5 = !hasPrereq('5')
+    const missing6 = !hasPrereq('6')
     if (missing4 || missing5 || missing6) {
       return 'To complete The Set-Up, you need: Step 4 (The Problem / Pain Points), Step 5 (The Cause), and Step 6 (The Effect). The Set-Up formula is: Does your company experience [Effect] because of [Cause]?'
     }
