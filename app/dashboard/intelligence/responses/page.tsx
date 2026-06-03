@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2 } from 'lucide-react'
+import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -54,6 +54,25 @@ interface ViewResponse {
   answers: Record<string, string>
   submitted_at: string
   source: string | null
+}
+
+interface SimulatedRespondent {
+  name: string
+  title: string
+  company: string
+  company_size: string
+  decision_role: string
+}
+
+interface SimulatedResponseCard {
+  id: string
+  respondent: SimulatedRespondent
+  answers: Record<string, string>
+  questions: SurveyQuestion[]
+  audience: Audience
+  segmentSlug: string
+  segmentName: string
+  accepted: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -284,7 +303,7 @@ export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Segment[]>([])
-  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'view'>('csv')
+  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'view' | 'simulate'>('csv')
 
   // CSV tab
   const [csvAudience, setCsvAudience] = useState<Audience>('current')
@@ -313,6 +332,15 @@ export default function ResponseImportPage() {
   const [manSaving, setManSaving] = useState(false)
   const [manError, setManError] = useState<string | null>(null)
   const [manSuccess, setManSuccess] = useState(false)
+
+  // Simulate tab
+  const [simAudience, setSimAudience] = useState<Audience>('current')
+  const [simSegment, setSimSegment] = useState<Segment | null>(null)
+  const [simCount, setSimCount] = useState<number>(3)
+  const [simGenerating, setSimGenerating] = useState(false)
+  const [simError, setSimError] = useState<string | null>(null)
+  const [simResponses, setSimResponses] = useState<SimulatedResponseCard[]>([])
+  const [simAccepting, setSimAccepting] = useState<Record<string, boolean>>({})
 
   // Summary
   const [audienceCounts, setAudienceCounts] = useState<Record<Audience, number>>({
@@ -396,6 +424,7 @@ export default function ResponseImportPage() {
         if (segs.length > 0) {
           setCsvSegment(segs[0])
           setManSegment(segs[0])
+          setSimSegment(segs[0])
         }
       }
 
@@ -674,6 +703,83 @@ export default function ResponseImportPage() {
     }
   }
 
+  // ── Simulate handlers ─────────────────────────────────────────────────────────
+
+  async function handleSimulateGenerate() {
+    if (!orgId) return
+    const segName = simSegment?.name ?? 'All Segments'
+    const segSlug = simSegment?.slug ?? 'all-segments'
+
+    setSimGenerating(true)
+    setSimError(null)
+    setSimResponses([])
+    try {
+      const res = await fetch('/api/intelligence/simulate-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audience: simAudience,
+          segmentSlug: segSlug,
+          segmentName: segName,
+          count: simCount,
+        }),
+      })
+      const body = await res.json() as {
+        responses?: Array<{ respondent: SimulatedRespondent; answers: Record<string, string> }>
+        questions?: SurveyQuestion[]
+        error?: string
+      }
+      if (!res.ok) throw new Error(body.error ?? 'Generation failed')
+      const responses = body.responses ?? []
+      const questions = body.questions ?? []
+      const cards: SimulatedResponseCard[] = responses.map((r, i) => ({
+        id: `sim_${Date.now()}_${i}`,
+        respondent: r.respondent,
+        answers: r.answers,
+        questions,
+        audience: simAudience,
+        segmentSlug: segSlug,
+        segmentName: segName,
+        accepted: false,
+      }))
+      setSimResponses(cards)
+    } catch (err) {
+      setSimError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setSimGenerating(false)
+    }
+  }
+
+  async function handleAcceptSimulated(card: SimulatedResponseCard) {
+    if (!orgId) return
+    setSimAccepting(prev => ({ ...prev, [card.id]: true }))
+    try {
+      const res = await fetch('/api/intelligence/accept-simulated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          respondent: card.respondent,
+          answers: card.answers,
+          audience: card.audience,
+          segmentSlug: card.segmentSlug,
+          segmentName: card.segmentName,
+        }),
+      })
+      const body = await res.json() as { success?: boolean; error?: string }
+      if (!res.ok) throw new Error(body.error ?? 'Failed to save response')
+      setSimResponses(prev => prev.map(r => r.id === card.id ? { ...r, accepted: true } : r))
+      await loadStats(orgId)
+    } catch (err) {
+      setSimError(err instanceof Error ? err.message : 'Failed to save response')
+    } finally {
+      setSimAccepting(prev => ({ ...prev, [card.id]: false }))
+    }
+  }
+
+  function handleDeclineSimulated(cardId: string) {
+    setSimResponses(prev => prev.filter(r => r.id !== cardId))
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -761,6 +867,7 @@ export default function ResponseImportPage() {
             { key: 'csv' as const, icon: Upload, label: 'Upload CSV' },
             { key: 'manual' as const, icon: UserPlus, label: 'Add Manually' },
             { key: 'view' as const, icon: List, label: 'View Responses' },
+            { key: 'simulate' as const, icon: Sparkles, label: 'Simulate with Copilot' },
           ]).map(({ key, icon: Icon, label }) => (
             <button
               key={key}
@@ -1402,6 +1509,261 @@ export default function ResponseImportPage() {
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Simulate Tab ─────────────────────────────────────────────────────── */}
+        {activeTab === 'simulate' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Info header */}
+            <div style={{
+              ...CARD,
+              borderLeft: '3px solid #E8520A',
+              display: 'flex', alignItems: 'flex-start', gap: '14px',
+            }}>
+              <Sparkles size={22} style={{ color: '#E8520A', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 6px' }}>
+                  Generate realistic synthetic survey responses using Copilot
+                </p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.55 }}>
+                  Based on your Phase 1 data, Copilot will simulate how your target buyers would answer each survey question. Review each response before accepting.
+                </p>
+              </div>
+            </div>
+
+            {/* Generator controls */}
+            <div style={CARD}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                <LabeledSelect
+                  label="Audience"
+                  value={simAudience}
+                  onChange={v => setSimAudience(v as Audience)}
+                  options={audienceOptions}
+                />
+                <LabeledSelect
+                  label="Segment"
+                  value={simSegment?.id ?? '__all'}
+                  onChange={v => setSimSegment(v === '__all' ? null : (segments.find(s => s.id === v) ?? null))}
+                  options={segmentOptions}
+                />
+                <LabeledSelect
+                  label="Number of Responses"
+                  value={String(simCount)}
+                  onChange={v => setSimCount(Number(v))}
+                  options={[
+                    { value: '1', label: '1 response' },
+                    { value: '2', label: '2 responses' },
+                    { value: '3', label: '3 responses' },
+                    { value: '5', label: '5 responses' },
+                  ]}
+                />
+              </div>
+
+              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => void handleSimulateGenerate()}
+                  disabled={simGenerating}
+                  style={{
+                    minHeight: '44px', padding: '0 24px', fontSize: '14px', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    borderRadius: '8px', border: 'none',
+                    backgroundColor: simGenerating ? 'rgba(255,255,255,0.1)' : '#E8520A',
+                    color: simGenerating ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                    cursor: simGenerating ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {simGenerating
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <Sparkles size={14} />
+                  }
+                  Generate Simulated Responses
+                </button>
+              </div>
+            </div>
+
+            {simError && <p style={{ fontSize: '13px', color: '#EF4444', margin: 0 }}>{simError}</p>}
+
+            {/* Loading state */}
+            {simGenerating && (
+              <div style={{ ...CARD, textAlign: 'center', padding: '40px' }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: '#E8520A', marginBottom: '12px' }} />
+                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+                  Copilot is generating realistic buyer responses...
+                </p>
+              </div>
+            )}
+
+            {/* Generated cards */}
+            {!simGenerating && simResponses.length > 0 && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {simResponses.map(card => {
+                    const acceptingThis = !!simAccepting[card.id]
+                    return (
+                      <div
+                        key={card.id}
+                        style={{
+                          ...CARD, padding: 0, overflow: 'hidden',
+                          borderColor: card.accepted ? 'rgba(22,163,74,0.5)' : 'rgba(255,255,255,0.1)',
+                        }}
+                      >
+                        {/* Card header */}
+                        <div style={{
+                          padding: '14px 20px',
+                          backgroundColor: '#0A1628',
+                          borderBottom: '1px solid rgba(255,255,255,0.08)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          flexWrap: 'wrap', gap: '8px',
+                        }}>
+                          <span style={{
+                            padding: '4px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                            backgroundColor: 'rgba(232,82,10,0.15)', color: '#E8520A',
+                            textTransform: 'uppercase', letterSpacing: '0.06em',
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          }}>
+                            <Sparkles size={11} />
+                            Copilot Simulated
+                          </span>
+                          {card.accepted && (
+                            <span style={{
+                              padding: '4px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                              backgroundColor: 'rgba(22,163,74,0.15)', color: '#16A34A',
+                              display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            }}>
+                              <CheckCircle2 size={12} />
+                              Added to your responses
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Respondent profile */}
+                        <div style={{ padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 12px' }}>
+                            Simulated Respondent
+                          </p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            {([
+                              { label: 'Name', value: card.respondent.name },
+                              { label: 'Title', value: card.respondent.title },
+                              { label: 'Company', value: card.respondent.company },
+                              { label: 'Company Size', value: card.respondent.company_size },
+                              { label: 'Decision Role', value: card.respondent.decision_role },
+                            ]).map(({ label, value }) => (
+                              <div key={label}>
+                                <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
+                                  {label}
+                                </p>
+                                <p style={{ fontSize: '13px', color: value ? '#FFFFFF' : 'rgba(255,255,255,0.25)', margin: 0 }}>
+                                  {value ?? '—'}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Answers */}
+                        <div style={{ padding: '18px 20px' }}>
+                          <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 14px' }}>
+                            Simulated Answers
+                          </p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {card.questions.map((q, qi) => {
+                              const answer = card.answers[q.id]
+                              const hasAnswer = typeof answer === 'string' && answer.trim().length > 0
+                              return (
+                                <div
+                                  key={q.id}
+                                  style={{
+                                    backgroundColor: '#0A1628',
+                                    borderRadius: '8px', padding: '12px 14px',
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                  }}
+                                >
+                                  <p style={{
+                                    fontSize: '11px', fontWeight: 700, color: '#0EA5E9',
+                                    textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px',
+                                  }}>
+                                    Q{qi + 1} · {STAGE_NAMES[q.stageId] ?? `Stage ${q.stageId}`}
+                                  </p>
+                                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600, margin: '0 0 8px', lineHeight: 1.5 }}>
+                                    {q.text}
+                                  </p>
+                                  <p style={{
+                                    fontSize: '13px',
+                                    color: hasAnswer ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+                                    margin: 0, lineHeight: 1.6,
+                                    fontStyle: hasAnswer ? 'normal' : 'italic',
+                                  }}>
+                                    {hasAnswer ? answer : 'No answer generated'}
+                                  </p>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Card actions */}
+                        {!card.accepted && (
+                          <div style={{
+                            padding: '14px 20px',
+                            borderTop: '1px solid rgba(255,255,255,0.06)',
+                            display: 'flex', justifyContent: 'flex-end', gap: '10px',
+                          }}>
+                            <button
+                              onClick={() => handleDeclineSimulated(card.id)}
+                              disabled={acceptingThis}
+                              style={{
+                                minHeight: '40px', padding: '0 18px', fontSize: '13px', fontWeight: 600,
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)',
+                                backgroundColor: 'rgba(239,68,68,0.1)',
+                                color: '#EF4444',
+                                cursor: acceptingThis ? 'not-allowed' : 'pointer',
+                                opacity: acceptingThis ? 0.5 : 1,
+                              }}
+                            >
+                              <X size={14} />
+                              Decline
+                            </button>
+                            <button
+                              onClick={() => void handleAcceptSimulated(card)}
+                              disabled={acceptingThis}
+                              style={{
+                                minHeight: '40px', padding: '0 18px', fontSize: '13px', fontWeight: 600,
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                borderRadius: '8px', border: 'none',
+                                backgroundColor: acceptingThis ? 'rgba(255,255,255,0.1)' : '#16A34A',
+                                color: acceptingThis ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                                cursor: acceptingThis ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {acceptingThis
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <Check size={14} />
+                              }
+                              Accept Response
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Summary */}
+                <div style={{
+                  ...CARD,
+                  textAlign: 'center', padding: '16px 20px',
+                  backgroundColor: '#0A1628',
+                }}>
+                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: 0, fontWeight: 600 }}>
+                    {simResponses.filter(r => r.accepted).length} of {simResponses.length} simulated response{simResponses.length !== 1 ? 's' : ''} accepted
+                  </p>
+                </div>
+              </>
             )}
           </div>
         )}
