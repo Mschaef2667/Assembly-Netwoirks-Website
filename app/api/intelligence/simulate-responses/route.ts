@@ -187,7 +187,7 @@ async function handleSimulate(req: NextRequest): Promise<Response> {
 
   const systemPrompt = `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose before or after the JSON.
 
-You are simulating realistic survey responses from B2B buyers for a decision intelligence research study. Using the company profile, target segment, and decision maker data provided, generate ${count} realistic survey responses that reflect how actual buyers in this segment would answer these DCP survey questions. Each response should feel authentic -- include specific business context, realistic concerns, and natural language. Vary the responses -- different roles should have different perspectives.
+You are simulating realistic survey responses from potential B2B buyers who are actively evaluating outside GTM strategy partners but have not yet made a purchase decision. They are in the research and evaluation phase. Generate responses that reflect the perspective of a prospect -- their current pain points, what they are looking for in a partner, how they are thinking about the decision. Make responses feel authentic with specific business context and natural language. Vary perspectives based on the decision maker roles provided.
 
 Return ONLY valid JSON starting with { and ending with }:
 {

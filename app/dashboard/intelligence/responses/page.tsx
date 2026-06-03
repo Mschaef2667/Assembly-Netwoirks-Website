@@ -334,7 +334,6 @@ export default function ResponseImportPage() {
   const [manSuccess, setManSuccess] = useState(false)
 
   // Simulate tab
-  const [simAudience, setSimAudience] = useState<Audience>('current')
   const [simSegment, setSimSegment] = useState<Segment | null>(null)
   const [simCount, setSimCount] = useState<number>(3)
   const [simGenerating, setSimGenerating] = useState(false)
@@ -718,7 +717,7 @@ export default function ResponseImportPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          audience: simAudience,
+          audience: 'potential',
           segmentSlug: segSlug,
           segmentName: segName,
           count: simCount,
@@ -737,7 +736,7 @@ export default function ResponseImportPage() {
         respondent: r.respondent,
         answers: r.answers,
         questions,
-        audience: simAudience,
+        audience: 'potential',
         segmentSlug: segSlug,
         segmentName: segName,
         accepted: false,
@@ -1529,20 +1528,14 @@ export default function ResponseImportPage() {
                   Generate realistic synthetic survey responses using Copilot
                 </p>
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.55 }}>
-                  Based on your Phase 1 data, Copilot will simulate how your target buyers would answer each survey question. Review each response before accepting.
+                  Copilot generates realistic responses from the perspective of potential buyers actively evaluating GTM strategy partners. Review each response before adding it to your research.
                 </p>
               </div>
             </div>
 
             {/* Generator controls */}
             <div style={CARD}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                <LabeledSelect
-                  label="Audience"
-                  value={simAudience}
-                  onChange={v => setSimAudience(v as Audience)}
-                  options={audienceOptions}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <LabeledSelect
                   label="Segment"
                   value={simSegment?.id ?? '__all'}
