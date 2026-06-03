@@ -527,7 +527,6 @@ export default function PainPointStepEditor({
         }
       }
 
-      console.log('[PainPointStepEditor] autoApply:', autoApply, 'draftText length:', draftText.length, 'activeTab:', activeTab)
       if (autoApply) {
         setContentMap(prev => ({ ...prev, [activeTab]: draftText }))
         scheduleSave()
