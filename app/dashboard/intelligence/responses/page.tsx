@@ -1575,6 +1575,9 @@ export default function ResponseImportPage() {
                   Generate Simulated Responses
                 </button>
               </div>
+              <p style={{ fontSize: '13px', color: '#9CA3AF', fontStyle: 'italic', margin: '8px 0 0', textAlign: 'right' }}>
+                This typically takes 20-40 seconds depending on the number of responses.
+              </p>
             </div>
 
             {simError && <p style={{ fontSize: '13px', color: '#EF4444', margin: 0 }}>{simError}</p>}
