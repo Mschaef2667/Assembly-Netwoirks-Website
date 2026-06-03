@@ -750,11 +750,12 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
 
 // ── Step nav bar ──────────────────────────────────────────────────────────────
 
-function StepNavBar({ stepIndex, total, prevId, nextId }: {
+function StepNavBar({ stepIndex, total, prevId, nextId, hasContent }: {
   stepIndex: number
   total: number
   prevId: string | null
   nextId: string | null
+  hasContent: boolean
 }) {
   if (total === 0) return null
   return (
@@ -796,28 +797,105 @@ function StepNavBar({ stepIndex, total, prevId, nextId }: {
       </span>
       <div style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
         {nextId ? (
-          <Link
-            href={`/dashboard/journeys/step/${nextId}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              minHeight: '44px',
-              padding: '0 16px',
-              backgroundColor: '#E8520A',
-              color: '#FFFFFF',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Next →
-          </Link>
+          hasContent ? (
+            <Link
+              href={`/dashboard/journeys/step/${nextId}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                minHeight: '44px',
+                padding: '0 16px',
+                backgroundColor: '#E8520A',
+                color: '#FFFFFF',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Next →
+            </Link>
+          ) : (
+            <button
+              disabled
+              title="Complete this step before continuing"
+              aria-label="Complete this step before continuing"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                minHeight: '44px',
+                padding: '0 16px',
+                backgroundColor: '#6B7280',
+                color: 'rgba(255,255,255,0.6)',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'not-allowed',
+                fontFamily: 'inherit',
+              }}
+            >
+              Next →
+            </button>
+          )
         ) : <span />}
       </div>
     </div>
   )
+}
+
+// ── Content / prerequisite helpers ────────────────────────────────────────────
+
+function valuesLongerThan(obj: unknown, minChars: number): boolean {
+  if (typeof obj === 'string') return obj.trim().length > minChars
+  if (Array.isArray(obj)) return obj.some(v => valuesLongerThan(v, minChars))
+  if (obj && typeof obj === 'object') {
+    return Object.values(obj as Record<string, unknown>).some(v => valuesLongerThan(v, minChars))
+  }
+  return false
+}
+
+interface PrereqInfo { status: string; hasContent: boolean }
+
+function prereqIdsForStep(stepId: string): string[] {
+  if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
+  if (['27', '28', '29', '30'].includes(stepId)) return ['4', '11']
+  if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return ['27', '28', '29', '30']
+  return []
+}
+
+function buildWarningMessage(
+  stepId: string,
+  prereqs: Record<string, PrereqInfo>,
+): string | null {
+  if (['5', '6', '7', '8', '9'].includes(stepId)) {
+    const s4 = prereqs['4']
+    const hasS4 = s4 && (s4.status === 'approved' || s4.status === 'draft') && s4.hasContent
+    if (!hasS4) {
+      return 'This step builds on Step 4 — The Problem. Complete Step 4 first to define your pain points, then return here.'
+    }
+    return null
+  }
+  if (['27', '28', '29', '30'].includes(stepId)) {
+    const missing: string[] = []
+    if (prereqs['4']?.status !== 'approved') missing.push('Step 4 (The Problem)')
+    if (prereqs['11']?.status !== 'approved') missing.push('Step 11 (CVPs)')
+    if (missing.length > 0) {
+      const list = missing.length === 1 ? missing[0] : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`
+      return `This step builds on approved upstream work. Complete ${list} first so your Strategic Messages are grounded in validated insights.`
+    }
+    return null
+  }
+  if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) {
+    const anyApproved = ['27', '28', '29', '30'].some(id => prereqs[id]?.status === 'approved')
+    if (!anyApproved) {
+      return 'Complete your Strategic Messages (Steps 27-30) before building your Action Plan.'
+    }
+    return null
+  }
+  return null
 }
 
 // ── Step 2 Editor — Target Market Segments ────────────────────────────────────
@@ -1324,6 +1402,15 @@ export default function StepPage() {
   // Steps 4-9: DCP research availability banner
   const [hasDcpAnalysis, setHasDcpAnalysis] = useState(false)
 
+  // Raw loaded content (used for hasContent checks on pain-point and other steps)
+  const [rawContent, setRawContent] = useState<Record<string, unknown> | null>(null)
+
+  // Prerequisite step statuses for soft dependency warnings
+  const [prereqContent, setPrereqContent] = useState<Record<string, PrereqInfo>>({})
+
+  // Per-step dismissed warning banner state (localStorage backed)
+  const [warningDismissed, setWarningDismissed] = useState(false)
+
   const [allSteps, setAllSteps] = useState<AllStep[]>([])
   const [decayedConfidence, setDecayedConfidence] = useState<number | null>(null)
 
@@ -1446,6 +1533,7 @@ export default function StepPage() {
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
+          setRawContent(c ?? null)
 
           if (stepId === '4') {
             // Parse Step 4 pain point content
@@ -1624,6 +1712,30 @@ export default function StepPage() {
           }
         }
 
+        // Load prerequisite step statuses for soft dependency warnings
+        const prereqIds = prereqIdsForStep(stepId)
+        if (prereqIds.length > 0) {
+          const { data: prereqRows } = await supabase
+            .from('step_output')
+            .select('step_id, status, content, version')
+            .eq('workspace_id', wsId)
+            .in('step_id', prereqIds)
+            .order('version', { ascending: false })
+
+          const prereqMap: Record<string, PrereqInfo> = {}
+          if (prereqRows) {
+            for (const r of prereqRows as Array<Record<string, unknown>>) {
+              const sid = String(r['step_id'] ?? '')
+              if (!sid || prereqMap[sid]) continue
+              prereqMap[sid] = {
+                status: String(r['status'] ?? 'draft'),
+                hasContent: valuesLongerThan(r['content'], 0),
+              }
+            }
+          }
+          setPrereqContent(prereqMap)
+        }
+
         // Load all steps for prev/next navigation
         const { data: allStepRows } = await supabase
           .from('step_definition')
@@ -1650,6 +1762,17 @@ export default function StepPage() {
     if (!workspaceId) return
     setDraftApplied(localStorage.getItem(`copilot_applied_${workspaceId}_${stepId}`) === '1')
   }, [workspaceId, stepId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setWarningDismissed(localStorage.getItem(`step_warning_dismissed_${stepId}`) === '1')
+  }, [stepId])
+
+  const dismissWarning = useCallback(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(`step_warning_dismissed_${stepId}`, '1')
+    setWarningDismissed(true)
+  }, [stepId])
 
   useEffect(() => {
     if (workspaceId) {
@@ -2188,6 +2311,69 @@ export default function StepPage() {
   const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
   const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
 
+  // hasContent — gates the Next button. Rules per the step's editor shape.
+  let hasContent: boolean
+  if (stepId === '4') {
+    hasContent = painPoints.slice(0, activeCount).some(pp => (pp.description ?? '').trim().length > 50)
+  } else if (stepId === '2' || stepId === '3' || stepId === '3.5') {
+    hasContent = outputId !== null
+  } else if (stepId === '9') {
+    hasContent = Boolean(step9Data?.gateApproved && step9Data?.stage)
+  } else if (stepId === '21') {
+    hasContent = true // Acid Test 2 placeholder — Next stays enabled
+  } else if (PAIN_POINT_STEPS.has(stepId)) {
+    // Pain point editor saves { by_pain_point: [{ index, content }, …] }
+    const bpp = rawContent?.['by_pain_point']
+    hasContent = Array.isArray(bpp)
+      && (bpp as Array<Record<string, unknown>>).some(p =>
+        typeof p['content'] === 'string' && (p['content'] as string).trim().length > 50,
+      )
+  } else if (stepId === '14' || stepId === '38' || ACTION_PLAN_STEPS.has(stepId)) {
+    // Component-managed editors — fall back to any substantive saved string
+    hasContent = valuesLongerThan(rawContent, 50)
+  } else {
+    hasContent = content.trim().length > 50
+  }
+
+  const warningMessage = buildWarningMessage(stepId, prereqContent)
+  const warningBanner = (warningMessage && !warningDismissed) ? (
+    <div style={{
+      padding: '12px 16px',
+      backgroundColor: '#FEF3C7',
+      border: '1px solid #FCD34D',
+      borderRadius: '8px',
+      display: 'flex',
+      gap: '10px',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: '16px',
+    }}>
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', flex: 1, minWidth: 0 }}>
+        <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: '1px' }} />
+        <p style={{ fontSize: '13px', color: '#92400E', margin: 0, lineHeight: '1.5' }}>
+          {warningMessage}
+        </p>
+      </div>
+      <button
+        onClick={dismissWarning}
+        aria-label="Dismiss warning"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#92400E',
+          cursor: 'pointer',
+          padding: '0 4px',
+          marginLeft: '8px',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  ) : null
+
   const showDcpBanner = ['4', '5', '6', '7', '8', '9'].includes(stepId) && hasDcpAnalysis
   const dcpBanner = showDcpBanner ? (
     <div style={{
@@ -2249,6 +2435,7 @@ export default function StepPage() {
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
+          {warningBanner}
           {dcpBanner}
           {step9Data
             ? <Step9Display {...step9Data} />
@@ -2257,7 +2444,7 @@ export default function StepPage() {
               </div>
           }
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2269,7 +2456,7 @@ export default function StepPage() {
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2319,7 +2506,7 @@ export default function StepPage() {
             </div>
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2341,7 +2528,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2368,7 +2555,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2393,7 +2580,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2406,6 +2593,7 @@ export default function StepPage() {
           id={stepId === '11' ? 'step-cvp' : undefined}
           style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}
         >
+          {warningBanner}
           {dcpBanner}
           <PainPointStepEditor
             workspaceId={workspaceId}
@@ -2415,7 +2603,7 @@ export default function StepPage() {
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2425,6 +2613,7 @@ export default function StepPage() {
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
+          {warningBanner}
           <BlendEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -2432,7 +2621,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2442,6 +2631,7 @@ export default function StepPage() {
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
+          {warningBanner}
           <ActionPlanEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -2449,7 +2639,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2459,12 +2649,13 @@ export default function StepPage() {
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
         <div style={{ padding: '28px 32px', flex: 1 }}>
+          {warningBanner}
           <DealScorecard
             workspaceId={workspaceId}
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2478,6 +2669,7 @@ export default function StepPage() {
 
         {/* ── Left: Editor ─────────────────────────────────────────────────── */}
         <div>
+          {warningBanner}
           {dcpBanner}
           {isStep4 ? (
             <div id="step-pain-points" style={PANEL_CARD}>
@@ -2823,7 +3015,7 @@ export default function StepPage() {
           )}
         </div>
       </div>
-      <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />
+      <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
     </div>
   )
 }
