@@ -901,7 +901,7 @@ export default function PainPointStepEditor({
           {[1, 2, 3, 4].map(idx => {
             const pp = painPoints.find(p => p.index === idx)
             const fullLabel = pp?.title?.trim() || `Pain Point ${idx}`
-            const label = fullLabel.length > 20 ? fullLabel.slice(0, 20) + '…' : fullLabel
+            const label = `Pain Point ${idx}`
             const isActive = idx === activeTab
             const isEnabled = idx <= activeCount
             return (
