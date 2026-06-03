@@ -13,6 +13,7 @@ import {
   Users,
   ArrowLeft,
   CheckCircle2,
+  Download,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -137,7 +138,9 @@ function formatTimestamp(iso: string): string {
 export default function InsightsPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [insights, setInsights] = useState<InsightsContent | null>(null)
+  const [orgName, setOrgName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -155,18 +158,24 @@ export default function InsightsPage() {
       }
       const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-      const { data: row } = await supabase
-        .from('step_output')
-        .select('content')
-        .eq('workspace_id', orgId)
-        .eq('step_id', 'insights')
-        .maybeSingle()
+      const [stepRes, orgRes] = await Promise.all([
+        supabase
+          .from('step_output')
+          .select('content')
+          .eq('workspace_id', orgId)
+          .eq('step_id', 'insights')
+          .maybeSingle(),
+        supabase.from('organizations').select('name').eq('id', orgId).single(),
+      ])
 
-      if (row) {
-        const content = (row as Record<string, unknown>)['content'] as InsightsContent | null
+      if (stepRes.data) {
+        const content = (stepRes.data as Record<string, unknown>)['content'] as InsightsContent | null
         if (content && content.categories) {
           setInsights(content)
         }
+      }
+      if (orgRes.data) {
+        setOrgName(String((orgRes.data as Record<string, unknown>)['name'] ?? ''))
       }
     } catch {
       // non-fatal
@@ -192,6 +201,180 @@ export default function InsightsPage() {
       setError(err instanceof Error ? err.message : 'Failed to generate insights.')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  async function downloadPdf() {
+    if (downloading || !insights) return
+    setDownloading(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      const company = orgName || 'Your Company'
+      const NAVY   = '#0A1628'
+      const ORANGE = '#E8520A'
+      const GREY   = '#6B7280'
+      const BLACK  = '#0D0D0D'
+      const AMBER  = '#D97706'
+      const GREEN  = '#16A34A'
+      const RED    = '#DC2626'
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
+      const margin = 50
+      const contentW = pageW - margin * 2
+
+      function hexToRgb(hex: string): [number, number, number] {
+        return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
+      }
+      function setFill(hex: string) { doc.setFillColor(...hexToRgb(hex)) }
+      function setStroke(hex: string) { doc.setDrawColor(...hexToRgb(hex)) }
+      function setTextColor(hex: string) { doc.setTextColor(...hexToRgb(hex)) }
+
+      function wrappedText(text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
+        const lines = doc.splitTextToSize(text, maxWidth) as string[]
+        for (const line of lines) {
+          if (y > pageH - margin - 30) { doc.addPage(); y = margin + 20 }
+          doc.text(line, x, y)
+          y += lineHeight
+        }
+        return y
+      }
+
+      function checkPage(y: number, needed = 60): number {
+        if (y + needed > pageH - margin - 24) { doc.addPage(); return margin + 20 }
+        return y
+      }
+
+      function confLabelFn(score: number): string {
+        return score >= 70 ? 'High' : score >= 40 ? 'Moderate' : 'Low'
+      }
+      function confColorFn(score: number): string {
+        return score >= 70 ? GREEN : score >= 40 ? AMBER : RED
+      }
+
+      let y = margin
+
+      // ── Cover ──
+      setFill(ORANGE)
+      doc.rect(0, 0, pageW, 5, 'F')
+
+      y = 80
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      setTextColor(ORANGE)
+      doc.text('ASSEMBLY AI', pageW / 2, y, { align: 'center', charSpace: 2 })
+      y += 32
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(26)
+      setTextColor(NAVY)
+      doc.text('Intelligence Insights Report', pageW / 2, y, { align: 'center' })
+      y += 34
+
+      setStroke(ORANGE)
+      doc.setLineWidth(1.5)
+      doc.line(margin + 60, y, pageW - margin - 60, y)
+      y += 28
+
+      const overall = insights.overall_confidence
+      const metaRows: [string, string][] = [
+        ['Company:', company],
+        ['Date:', today],
+        ['Overall Confidence:', `${confLabelFn(overall)} · ${overall}/100`],
+      ]
+      const labelX = pageW / 2 - 80
+      const valueX = pageW / 2 + 14
+      doc.setFontSize(11)
+      for (const [label, value] of metaRows) {
+        doc.setFont('helvetica', 'bold')
+        setTextColor(GREY)
+        doc.text(label, labelX + 78, y, { align: 'right' })
+        doc.setFont('helvetica', 'normal')
+        setTextColor(BLACK)
+        doc.text(value, valueX, y)
+        y += 22
+      }
+
+      // ── Category sections ──
+      for (const meta of CATEGORIES) {
+        doc.addPage()
+        y = margin
+
+        // Header band
+        setFill(NAVY)
+        doc.rect(0, 0, pageW, 44, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        setTextColor('#FFFFFF')
+        doc.text(meta.title, margin, 28)
+
+        const data = insights.categories[meta.key]
+        const confidence = typeof data?.confidence === 'number' ? data.confidence : 0
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        setTextColor(confColorFn(confidence))
+        doc.text(`${confLabelFn(confidence)} Confidence · ${confidence}/100`, pageW - margin, 28, { align: 'right' })
+
+        y = 70
+
+        // Colored accent line under header
+        setFill(meta.accent)
+        doc.rect(margin, y, 48, 3, 'F')
+        y += 18
+
+        // Description
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(10)
+        setTextColor(GREY)
+        y = wrappedText(meta.description, margin, y, contentW, 13)
+        y += 14
+
+        // Insights heading
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(10)
+        setTextColor(NAVY)
+        doc.text('Insights', margin, y)
+        y += 14
+
+        const items = Array.isArray(data?.insights) ? data.insights : []
+        if (items.length === 0) {
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(10)
+          setTextColor(GREY)
+          y = wrappedText('No insights generated for this category.', margin, y, contentW, 14)
+        } else {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(10)
+          setTextColor(BLACK)
+          for (const item of items) {
+            y = checkPage(y, 24)
+            y = wrappedText(`• ${item}`, margin + 8, y, contentW - 8, 14)
+            y += 4
+          }
+        }
+      }
+
+      // ── Footer on every page ──
+      const totalPages = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p)
+        setFill(NAVY)
+        doc.rect(0, pageH - 24, pageW, 24, 'F')
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        setTextColor(GREY)
+        doc.text(`Assembly AI Confidential — ${company}`, margin, pageH - 8)
+        doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' })
+      }
+
+      const slug = company.toLowerCase().replace(/\s+/g, '-')
+      doc.save(`${slug}-intelligence-insights.pdf`)
+    } catch (err) {
+      console.error('[downloadPdf]', err)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -239,6 +422,25 @@ export default function InsightsPage() {
               {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
               {generating ? 'Generating…' : insights ? 'Regenerate Insights' : 'Generate Insights'}
             </button>
+            {insights && (
+              <button
+                type="button"
+                onClick={() => void downloadPdf()}
+                disabled={downloading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  minHeight: '44px', padding: '0 16px', borderRadius: '8px',
+                  backgroundColor: downloading ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)',
+                  color: downloading ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  fontSize: '13px', fontWeight: 600,
+                  cursor: downloading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {downloading ? 'Generating…' : 'Download PDF'}
+              </button>
+            )}
           </div>
         </div>
       </header>
