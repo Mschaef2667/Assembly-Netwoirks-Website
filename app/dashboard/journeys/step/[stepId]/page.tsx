@@ -224,7 +224,7 @@ const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '11', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -862,6 +862,7 @@ interface PrereqInfo { status: string; hasContent: boolean }
 function prereqIdsForStep(stepId: string): string[] {
   if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
   if (stepId === '10') return ['4', '6', '8']
+  if (stepId === '11') return ['4', '6']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -889,6 +890,12 @@ function buildWarningMessage(
   if (stepId === '10') {
     if (!hasPrereq('4') || !hasPrereq('6') || !hasPrereq('8')) {
       return 'The Formula requires: Step 4 (The Problem), Step 6 (The Effect), and Step 8 (The Solution Criteria). Formula: If you do [Solution] it will solve [Problem] thereby reducing [Effect].'
+    }
+    return null
+  }
+  if (stepId === '11') {
+    if (!hasPrereq('4') || !hasPrereq('6')) {
+      return 'CVPs require: Step 4 (The Problem) and Step 6 (The Effect). Formula: If you use [Product], it will solve [Problem], thereby reducing [Effect]. WARNING: If your product does not address the problems in Step 4, this is a critical point of failure.'
     }
     return null
   }

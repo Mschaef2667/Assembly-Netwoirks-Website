@@ -529,47 +529,38 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
   } else if (stepId === '11') {
     // Step 11: Compelling Value Propositions
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
-    const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
     const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
-    const step5 = contextPacket.prerequisites.find(p => p.step_id === '5')
     const step6 = contextPacket.prerequisites.find(p => p.step_id === '6')
 
     const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
-    const step2Text = step2 ? JSON.stringify(step2.content, null, 2) : 'Not yet available.'
     const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
-    const step5Text = step5 ? JSON.stringify(step5.content, null, 2) : 'Not yet available.'
     const step6Text = step6 ? JSON.stringify(step6.content, null, 2) : 'Not yet available.'
 
     const provisionalNote = contextPacket.is_provisional
       ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
       : ''
 
-    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+    systemPrompt = `You are helping write Compelling Value Propositions (CVPs) using the C3 Method. Each CVP must be written as a promise that directly connects the company's product or service to a specific pain point and its business effect.
 
-Your task: Write a Compelling Value Proposition (CVP) for Step 11.
+FORMULA: 'If you [use/purchase {Company Product/Service}], it will solve [Pain Point from Step 4], thereby reducing [Effect from Step 6] on your business.'
 
-A CVP is a 2-3 sentence statement that connects a specific buyer pain point to the company's unique solution and the measurable outcome the buyer achieves. It is written FROM the buyer's perspective, addresses their specific endemic problem, and leads with the outcome they care about most.
+CRITICAL ALIGNMENT CHECK: Before writing each CVP, verify that the company's product or service actually and specifically addresses the pain point. If the connection is weak or unclear, do NOT write a generic CVP -- instead flag it as: 'ALIGNMENT GAP: The product/service description does not clearly address this pain point. This is a critical point of failure. Review your product positioning or redefine this pain point.'
 
-STRUCTURE OF A STRONG CVP:
-- Sentence 1: Name the pain point and its business consequence (from the buyer's world)
-- Sentence 2: Describe how the solution addresses it in a way competitors cannot
-- Sentence 3: State the specific measurable outcome or transformation the buyer achieves
-
-RULES:
-- 2-3 sentences only. No bullets, no headers, no placeholders.
-- Lead with the buyer outcome, not the product feature.
-- Be specific to the pain point provided. Do not write a generic value proposition.
-- Use the company name and specific language from the context below.
-- Do not use the words 'revolutionary', 'cutting-edge', 'game-changing', 'leverage', 'empower', or 'unlock'.
+REQUIREMENTS:
+- One CVP per pain point (3 pain points = 3 CVPs)
+- Written as a specific promise, not a generic claim
+- Use the company name and actual product/service name
+- Connect directly to the pain point title and effect
+- If CVP cannot be written due to alignment gap, say so explicitly
 
 CONFIDENCE SCORING:
-- 71-100: Pain point, company profile, and product description all present and specific
-- 41-70: Pain point present but company context is thin
+- 71-100: Step 1 (company/product), Step 4 (pain point), and Step 6 (effect) all present and specific
+- 41-70: Pain point present but company product description or effect is thin
 - 0-40: Missing critical context, draft is speculative
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<2-3 sentence CVP>",
+  "draft": "<CVP for the pain point, or an ALIGNMENT GAP message>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -580,19 +571,13 @@ OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exa
 PAIN POINT BEING DRAFTED FOR:
 ${extraContext || 'No specific pain point provided — write a general CVP from the endemic problem in Step 4.'}
 
-STEP 1 — Company Profile (what the company sells):
+PRIMARY SOURCE — Step 1 (Company / Product / Service description):
 ${step1Text}
 
-STEP 2 — Product / Service Description:
-${step2Text}
-
-STEP 4 — Endemic Problem (the buyer's market condition):
+PRIMARY SOURCE — Step 4 (Pain Points / Endemic Problem):
 ${step4Text}
 
-STEP 5 — Root Causes (what creates the problem):
-${step5Text}
-
-STEP 6 — Effects (consequences if the problem goes unsolved):
+PRIMARY SOURCE — Step 6 (Effects — consequences if the problem goes unsolved):
 ${step6Text}
 ${provisionalNote}
 ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
