@@ -103,6 +103,8 @@ export default function DcpMapPage() {
   const [orgName, setOrgName] = useState('')
   const [userRole, setUserRole] = useState('')
   const [responseCount, setResponseCount] = useState(0)
+  const [realResponseCount, setRealResponseCount] = useState(0)
+  const [simulatedResponseCount, setSimulatedResponseCount] = useState(0)
   const [dcpRow, setDcpRow] = useState<DcpAnalysisRow | null>(null)
   const [stages, setStages] = useState<StageAnalysis[]>([])
   const [openStages, setOpenStages] = useState<Set<number>>(new Set())
@@ -131,13 +133,18 @@ export default function DcpMapPage() {
         setOrgId(oid)
         setUserRole(String(r['role'] ?? ''))
 
-        const [responsesRes, dcpRes, orgRes] = await Promise.all([
+        const [responsesRes, simulatedRes, realNonNullRes, realNullRes, dcpRes, orgRes] = await Promise.all([
           supabase.from('survey_link_responses').select('id', { count: 'exact', head: true }).eq('org_id', oid),
+          supabase.from('survey_link_responses').select('id', { count: 'exact', head: true }).eq('org_id', oid).eq('source', 'simulated'),
+          supabase.from('survey_link_responses').select('id', { count: 'exact', head: true }).eq('org_id', oid).in('source', ['link', 'manual', 'csv']),
+          supabase.from('survey_link_responses').select('id', { count: 'exact', head: true }).eq('org_id', oid).is('source', null),
           supabase.from('dcp_analysis').select('*').eq('org_id', oid).maybeSingle(),
           supabase.from('organizations').select('name').eq('id', oid).single(),
         ])
 
         setResponseCount(responsesRes.count ?? 0)
+        setSimulatedResponseCount(simulatedRes.count ?? 0)
+        setRealResponseCount((realNonNullRes.count ?? 0) + (realNullRes.count ?? 0))
         if (orgRes.data) setOrgName(String((orgRes.data as Record<string, unknown>)['name'] ?? ''))
 
         const raw = dcpRes.data as Record<string, unknown> | null
@@ -575,6 +582,28 @@ export default function DcpMapPage() {
               </p>
             </div>
             <ConfidenceBar score={overallConf} />
+          </div>
+        )}
+
+        {/* ── Response source breakdown ── */}
+        {overallConf !== null && (realResponseCount > 0 || simulatedResponseCount > 0) && (
+          <div style={{
+            backgroundColor: realResponseCount === 0 ? 'rgba(217,119,6,0.12)' : '#0F2140',
+            borderLeft: `3px solid ${realResponseCount === 0 ? '#D97706' : '#0EA5E9'}`,
+            borderRadius: '6px', padding: '10px 14px', marginBottom: '20px',
+          }}>
+            <p style={{
+              fontSize: '12px',
+              color: realResponseCount === 0 ? '#FDE68A' : 'rgba(255,255,255,0.7)',
+              margin: 0, lineHeight: 1.5,
+            }}>
+              {realResponseCount === 0
+                ? 'Analysis based on simulated responses only — collect real buyer responses for higher confidence'
+                : simulatedResponseCount === 0
+                  ? `Analysis based on ${realResponseCount} real response${realResponseCount !== 1 ? 's' : ''}`
+                  : `Analysis based on ${realResponseCount} real response${realResponseCount !== 1 ? 's' : ''} and ${simulatedResponseCount} simulated response${simulatedResponseCount !== 1 ? 's' : ''}`
+              }
+            </p>
           </div>
         )}
 
