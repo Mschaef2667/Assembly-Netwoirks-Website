@@ -2412,6 +2412,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            autoApply={AUTO_APPLY_STEPS.has(stepId)}
           />
         </div>
         <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} />

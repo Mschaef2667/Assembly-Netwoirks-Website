@@ -71,6 +71,7 @@ export interface PainPointStepEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  autoApply?: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -236,6 +237,7 @@ export default function PainPointStepEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  autoApply = false,
 }: PainPointStepEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -254,6 +256,7 @@ export default function PainPointStepEditor({
   const [streamBuffer, setStreamBuffer] = useState('')
   const [copilotOutput, setCopilotOutput] = useState<CopilotResult | null>(null)
   const [copilotError, setCopilotError] = useState<string | null>(null)
+  const [showAppliedFlash, setShowAppliedFlash] = useState(false)
 
   const [discoveryLoading, setDiscoveryLoading] = useState(false)
   const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult | null>(null)
@@ -497,6 +500,8 @@ export default function PainPointStepEditor({
         return
       }
 
+      let draftText = ''
+      let parsedResult: CopilotResult | null = null
       try {
         const strippedForParse = accumulated
           .replace(/^```json\s*/i, '')
@@ -504,20 +509,31 @@ export default function PainPointStepEditor({
           .replace(/```\s*$/i, '')
           .trim()
         const parsed = JSON.parse(strippedForParse) as CopilotResult
-        setCopilotOutput({
+        parsedResult = {
           ...parsed,
           confidence: typeof parsed.confidence === 'number' ? parsed.confidence : Number(parsed.confidence ?? 0),
           draft: extractDraft(parsed.draft),
-        })
+        }
+        draftText = parsedResult.draft
       } catch {
-        setCopilotOutput({
-          draft: extractDraft(accumulated),
+        draftText = extractDraft(accumulated)
+        parsedResult = {
+          draft: draftText,
           confidence: 0,
           sources: [],
           assumptions: [],
           open_questions: [],
           verification_checks: [],
-        })
+        }
+      }
+
+      if (autoApply) {
+        setContentMap(prev => ({ ...prev, [activeTab]: draftText }))
+        scheduleSave()
+        setShowAppliedFlash(true)
+        setTimeout(() => setShowAppliedFlash(false), 2000)
+      } else {
+        setCopilotOutput(parsedResult)
       }
       setStreamBuffer('')
     } catch (err) {
@@ -870,6 +886,16 @@ export default function PainPointStepEditor({
             {addSuccessMsg}
           </div>
         )}
+        {/* Auto-apply flash */}
+        {showAppliedFlash && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: '#DCFCE7',
+            border: '1px solid #86EFAC', borderRadius: '6px', marginBottom: '12px',
+            fontSize: '13px', fontWeight: 600, color: '#16A34A',
+          }}>
+            Applied to editor ✓
+          </div>
+        )}
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {[1, 2, 3, 4].map(idx => {
@@ -1017,17 +1043,19 @@ export default function PainPointStepEditor({
               }}>
                 {copilotOutput.draft}
               </div>
-              <button
-                onClick={applyDraft}
-                style={{
-                  width: '100%', minHeight: '44px',
-                  backgroundColor: '#E8520A', color: '#FFFFFF',
-                  border: 'none', borderRadius: '8px',
-                  fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                Apply to editor
-              </button>
+              {!autoApply && (
+                <button
+                  onClick={applyDraft}
+                  style={{
+                    width: '100%', minHeight: '44px',
+                    backgroundColor: '#E8520A', color: '#FFFFFF',
+                    border: 'none', borderRadius: '8px',
+                    fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Apply to editor
+                </button>
+              )}
             </div>
 
           </>
