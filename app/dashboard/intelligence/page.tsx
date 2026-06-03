@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ClipboardList, Upload, Map, CheckCircle2, Circle, Lock } from 'lucide-react'
+import { ClipboardList, Upload, Map, Lightbulb, CheckCircle2, Circle, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ interface PhaseStatus {
   responsesImported: boolean
   dcpMapGenerated: boolean
   dcpMapInProgress: boolean
+  insightsGenerated: boolean
   gate1Status: GateStatus
 }
 
@@ -103,6 +104,7 @@ export default function IntelligencePage() {
     responsesImported: false,
     dcpMapGenerated: false,
     dcpMapInProgress: false,
+    insightsGenerated: false,
     gate1Status: 'locked',
   })
   const [loading, setLoading] = useState(true)
@@ -117,10 +119,11 @@ export default function IntelligencePage() {
         if (!userRow) return
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [surveyRes, responsesRes, dcpRes] = await Promise.all([
+        const [surveyRes, responsesRes, dcpRes, insightsRes] = await Promise.all([
           supabase.from('step_output').select('id, content, status').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
           supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
+          supabase.from('step_output').select('id, content').eq('workspace_id', orgId).eq('step_id', 'insights').maybeSingle(),
         ])
 
         const dcpRow = dcpRes.data as Record<string, unknown> | null
@@ -134,12 +137,17 @@ export default function IntelligencePage() {
         const surveyBuilt = surveyRowStatus === 'approved'
         const surveyInProgress = !surveyBuilt && !!(surveyContent && hasMeaningfulSurveyContent(surveyContent))
 
+        const insightsRow = insightsRes.data as Record<string, unknown> | null
+        const insightsContent = insightsRow ? (insightsRow['content'] as Record<string, unknown> | null) : null
+        const insightsGenerated = !!(insightsContent && typeof insightsContent === 'object' && 'categories' in insightsContent)
+
         setStatus({
           surveyBuilt,
           surveyInProgress,
           responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
           dcpMapGenerated: dcpStatus === 'approved',
           dcpMapInProgress: dcpStatus === 'draft' || dcpStatus === 'pending_approval',
+          insightsGenerated,
           gate1Status: dcpStatus === 'approved' ? 'approved'
             : dcpStatus === 'pending_approval' ? 'pending'
             : 'locked',
@@ -184,6 +192,16 @@ export default function IntelligencePage() {
       step: 3,
       domId: 'intelligence-dcp',
     },
+    {
+      icon: Lightbulb,
+      title: 'Insights',
+      description: 'Surface patterns, gaps, and opportunities from your buyer research across 6 intelligence categories.',
+      href: '/dashboard/intelligence/insights',
+      done: status.insightsGenerated,
+      inProgress: false,
+      step: 4,
+      domId: 'intelligence-insights',
+    },
   ]
 
   return (
@@ -197,7 +215,7 @@ export default function IntelligencePage() {
         </p>
       </header>
 
-      <div style={{ padding: '28px 32px', maxWidth: '960px' }}>
+      <div style={{ padding: '28px 32px', maxWidth: '1280px' }}>
 
         {/* Phase 2 reminder banner */}
         <div style={{
@@ -221,7 +239,7 @@ export default function IntelligencePage() {
         </div>
 
         {/* Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
           {cards.map(({ icon: Icon, title, description, href, done, inProgress, step, domId }) => (
             <div
               key={href}
