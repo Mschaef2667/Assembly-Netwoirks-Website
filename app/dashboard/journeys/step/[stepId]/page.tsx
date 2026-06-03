@@ -861,7 +861,10 @@ interface PrereqInfo { status: string; hasContent: boolean }
 
 function prereqIdsForStep(stepId: string): string[] {
   if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
-  if (['27', '28', '29', '30'].includes(stepId)) return ['4', '5', '6']
+  if (stepId === '27') return ['4', '5', '6']
+  if (stepId === '28') return ['11', '14']
+  if (stepId === '29') return ['18']
+  if (stepId === '30') return ['6', '19']
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return ['27', '28', '29', '30']
   return []
 }
@@ -870,6 +873,10 @@ function buildWarningMessage(
   stepId: string,
   prereqs: Record<string, PrereqInfo>,
 ): string | null {
+  const hasPrereq = (id: string) => {
+    const p = prereqs[id]
+    return !!p && (p.status === 'approved' || p.status === 'draft') && p.hasContent
+  }
   if (['5', '6', '7', '8', '9'].includes(stepId)) {
     const s4 = prereqs['4']
     const hasS4 = s4 && (s4.status === 'approved' || s4.status === 'draft') && s4.hasContent
@@ -878,16 +885,30 @@ function buildWarningMessage(
     }
     return null
   }
-  if (['27', '28', '29', '30'].includes(stepId)) {
-    const hasPrereq = (id: string) => {
-      const p = prereqs[id]
-      return !!p && (p.status === 'approved' || p.status === 'draft') && p.hasContent
-    }
+  if (stepId === '27') {
     const missing4 = !hasPrereq('4')
     const missing5 = !hasPrereq('5')
     const missing6 = !hasPrereq('6')
     if (missing4 || missing5 || missing6) {
       return 'To complete The Set-Up, you need: Step 4 (The Problem / Pain Points), Step 5 (The Cause), and Step 6 (The Effect). The Set-Up formula is: Does your company experience [Effect] because of [Cause]?'
+    }
+    return null
+  }
+  if (stepId === '28') {
+    if (!hasPrereq('11') || !hasPrereq('14')) {
+      return 'The Jab formula: Our solution will [CVP - Step 11] because of our commitment to [Core Competency - Step 14]. Complete Steps 11 and 14 first.'
+    }
+    return null
+  }
+  if (stepId === '29') {
+    if (!hasPrereq('18')) {
+      return 'The Knock-Out formula: We are unique because of [Competitive Differentiator - Step 18]. Complete Step 18 first.'
+    }
+    return null
+  }
+  if (stepId === '30') {
+    if (!hasPrereq('6') || !hasPrereq('19')) {
+      return 'The Clean-Up formula: [Competitive Advantage - Step 19] will solve [Effect - Step 6] because... Complete Steps 6 and 19 first.'
     }
     return null
   }

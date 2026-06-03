@@ -672,8 +672,8 @@ ${step13Text}
 ${provisionalNote}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
-  } else if (stepId === '27' || stepId === '28' || stepId === '29' || stepId === '30') {
-    // Steps 27-30: Strategic Messages (Set-Up, Jab, Knock-Out, Clean-Up)
+  } else if (stepId === '27') {
+    // Step 27: The Set-Up — strategic message opener
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
     const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
     const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
@@ -696,46 +696,15 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent 
       ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
       : ''
 
-    const messageInstructions: Record<string, { name: string; description: string; rules: string }> = {
-      '27': {
-        name: 'The Set-Up',
-        description: `The Set-Up is the opening of a strategic message. It establishes context by naming the endemic problem the buyer is experiencing, stated from their perspective without mentioning the solution. It creates the "yes, that's exactly our problem" moment.`,
-        rules: `Write The Set-Up strategic message for this pain point. The Set-Up should:
+    const inst = {
+      name: 'The Set-Up',
+      description: `The Set-Up is the opening of a strategic message. It establishes context by naming the endemic problem the buyer is experiencing, stated from their perspective without mentioning the solution. It creates the "yes, that's exactly our problem" moment.`,
+      rules: `Write The Set-Up strategic message for this pain point. The Set-Up should:
 1) Name the endemic problem in the buyer's language
 2) Describe the business consequence if left unsolved
 3) Create recognition without introducing the solution
 2-3 sentences. No product mentions. Write from the buyer's world.`,
-      },
-      '28': {
-        name: 'The Jab',
-        description: `The Jab introduces the solution category (not the specific product) and positions it as the logical response to the problem established in The Set-Up. It bridges the problem to the solution space.`,
-        rules: `Write The Jab strategic message for this pain point. The Jab should:
-1) Introduce the solution category as the logical response to the problem
-2) Describe what the right solution does (not what the product is called)
-3) Set up why the buyer should care about this category of solution
-2-3 sentences. No product name yet — describe the solution category.`,
-      },
-      '29': {
-        name: 'Knock-Out',
-        description: `The Knock-Out is where the specific product/company is introduced as the best implementation of the solution category. It differentiates from alternatives and states the unique value.`,
-        rules: `Write the Knock-Out strategic message for this pain point. The Knock-Out should:
-1) Introduce the company/product by name as the definitive solution
-2) State the specific differentiator that makes it superior to alternatives
-3) Connect directly to the pain point with a specific measurable outcome
-2-3 sentences. This is where you name the company and make the direct claim.`,
-      },
-      '30': {
-        name: 'Clean-Up',
-        description: `The Clean-Up handles the most likely objection or hesitation the buyer has at the moment of decision. It preemptively addresses the risk that would prevent them from moving forward.`,
-        rules: `Write the Clean-Up strategic message for this pain point. The Clean-Up should:
-1) Acknowledge the most likely objection or risk the buyer is feeling
-2) Reframe or directly address that objection with evidence or logic
-3) Make it safe to move forward
-2-3 sentences. Address the specific objection that buyers in this segment typically raise.`,
-      },
     }
-
-    const inst = messageInstructions[stepId]!
 
     systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
@@ -792,6 +761,119 @@ STEP 13 — Key Selling Points:
 ${step13Text}
 
 STEP 17 — Competitive Landscape:
+${step17Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
+  } else if (stepId === '28' || stepId === '29' || stepId === '30') {
+    // Steps 28-30: Strategic Messages with formula-based prompts (Jab, Knock-Out, Clean-Up)
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
+    const step6 = contextPacket.prerequisites.find(p => p.step_id === '6')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+    const step17 = contextPacket.prerequisites.find(p => p.step_id === '17')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+    const step6Text = step6 ? JSON.stringify(step6.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+    const step17Text = step17 ? JSON.stringify(step17.content, null, 2) : 'Not yet available.'
+
+    // Steps 14, 18, 19 are not in step_dependency for 28-30 — fetch directly
+    let step14Text = 'Not yet available.'
+    let step18Text = 'Not yet available.'
+    let step19Text = 'Not yet available.'
+    try {
+      const { data: extraRows } = await supabase
+        .from('step_output')
+        .select('step_id, content, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', ['14', '18', '19'])
+        .order('version', { ascending: false })
+      if (extraRows) {
+        const seen = new Set<string>()
+        for (const row of extraRows as Array<{ step_id: string; content: Record<string, unknown> }>) {
+          if (!seen.has(row.step_id)) {
+            seen.add(row.step_id)
+            const text = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '14') step14Text = text
+            if (row.step_id === '18') step18Text = text
+            if (row.step_id === '19') step19Text = text
+          }
+        }
+      }
+    } catch { /* non-fatal — primary sources may be missing */ }
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    let messageName: string
+    let messageInstruction: string
+    let primarySourcesBlock: string
+
+    if (stepId === '28') {
+      messageName = 'The Jab'
+      messageInstruction = 'Write The Jab using this exact formula: Our solution will [CVP] because of our commitment to [Core Competency]. The CVP comes from Step 11 (Compelling Value Propositions) and the Core Competency comes from Step 14. Be specific -- use the actual CVP and competency text, not placeholders. 2-3 sentences.'
+      primarySourcesBlock = `PRIMARY SOURCE — Step 11 (Compelling Value Proposition):
+${step11Text}
+
+PRIMARY SOURCE — Step 14 (Core Competency):
+${step14Text}`
+    } else if (stepId === '29') {
+      messageName = 'Knock-Out'
+      messageInstruction = 'Write the Knock-Out using this formula: We are unique because of [specific competitive differentiator from Step 18]. Name the company, state the differentiator specifically, and connect it to why competitors cannot replicate it. 2-3 sentences.'
+      primarySourcesBlock = `PRIMARY SOURCE — Step 18 (Competitive Differentiator):
+${step18Text}`
+    } else {
+      messageName = 'Clean-Up'
+      messageInstruction = 'Write the Clean-Up using this formula: [Competitive Advantage] will effectively solve [Effect] because [reason]. Use the specific competitive advantage from Step 19 and the specific effect from Step 6. This is the closing argument that connects your unique strength directly to the buyer\'s pain. 2-3 sentences.'
+      primarySourcesBlock = `PRIMARY SOURCE — Step 19 (Competitive Advantage):
+${step19Text}
+
+PRIMARY SOURCE — Step 6 (The Effect):
+${step6Text}`
+    }
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write ${messageName} — a strategic message — for the pain point provided in the additional context.
+
+INSTRUCTIONS:
+${messageInstruction}
+
+GLOBAL RULES:
+- 2-3 sentences only. No bullets, no headers, no placeholders.
+- Be specific to the pain point provided. Do not write a generic message.
+- Do not use the words 'revolutionary', 'cutting-edge', 'game-changing', 'leverage', 'empower', or 'unlock'.
+
+CONFIDENCE SCORING:
+- 71-100: Pain point and all primary source steps are present and specific
+- 41-70: Pain point present but a primary source is thin or missing
+- 0-40: Missing critical context, draft is speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<2-3 sentence strategic message>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+PAIN POINT BEING DRAFTED FOR:
+${extraContext || 'No specific pain point provided.'}
+
+${primarySourcesBlock}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+
+SUPPORTING CONTEXT — Step 4 (Endemic Problem):
+${step4Text}
+
+SUPPORTING CONTEXT — Step 17 (Competitive Landscape):
 ${step17Text}
 ${provisionalNote}
 ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
