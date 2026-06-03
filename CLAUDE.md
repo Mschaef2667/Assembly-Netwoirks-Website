@@ -18,6 +18,26 @@ The correct order of work in the platform is:
 
 Rationale: ICP profiles must be grounded in real buyer decision-making patterns (Intelligence output), not initial assumptions. Sidebar ordering and route gating enforce this sequence — `/dashboard/target-markets` is locked until `dcp_analysis.status = 'approved'`.
 
+## C3 Method Step Formulas
+The correct formula and dependencies for each Phase 2 step. Copilot prompts and dependency warnings must follow these formulas exactly.
+
+- **Step 4 — The Problem**: Endemic problem statement from buyer perspective. Pulls from DCP Stages 1+2. Auto-populated by Copilot.
+- **Step 5 — The Cause**: What structurally creates the problem. Pulls from DCP Stage 1. Requires Step 4.
+- **Step 6 — The Effect**: Business consequence if problem goes unsolved. Pulls from DCP Stage 2. Requires Step 4.
+- **Step 7 — The Realization**: The moment buyers recognize they have the problem. Pulls from DCP Stage 2. Requires Step 4.
+- **Step 8 — The Solution Criteria**: What the ideal solution must do. Pulls from DCP Stage 4. Requires Steps 4 and 6.
+- **Step 9 — The Search**: How buyers find and evaluate solutions. Pulls from DCP Stage 3. Requires Step 4.
+- **Step 10 — The Formula**: If you do [Solution - Step 8] it will solve [Problem - Step 4] thereby reducing [Effect - Step 6]. Requires Steps 4, 6, 8.
+- **Step 11 — Compelling Value Propositions**: One CVP per pain point connecting problem to solution to outcome. Requires Steps 4, 5, 6, 10.
+- **Step 14 — Core Competencies**: The internal capabilities that make the solution possible. Requires Steps 4, 11.
+- **Step 17 — Target Competition**: Competitors organized by relevance to ICP and pain points. Requires Steps 4, 11.
+- **Step 18 — Competitive Differentiators**: What makes the company uniquely better. Requires Step 17.
+- **Step 19 — Competitive Advantages**: Specific advantages per competitor. Requires Steps 17, 18.
+- **Step 27 — The Set-Up**: Does your company experience [Effect - Step 6] because of [Cause - Step 5]? Requires Steps 4, 5, 6.
+- **Step 28 — The Jab**: Our solution will [CVP - Step 11] because of our commitment to [Core Competency - Step 14]. Requires Steps 11, 14.
+- **Step 29 — Knock-Out**: We are unique because of [Competitive Differentiator - Step 18]. Requires Step 18.
+- **Step 30 — Clean-Up**: [Competitive Advantage - Step 19] will solve [Effect - Step 6] because... Requires Steps 6, 19.
+
 ## Brand Tokens (use exactly)
 - Assembly Navy: #0A1628 (sidebar, headers, card headers, dark panels)
 - Signal Orange: #E8520A (CTAs, active states, approve buttons, progress fills)

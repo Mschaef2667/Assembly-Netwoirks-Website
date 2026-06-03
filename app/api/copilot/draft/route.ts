@@ -466,6 +466,66 @@ OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exa
 }
 ${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}${extraContext ? `\n\nADDITIONAL CONTEXT:\n${extraContext}` : ''}`
 
+  } else if (stepId === '10') {
+    // Step 10: The Formula — If you do [Solution - Step 8] it will solve [Problem - Step 4] thereby reducing [Effect - Step 6]
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
+    const step6 = contextPacket.prerequisites.find(p => p.step_id === '6')
+    const step8 = contextPacket.prerequisites.find(p => p.step_id === '8')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+    const step6Text = step6 ? JSON.stringify(step6.content, null, 2) : 'Not yet available.'
+    const step8Text = step8 ? JSON.stringify(step8.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write The Formula for this pain point using this exact structure: If you [Solution Criteria from Step 8], it will solve [Problem from Step 4], thereby reducing [Effect from Step 6] on your business. Be specific -- use the actual content from Steps 4, 6, and 8, not placeholders. 2-3 sentences per pain point. This is the bridge between problem understanding and solution positioning.
+
+FORMULA: If you do [Solution Criteria from Step 8] it will solve [Problem from Step 4] thereby reducing [Effect from Step 6] on your business.
+
+GLOBAL RULES:
+- 2-3 sentences only. No bullets, no headers, no placeholders.
+- Use the actual content from Steps 4, 6, and 8 — never leave bracketed placeholders in the output.
+- Be specific to the pain point provided. Do not write a generic formula.
+- Do not use the words 'revolutionary', 'cutting-edge', 'game-changing', 'leverage', 'empower', or 'unlock'.
+
+CONFIDENCE SCORING:
+- 71-100: Steps 4, 6, and 8 are all present and specific
+- 41-70: One of Steps 4, 6, or 8 is thin or missing
+- 0-40: Multiple primary sources missing, draft is speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<2-3 sentence Formula statement>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+PAIN POINT BEING DRAFTED FOR:
+${extraContext || 'No specific pain point provided.'}
+
+PRIMARY SOURCE — Step 4 (The Problem):
+${step4Text}
+
+PRIMARY SOURCE — Step 6 (The Effect):
+${step6Text}
+
+PRIMARY SOURCE — Step 8 (The Solution Criteria):
+${step8Text}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
   } else if (stepId === '11') {
     // Step 11: Compelling Value Propositions
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')

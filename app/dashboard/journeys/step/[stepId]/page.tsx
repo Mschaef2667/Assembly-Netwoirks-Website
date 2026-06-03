@@ -861,6 +861,7 @@ interface PrereqInfo { status: string; hasContent: boolean }
 
 function prereqIdsForStep(stepId: string): string[] {
   if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
+  if (stepId === '10') return ['4', '6', '8']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -882,6 +883,12 @@ function buildWarningMessage(
     const hasS4 = s4 && (s4.status === 'approved' || s4.status === 'draft') && s4.hasContent
     if (!hasS4) {
       return 'This step builds on Step 4 — The Problem. Complete Step 4 first to define your pain points, then return here.'
+    }
+    return null
+  }
+  if (stepId === '10') {
+    if (!hasPrereq('4') || !hasPrereq('6') || !hasPrereq('8')) {
+      return 'The Formula requires: Step 4 (The Problem), Step 6 (The Effect), and Step 8 (The Solution Criteria). Formula: If you do [Solution] it will solve [Problem] thereby reducing [Effect].'
     }
     return null
   }
