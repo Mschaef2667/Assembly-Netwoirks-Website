@@ -237,7 +237,7 @@ Generate ${count} simulated response${count !== 1 ? 's' : ''}. The "answers" obj
   try {
     const message = await anthropic.messages.create({
       model,
-      max_tokens: 4000,
+      max_tokens: 5000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })
@@ -274,6 +274,7 @@ Generate ${count} simulated response${count !== 1 ? 's' : ''}. The "answers" obj
     parsed = JSON.parse(rawText.slice(firstBrace, lastBrace + 1)) as ClaudePayload
   } catch (parseErr) {
     console.error('[simulate-responses] JSON parse error:', parseErr instanceof Error ? parseErr.message : String(parseErr))
+    console.error('[simulate-responses] Raw response (first 500 chars):', rawText.slice(0, 500))
     return NextResponse.json({ error: 'Copilot returned invalid JSON', raw: rawText.slice(0, 500) }, { status: 502 })
   }
 
