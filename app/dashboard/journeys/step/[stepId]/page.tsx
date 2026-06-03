@@ -861,7 +861,7 @@ interface PrereqInfo { status: string; hasContent: boolean }
 
 function prereqIdsForStep(stepId: string): string[] {
   if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
-  if (['27', '28', '29', '30'].includes(stepId)) return ['4', '11']
+  if (['27', '28', '29', '30'].includes(stepId)) return ['4', '5', '6']
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return ['27', '28', '29', '30']
   return []
 }
@@ -879,12 +879,11 @@ function buildWarningMessage(
     return null
   }
   if (['27', '28', '29', '30'].includes(stepId)) {
-    const missing: string[] = []
-    if (prereqs['4']?.status !== 'approved') missing.push('Step 4 (The Problem)')
-    if (prereqs['11']?.status !== 'approved') missing.push('Step 11 (CVPs)')
-    if (missing.length > 0) {
-      const list = missing.length === 1 ? missing[0] : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`
-      return `This step builds on approved upstream work. Complete ${list} first so your Strategic Messages are grounded in validated insights.`
+    const missing4 = prereqs['4']?.status !== 'approved'
+    const missing5 = prereqs['5']?.status !== 'approved'
+    const missing6 = prereqs['6']?.status !== 'approved'
+    if (missing4 || missing5 || missing6) {
+      return 'To complete The Set-Up, you need: Step 4 (The Problem / Pain Points), Step 5 (The Cause), and Step 6 (The Effect). The Set-Up formula is: Does your company experience [Effect] because of [Cause]?'
     }
     return null
   }
