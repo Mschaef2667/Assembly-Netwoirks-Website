@@ -64,7 +64,6 @@ const BELIEFS: ReadonlyArray<{ value: Exclude<Belief, ''>; label: string; color:
 const TIPS: ReadonlyArray<string> = [
   'The Acid Test separates what you believe about yourself from what buyers believe about you.',
   'If a CEO would say Unlikely — that is your most important sales problem to solve.',
-  'Evidence that works: peer references from similar companies, case studies with metrics, pilot results, methodology previews.',
   'Your DCP Map Stage 4 (Evaluation) shows what proof buyers actually require — use it here.',
 ]
 
@@ -357,11 +356,16 @@ export default function AcidTestEditor({
         return
       }
 
-      const stripped = accumulated
+      let stripped = accumulated
         .replace(/^```json\s*/i, '')
         .replace(/^```\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim()
+      const firstBrace = stripped.indexOf('{')
+      const lastBrace = stripped.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        stripped = stripped.slice(firstBrace, lastBrace + 1)
+      }
 
       let parsed: Record<string, unknown>
       try {
@@ -372,7 +376,6 @@ export default function AcidTestEditor({
       }
 
       const matrix = Array.isArray(parsed['matrix']) ? parsed['matrix'] as Array<Record<string, unknown>> : []
-      const evidenceGaps = Array.isArray(parsed['evidence_gaps']) ? parsed['evidence_gaps'] as string[] : []
 
       const nextRatings: Record<string, Record<string, Belief>> = {}
       const nextEvidence: Record<string, string> = { ...evidenceRef.current }
@@ -393,14 +396,6 @@ export default function AcidTestEditor({
           }
         }
         nextRatings[String(cvpIndex)] = rowRatings
-      }
-
-      if (evidenceGaps.length > 0) {
-        const gapsBlock = `Evidence gaps to address:\n- ${evidenceGaps.join('\n- ')}`
-        for (const cvp of cvps) {
-          const key = String(cvp.index)
-          if (!nextEvidence[key]) nextEvidence[key] = gapsBlock
-        }
       }
 
       setRatings(nextRatings)
@@ -533,138 +528,107 @@ export default function AcidTestEditor({
           </div>
         )}
 
-        {/* Matrix */}
+        {/* CVP cards — one per CVP, each with role belief checklist + evidence */}
         {cvps.length > 0 && decisionMakers.length > 0 && (
-          <div style={{ ...PANEL_CARD, padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '720px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#0A1628' }}>
-                    <th style={{
-                      textAlign: 'left',
-                      padding: '14px 16px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: 'rgba(255,255,255,0.55)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.07em',
-                      borderBottom: '1px solid rgba(255,255,255,0.1)',
-                      width: '240px',
-                    }}>
-                      CVP
-                    </th>
-                    {decisionMakers.map(dm => (
-                      <th key={dm.key} style={{
-                        textAlign: 'left',
-                        padding: '14px 12px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: 'rgba(255,255,255,0.55)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.07em',
-                        borderBottom: '1px solid rgba(255,255,255,0.1)',
-                        minWidth: '160px',
-                      }}>
-                        {dm.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {cvps.map(cvp => {
-                    const row = ratings[String(cvp.index)] ?? {}
-                    return (
-                      <tr key={cvp.index} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <td style={{
-                          padding: '14px 16px',
-                          fontSize: '13px',
-                          color: '#FFFFFF',
-                          fontWeight: 600,
-                          verticalAlign: 'top',
-                        }}>
-                          {truncate(cvp.label, 80)}
-                        </td>
-                        {decisionMakers.map(dm => {
-                          const current = (row[dm.key] ?? '') as Belief
-                          const meta = beliefMeta(current)
-                          return (
-                            <td key={dm.key} style={{
-                              padding: '10px 12px',
-                              verticalAlign: 'top',
-                              backgroundColor: meta ? meta.bg : 'transparent',
-                            }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {BELIEFS.map(b => {
-                                  const active = current === b.value
-                                  return (
-                                    <button
-                                      key={b.value}
-                                      onClick={() => setRating(cvp.index, dm.key, b.value)}
-                                      style={{
-                                        minHeight: '28px',
-                                        padding: '4px 10px',
-                                        backgroundColor: active ? b.color : 'rgba(255,255,255,0.06)',
-                                        color: active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
-                                        border: `1px solid ${active ? b.color : 'rgba(255,255,255,0.15)'}`,
-                                        borderRadius: '6px',
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        textAlign: 'left',
-                                        transition: 'background-color 0.15s, color 0.15s',
-                                      }}
-                                    >
-                                      {b.label}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {cvps.map(cvp => {
+              const row = ratings[String(cvp.index)] ?? {}
+              return (
+                <div key={cvp.index} style={PANEL_CARD}>
+                  <p style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    margin: '0 0 14px',
+                    lineHeight: '1.4',
+                  }}>
+                    {cvp.label}
+                  </p>
 
-        {/* Evidence per CVP */}
-        {cvps.length > 0 && decisionMakers.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <p style={LABEL_STYLE}>Evidence</p>
-            {cvps.map(cvp => (
-              <div key={cvp.index} style={PANEL_CARD}>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
-                  {cvp.label}
-                </p>
-                <p style={{ ...LABEL_STYLE, marginTop: '8px' }}>
-                  How do we know? (Evidence: references, case studies, DCP research, demos)
-                </p>
-                <textarea
-                  value={evidence[String(cvp.index)] ?? ''}
-                  onChange={e => setEvidenceText(cvp.index, e.target.value)}
-                  placeholder="List the proof you have: customer references, case studies with metrics, DCP Stage 4 evaluation signals, pilot results…"
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #9CA3AF',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    color: '#0D0D0D',
-                    backgroundColor: '#FFFFFF',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            ))}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    marginBottom: '18px',
+                  }}>
+                    {decisionMakers.map(dm => {
+                      const current = (row[dm.key] ?? '') as Belief
+                      return (
+                        <div
+                          key={dm.key}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                            flexWrap: 'wrap',
+                            padding: '8px 0',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#FFFFFF',
+                            flex: '1 1 180px',
+                            minWidth: '140px',
+                          }}>
+                            {dm.label}
+                          </span>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            {BELIEFS.map(b => {
+                              const active = current === b.value
+                              return (
+                                <button
+                                  key={b.value}
+                                  onClick={() => setRating(cvp.index, dm.key, b.value)}
+                                  style={{
+                                    minHeight: '36px',
+                                    padding: '6px 14px',
+                                    backgroundColor: active ? b.color : 'rgba(255,255,255,0.06)',
+                                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+                                    border: `1px solid ${active ? b.color : 'rgba(255,255,255,0.15)'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.15s, color 0.15s',
+                                  }}
+                                >
+                                  {b.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <p style={LABEL_STYLE}>Evidence: How do we know they would believe this?</p>
+                  <textarea
+                    value={evidence[String(cvp.index)] ?? ''}
+                    onChange={e => setEvidenceText(cvp.index, e.target.value)}
+                    placeholder="List the proof you have: customer references, case studies with metrics, DCP Stage 4 evaluation signals, pilot results…"
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: '1px solid #9CA3AF',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      lineHeight: '1.6',
+                      color: '#0D0D0D',
+                      backgroundColor: '#FFFFFF',
+                      resize: 'vertical',
+                      boxSizing: 'border-box',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              )
+            })}
           </div>
         )}
 

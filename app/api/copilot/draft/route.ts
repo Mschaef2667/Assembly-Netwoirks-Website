@@ -831,14 +831,15 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
       ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
       : ''
 
-    systemPrompt = `You are helping complete the Acid Test for the C3 Method. Based on the decision makers in Step 3, the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }], "evidence_gaps": ["<gap 1>", "<gap 2>"] } No markdown no prose.
+    systemPrompt = `CRITICAL: Respond with ONLY valid JSON starting with {
+
+You are helping complete the Acid Test for the C3 Method. Based on the decision makers in Step 3, the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }] } No markdown no prose.
 
 Rules:
 - Use the exact decision maker labels (specific_title if present, otherwise role_category) from Step 3.
 - Produce one matrix entry per CVP from Step 11 (use the by_pain_point index as cvp_index).
 - Belief must be one of: yes, likely, unlikely, no — all lowercase.
 - Be honest: if Step 13 formulas or Step 14 competencies are thin or missing, lean toward unlikely or no for senior buyers.
-- evidence_gaps lists 3-5 specific proof points the company should build (e.g. peer reference from comparable customer, case study with quantified outcome, DCP Stage 4 evaluation signals).
 - Reason must be one sentence, grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
 
 PRIMARY SOURCE — Step 3 (Key Decision Makers and their primary concerns):
@@ -1441,6 +1442,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
   const maxTokens = stepId === 'survey-builder' ? 4000
     : stepId === 'survey-builder-autowording' ? 2000
     : stepId === 'survey-builder-interview-probes' ? 3000
+    : stepId === '16' ? 3000
     : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
