@@ -23,6 +23,7 @@ interface AcidTestContent {
   cvps: CvpEntry[]
   ratings: Record<string, Record<string, Belief>>
   evidence: Record<string, string>
+  strengthen: Record<string, string>
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -127,6 +128,7 @@ export default function AcidTestEditor({
   // Step output state
   const [ratings, setRatings] = useState<Record<string, Record<string, Belief>>>({})
   const [evidence, setEvidence] = useState<Record<string, string>>({})
+  const [strengthen, setStrengthen] = useState<Record<string, string>>({})
   const [outputId, setOutputId] = useState<string | null>(null)
   const [outputVersion, setOutputVersion] = useState(1)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -138,8 +140,10 @@ export default function AcidTestEditor({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ratingsRef = useRef(ratings)
   const evidenceRef = useRef(evidence)
+  const strengthenRef = useRef(strengthen)
   ratingsRef.current = ratings
   evidenceRef.current = evidence
+  strengthenRef.current = strengthen
 
   // ── Load upstream + saved state ─────────────────────────────────────────────
 
@@ -230,8 +234,12 @@ export default function AcidTestEditor({
           const savedEvidence = (c['evidence'] && typeof c['evidence'] === 'object')
             ? c['evidence'] as Record<string, string>
             : {}
+          const savedStrengthen = (c['strengthen'] && typeof c['strengthen'] === 'object')
+            ? c['strengthen'] as Record<string, string>
+            : {}
           setRatings(savedRatings)
           setEvidence(savedEvidence)
+          setStrengthen(savedStrengthen)
         }
       } catch {
         /* non-fatal */
@@ -254,6 +262,7 @@ export default function AcidTestEditor({
         cvps,
         ratings: ratingsRef.current,
         evidence: evidenceRef.current,
+        strengthen: strengthenRef.current,
       }
       if (outputId) {
         const { error } = await supabase
@@ -308,6 +317,11 @@ export default function AcidTestEditor({
 
   function setEvidenceText(cvpIndex: number, value: string) {
     setEvidence(prev => ({ ...prev, [String(cvpIndex)]: value }))
+    scheduleSave()
+  }
+
+  function setStrengthenText(cvpIndex: number, value: string) {
+    setStrengthen(prev => ({ ...prev, [String(cvpIndex)]: value }))
     scheduleSave()
   }
 
@@ -379,6 +393,7 @@ export default function AcidTestEditor({
 
       const nextRatings: Record<string, Record<string, Belief>> = {}
       const nextEvidence: Record<string, string> = { ...evidenceRef.current }
+      const nextStrengthen: Record<string, string> = { ...strengthenRef.current }
 
       for (const row of matrix) {
         const cvpIndex = Number(row['cvp_index'] ?? 0)
@@ -396,12 +411,19 @@ export default function AcidTestEditor({
           }
         }
         nextRatings[String(cvpIndex)] = rowRatings
+
+        const evText = String(row['evidence'] ?? '').trim()
+        if (evText) nextEvidence[String(cvpIndex)] = evText
+        const strText = String(row['strengthen'] ?? '').trim()
+        if (strText) nextStrengthen[String(cvpIndex)] = strText
       }
 
       setRatings(nextRatings)
       setEvidence(nextEvidence)
+      setStrengthen(nextStrengthen)
       ratingsRef.current = nextRatings
       evidenceRef.current = nextEvidence
+      strengthenRef.current = nextStrengthen
       void persist()
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
@@ -523,7 +545,9 @@ export default function AcidTestEditor({
           }}>
             <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: '1px' }} />
             <p style={{ fontSize: '13px', color: '#92400E', margin: 0, lineHeight: '1.5' }}>
-              The Acid Test needs upstream data. Complete: {missingUpstream.join(', ')}.
+              {decisionMakers.length === 0
+                ? 'Complete Step 3 (Decision Makers) first to run the Acid Test.'
+                : `The Acid Test needs upstream data. Complete: ${missingUpstream.join(', ')}.`}
             </p>
           </div>
         )}
@@ -605,11 +629,50 @@ export default function AcidTestEditor({
                     })}
                   </div>
 
-                  <p style={LABEL_STYLE}>Evidence: How do we know they would believe this?</p>
+                  <p style={LABEL_STYLE}>Current Evidence</p>
+                  <p style={{
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.6)',
+                    margin: '0 0 8px',
+                    lineHeight: '1.5',
+                  }}>
+                    How do we know? List references, case studies, DCP research, or demos that support this belief.
+                  </p>
                   <textarea
                     value={evidence[String(cvp.index)] ?? ''}
                     onChange={e => setEvidenceText(cvp.index, e.target.value)}
-                    placeholder="List the proof you have: customer references, case studies with metrics, DCP Stage 4 evaluation signals, pilot results…"
+                    placeholder="Customer references, case studies with metrics, DCP Stage 4 evaluation signals, pilot results…"
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: '1px solid #9CA3AF',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      lineHeight: '1.6',
+                      color: '#0D0D0D',
+                      backgroundColor: '#FFFFFF',
+                      resize: 'vertical',
+                      boxSizing: 'border-box',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      marginBottom: '16px',
+                    }}
+                  />
+
+                  <p style={LABEL_STYLE}>How to Strengthen</p>
+                  <p style={{
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.6)',
+                    margin: '0 0 8px',
+                    lineHeight: '1.5',
+                  }}>
+                    What could we do to increase decision maker confidence? (e.g. gather references, create case studies, run a pilot, share methodology)
+                  </p>
+                  <textarea
+                    value={strengthen[String(cvp.index)] ?? ''}
+                    onChange={e => setStrengthenText(cvp.index, e.target.value)}
+                    placeholder="Actions to take: gather references, create case studies, run a pilot, share methodology…"
                     rows={3}
                     style={{
                       width: '100%',

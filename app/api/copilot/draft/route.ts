@@ -833,16 +833,19 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
 
     systemPrompt = `CRITICAL: Respond with ONLY valid JSON starting with {
 
-You are helping complete the Acid Test for the C3 Method. Based on the decision makers in Step 3, the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }] } No markdown no prose.
+You are helping complete the Acid Test for the C3 Method. Based ONLY on the decision makers actually defined in Step 3 (do not invent, substitute, or add generic roles), the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "evidence": "<current evidence sentence>", "strengthen": "<how to strengthen sentence>", "ratings": [{ "role": "<decision maker role or title exactly as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }] } No markdown no prose.
 
 Rules:
-- Use the exact decision maker labels (specific_title if present, otherwise role_category) from Step 3.
+- Decision makers MUST come ONLY from Step 3 (specific_title if present, otherwise role_category) — never use generic titles like "CEO" or "VP of Sales" unless they appear in Step 3.
+- Use those Step 3 labels exactly as written for the "role" field in each rating. Do not paraphrase or normalise them.
 - Produce one matrix entry per CVP from Step 11 (use the by_pain_point index as cvp_index).
 - Belief must be one of: yes, likely, unlikely, no — all lowercase.
 - Be honest: if Step 13 formulas or Step 14 competencies are thin or missing, lean toward unlikely or no for senior buyers.
 - Reason must be one sentence, grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
+- "evidence" must be one sentence summarising current proof (references, case studies, DCP research, demos) that supports the beliefs assigned for this CVP. If proof is missing, say so explicitly.
+- "strengthen" must be one sentence proposing concrete actions to increase decision maker confidence in this CVP (e.g. gather references, create case studies, run a pilot, share methodology).
 
-PRIMARY SOURCE — Step 3 (Key Decision Makers and their primary concerns):
+PRIMARY SOURCE — Step 3 (Key Decision Makers — the ONLY allowed source for decision maker roles in this step):
 ${step3Text}
 
 PRIMARY SOURCE — Step 11 (Compelling Value Propositions — one per pain point index):
