@@ -120,12 +120,6 @@ function getNextStepInPhase(phaseSteps: StepDef[], outputMap: Map<string, StepOu
   return null
 }
 
-function findGroupEndingAtPhase(phaseSteps: StepDef[]): typeof PHASE_GROUPS[number] | null {
-  if (phaseSteps.length === 0) return null
-  const lastStepId = phaseSteps[phaseSteps.length - 1].id
-  return PHASE_GROUPS.find(g => g.stepIds[g.stepIds.length - 1] === lastStepId) ?? null
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function DepHealthIcon({ health }: { health: DepHealth }) {
@@ -609,10 +603,6 @@ export default function JourneysPage() {
               const secStatus = getSectionStatus(phaseSteps, outputMap)
               const nextInPhase = getNextStepInPhase(phaseSteps, outputMap)
               const isExpanded = expandedPhases.has(item.phase)
-              const completeGroup = findGroupEndingAtPhase(phaseSteps)
-              const completeGroupAllApproved = completeGroup
-                ? completeGroup.stepIds.every(id => outputMap.get(id)?.status === 'approved')
-                : false
 
               return (
                 <div key={`phase-${item.phase}`} style={{
@@ -706,56 +696,24 @@ export default function JourneysPage() {
                         )
                       })}
 
-                      {(nextInPhase || completeGroup) && (
+                      {nextInPhase && (
                         <div style={{
                           padding: '8px 12px',
                           borderTop: '1px solid rgba(255,255,255,0.07)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
                         }}>
-                          {nextInPhase ? (
-                            <Link
-                              href={`/dashboard/journeys/step/${nextInPhase.id}`}
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '6px 14px', minHeight: '36px',
-                                backgroundColor: '#E8520A', color: '#FFFFFF',
-                                borderRadius: '6px', fontSize: '12px', fontWeight: 700,
-                                textDecoration: 'none',
-                              }}
-                            >
-                              <ChevronRight size={13} />
-                              {`Continue: ${nextInPhase.title.length > 28 ? nextInPhase.title.slice(0, 28) + '…' : nextInPhase.title}`}
-                            </Link>
-                          ) : <span />}
-                          {completeGroup && (
-                            <button
-                              onClick={() => void handleCompletePhase(completeGroup.groupNum)}
-                              disabled={completingGroup !== null || completeGroupAllApproved}
-                              style={{
-                                minHeight: '32px',
-                                padding: '0 12px',
-                                borderRadius: '6px',
-                                backgroundColor: 'transparent',
-                                color: completeGroupAllApproved ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.85)',
-                                border: `1px solid ${completeGroupAllApproved ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.3)'}`,
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                cursor: completingGroup !== null || completeGroupAllApproved ? 'not-allowed' : 'pointer',
-                                fontFamily: 'inherit',
-                                flexShrink: 0,
-                                opacity: completingGroup === completeGroup.groupNum ? 0.7 : 1,
-                              }}
-                            >
-                              {completeGroupAllApproved
-                                ? 'Phase Complete'
-                                : completingGroup === completeGroup.groupNum
-                                  ? 'Completing…'
-                                  : `Complete Phase ${completeGroup.groupNum}`}
-                            </button>
-                          )}
+                          <Link
+                            href={`/dashboard/journeys/step/${nextInPhase.id}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px',
+                              padding: '6px 14px', minHeight: '36px',
+                              backgroundColor: '#E8520A', color: '#FFFFFF',
+                              borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <ChevronRight size={13} />
+                            {`Continue: ${nextInPhase.title.length > 28 ? nextInPhase.title.slice(0, 28) + '…' : nextInPhase.title}`}
+                          </Link>
                         </div>
                       )}
                     </div>
@@ -765,6 +723,61 @@ export default function JourneysPage() {
             })}
           </div>
         )}
+
+        {hasAnyProgress && (() => {
+          const phase2 = PHASE_GROUPS.find(g => g.groupNum === 2)
+          const phase3 = PHASE_GROUPS.find(g => g.groupNum === 3)
+          if (!phase2 || !phase3) return null
+
+          const phase2HasDraft = phase2.stepIds.some(id => outputMap.get(id)?.status === 'draft')
+          const phase3HasDraft = phase3.stepIds.some(id => outputMap.get(id)?.status === 'draft')
+          if (!phase2HasDraft && !phase3HasDraft) return null
+
+          const phase2WithContent = phase2.stepIds.filter(id => outputMap.has(id)).length
+          const phase3WithContent = phase3.stepIds.filter(id => outputMap.has(id)).length
+
+          const buttonStyle = (groupNum: 2 | 3): React.CSSProperties => ({
+            width: '100%',
+            minHeight: '48px',
+            padding: '12px 18px',
+            backgroundColor: '#E8520A',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 700,
+            cursor: completingGroup !== null ? 'not-allowed' : 'pointer',
+            fontFamily: 'inherit',
+            opacity: completingGroup === groupNum ? 0.7 : 1,
+          })
+
+          return (
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {phase2HasDraft && (
+                <button
+                  onClick={() => void handleCompletePhase(2)}
+                  disabled={completingGroup !== null}
+                  style={buttonStyle(2)}
+                >
+                  {completingGroup === 2
+                    ? 'Completing…'
+                    : `Complete Phase 2 (${phase2WithContent} of ${phase2.stepIds.length} steps have content)`}
+                </button>
+              )}
+              {phase3HasDraft && (
+                <button
+                  onClick={() => void handleCompletePhase(3)}
+                  disabled={completingGroup !== null}
+                  style={buttonStyle(3)}
+                >
+                  {completingGroup === 3
+                    ? 'Completing…'
+                    : `Complete Phase 3 (${phase3WithContent} of ${phase3.stepIds.length} steps have content)`}
+                </button>
+              )}
+            </div>
+          )
+        })()}
 
       </div>
     </div>
