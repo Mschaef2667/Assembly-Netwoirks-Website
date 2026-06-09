@@ -831,7 +831,9 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
       ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
       : ''
 
-    systemPrompt = `CRITICAL: Respond with ONLY valid JSON starting with {
+    systemPrompt = `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose before or after the JSON.
+
+CRITICAL: Respond with ONLY valid JSON starting with {
 
 You are helping complete the Acid Test for the C3 Method. Based ONLY on the decision makers actually defined in Step 3 (do not invent, substitute, or add generic roles), the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title exactly as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }], "current_evidence": "<what proof currently exists>", "strengthen": "<specific actions to build more credibility with these decision makers>" }] } No markdown no prose.
 
