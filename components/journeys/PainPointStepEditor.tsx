@@ -73,6 +73,8 @@ export interface PainPointStepEditorProps {
   preferredModel?: string
   autoApply?: boolean
   autoGenerate?: boolean
+  tabLabel?: string
+  showUpstreamContext?: boolean
   onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
@@ -241,6 +243,8 @@ export default function PainPointStepEditor({
   preferredModel = 'claude-sonnet-4-5',
   autoApply = false,
   autoGenerate = false,
+  tabLabel,
+  showUpstreamContext = false,
   onContentChange,
 }: PainPointStepEditorProps) {
   const [loading, setLoading] = useState(true)
@@ -255,6 +259,7 @@ export default function PainPointStepEditor({
   const [dcpSummaries, setDcpSummaries] = useState<StageSummary[]>([])
   const [icpRecords, setIcpRecords] = useState<IcpRecord[]>([])
   const [offerRecords, setOfferRecords] = useState<OfferRecord[]>([])
+  const [upstreamContextMap, setUpstreamContextMap] = useState<Record<number, string>>({ 1: '', 2: '', 3: '', 4: '' })
 
   const [copilotStreaming, setCopilotStreaming] = useState(false)
   const [streamBuffer, setStreamBuffer] = useState('')
@@ -367,6 +372,29 @@ export default function PainPointStepEditor({
         if (offerResult.data) {
           setOfferRecords((offerResult.data as Array<Record<string, unknown>>).map(parseOfferRow))
         }
+
+        // Upstream context — for Step 12, fetch Step 11 by_pain_point content
+        if (showUpstreamContext && stepId === '12') {
+          const { data: s11Data } = await supabase
+            .from('step_output')
+            .select('content')
+            .eq('workspace_id', workspaceId)
+            .eq('step_id', '11')
+            .order('version', { ascending: false })
+            .limit(1)
+          if (s11Data && s11Data.length > 0) {
+            const c = (s11Data[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null
+            const bpp = c?.['by_pain_point']
+            if (Array.isArray(bpp)) {
+              const map: Record<number, string> = { 1: '', 2: '', 3: '', 4: '' }
+              for (const entry of bpp as Array<Record<string, unknown>>) {
+                const idx = Number(entry['index'])
+                if (idx >= 1 && idx <= 4) map[idx] = String(entry['content'] ?? '')
+              }
+              setUpstreamContextMap(map)
+            }
+          }
+        }
       } catch {
         // non-fatal
       } finally {
@@ -374,7 +402,7 @@ export default function PainPointStepEditor({
       }
     }
     void load()
-  }, [workspaceId, stepId])
+  }, [workspaceId, stepId, showUpstreamContext])
 
   // Notify parent whenever contentMap has any non-empty value so its hasContent
   // gate can re-evaluate (needed after Copilot auto-apply, where the parent's
@@ -414,9 +442,14 @@ export default function PainPointStepEditor({
       for (const tabIdx of emptyTabs) {
         try {
           const activePP = painPoints.find(pp => pp.index === tabIdx)
+          const cvpForTab = (upstreamContextMap[tabIdx] ?? '').trim()
+          const cvpLines = showUpstreamContext && stepId === '12' && cvpForTab
+            ? [`CVP ${tabIdx} PROMISE (from Step 11):`, cvpForTab, '']
+            : []
           const extraContext = [
             `IMPORTANT: This is Pain Point ${tabIdx} of ${activeCount}. Generate UNIQUE content specifically for this pain point number. Do NOT repeat content from other pain points. Each pain point should represent a different aspect of the endemic problem.`,
             '',
+            ...cvpLines,
             'PAIN POINT CONTEXT (from Step 4 — The Problem):',
             `Title: ${activePP?.title?.trim() || `Pain Point ${tabIdx}`}`,
             `Description: ${activePP?.description?.trim() || 'Not yet defined.'}`,
@@ -574,7 +607,13 @@ export default function PainPointStepEditor({
 
     const icpOfferBlock = buildIcpOfferContext(icpRecords, offerRecords)
 
+    const cvpForTab = (upstreamContextMap[activeTab] ?? '').trim()
+    const cvpLines = showUpstreamContext && stepId === '12' && cvpForTab
+      ? [`CVP ${activeTab} PROMISE (from Step 11):`, cvpForTab, '']
+      : []
+
     const extraContext = [
+      ...cvpLines,
       'PAIN POINT CONTEXT (from Step 4 — The Problem):',
       `Title: ${activePP?.title?.trim() || `Pain Point ${activeTab}`}`,
       `Description: ${activePP?.description?.trim() || 'Not yet defined.'}`,
@@ -855,7 +894,7 @@ export default function PainPointStepEditor({
   }
 
   const activePainPoint = painPoints.find(pp => pp.index === activeTab)
-  const tabLabel = activePainPoint?.title?.trim() || `Pain Point ${activeTab}`
+  const activeTabLabel = activePainPoint?.title?.trim() || `${tabLabel ?? 'Pain Point'} ${activeTab}`
 
   const DISCOVERY_SECTIONS: Array<{ key: keyof DiscoveryResult; label: string }> = [
     { key: 'known_validators', label: 'Known Players' },
@@ -1037,8 +1076,9 @@ export default function PainPointStepEditor({
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {[1, 2, 3, 4].map(idx => {
             const pp = painPoints.find(p => p.index === idx)
-            const fullLabel = pp?.title?.trim() || `Pain Point ${idx}`
-            const label = `Pain Point ${idx}`
+            const baseLabel = tabLabel ?? 'Pain Point'
+            const fullLabel = pp?.title?.trim() || `${baseLabel} ${idx}`
+            const label = `${baseLabel} ${idx}`
             const isActive = idx === activeTab
             const isEnabled = idx <= activeCount
             return (
@@ -1073,14 +1113,37 @@ export default function PainPointStepEditor({
         {/* Content card */}
         <div style={PANEL_CARD}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <label style={LABEL_STYLE}>{tabLabel}</label>
+            <label style={LABEL_STYLE}>{activeTabLabel}</label>
             <SaveIndicator state={saveState} />
           </div>
+          {showUpstreamContext && stepId === '12' && (upstreamContextMap[activeTab] ?? '').trim() && (
+            <div style={{
+              padding: '12px 14px',
+              marginBottom: '12px',
+              backgroundColor: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              borderRadius: '8px',
+            }}>
+              <p style={{
+                fontSize: '11px', fontWeight: 700, color: '#1E40AF',
+                textTransform: 'uppercase', letterSpacing: '0.07em',
+                margin: '0 0 6px',
+              }}>
+                CVP Promise
+              </p>
+              <p style={{
+                fontSize: '13px', color: '#1E3A8A', lineHeight: '1.55',
+                margin: 0, whiteSpace: 'pre-wrap',
+              }}>
+                {upstreamContextMap[activeTab]}
+              </p>
+            </div>
+          )}
           <textarea
             value={contentMap[activeTab] ?? ''}
             onChange={e => handleContentChange(activeTab, e.target.value)}
             onBlur={handleBlur}
-            placeholder={`Write your response for "${tabLabel}" in the context of ${stepTitle}…`}
+            placeholder={`Write your response for "${activeTabLabel}" in the context of ${stepTitle}…`}
             rows={12}
             style={{
               width: '100%',

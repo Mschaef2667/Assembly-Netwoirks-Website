@@ -599,6 +599,46 @@ ${step6Text}
 ${provisionalNote}
 ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
+  } else if (stepId === '12') {
+    // Step 12: Critical Success Factors — execution requirements per CVP promise
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are helping define Critical Success Factors for each Compelling Value Proposition. Given the CVP promise below, identify 3-5 specific things the company MUST do, MUST have, or MUST NOT fail at in order to deliver on this promise. These are not aspirational goals -- they are non-negotiable execution requirements. Format as a bulleted list with a brief explanation for each. Be specific to this company and this promise.
+
+CONFIDENCE SCORING:
+- 71-100: CVP promise (Step 11) and company profile are both present and specific
+- 41-70: CVP present but company profile is thin
+- 0-40: Missing critical context, draft is speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<3-5 bulleted Critical Success Factors, each with a brief explanation>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+CVP PROMISE BEING ANALYZED (from Step 11):
+${extraContext || 'No specific CVP provided.'}
+
+PRIMARY SOURCE — Step 11 (Compelling Value Propositions):
+${step11Text}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
   } else if (stepId === '13') {
     // Step 13: Key Selling Points
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')

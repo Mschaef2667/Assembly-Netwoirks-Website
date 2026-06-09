@@ -224,7 +224,7 @@ const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -863,6 +863,7 @@ function prereqIdsForStep(stepId: string): string[] {
   if (['5', '6', '7', '8', '9'].includes(stepId)) return ['4']
   if (stepId === '10') return ['4', '6', '8']
   if (stepId === '11') return ['4', '6']
+  if (stepId === '12') return ['11']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -896,6 +897,12 @@ function buildWarningMessage(
   if (stepId === '11') {
     if (!hasPrereq('4') || !hasPrereq('6')) {
       return 'CVPs require: Step 4 (The Problem) and Step 6 (The Effect). Formula: If you use [Product], it will solve [Problem], thereby reducing [Effect]. WARNING: If your product does not address the problems in Step 4, this is a critical point of failure.'
+    }
+    return null
+  }
+  if (stepId === '12') {
+    if (!hasPrereq('11')) {
+      return 'Critical Success Factors require completed CVPs from Step 11. Each CSF answers: What must we do to fulfill this CVP promise?'
     }
     return null
   }
@@ -2628,6 +2635,8 @@ export default function StepPage() {
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
             autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
+            tabLabel={stepId === '12' ? 'CVP' : undefined}
+            showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
