@@ -843,9 +843,12 @@ Rules:
 - Produce one matrix entry per CVP from Step 11 (use the by_pain_point index as cvp_index).
 - Belief must be one of: yes, likely, unlikely, no — all lowercase.
 - Be honest: if Step 13 formulas or Step 14 competencies are thin or missing, lean toward unlikely or no for senior buyers.
-- Reason must be one sentence, grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
-- "current_evidence" must summarise what proof currently exists to support the beliefs assigned for this CVP (references, case studies, DCP research, demos, pilot results). If proof is missing, say so explicitly.
-- "strengthen" must list concrete, specific actions to build more credibility with these decision makers — name the asset, the audience, and a measurable outcome where possible (e.g. "Request 2 peer references from B2B SaaS CROs, create a case study showing pipeline impact within 60 days, offer a paid diagnostic pilot"). Do not write vague guidance like "gather more proof".
+
+LENGTH CONSTRAINTS (enforce strictly — total response must stay well under token limit):
+- "cvp_label": maximum 8 words.
+- "reason": maximum 15 words. One short sentence grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
+- "current_evidence": maximum 20 words. Summarise what proof currently exists (references, case studies, DCP research, demos, pilot results). If proof is missing, say so explicitly.
+- "strengthen": maximum 30 words, bullet points only. List concrete actions to build credibility — name the asset, audience, and measurable outcome where possible. No vague guidance like "gather more proof".
 
 PRIMARY SOURCE — Step 3 (Key Decision Makers — the ONLY allowed source for decision maker roles in this step):
 ${step3Text}
@@ -1447,7 +1450,7 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
   const maxTokens = stepId === 'survey-builder' ? 4000
     : stepId === 'survey-builder-autowording' ? 2000
     : stepId === 'survey-builder-interview-probes' ? 3000
-    : stepId === '16' ? 2000
+    : stepId === '16' ? 4000
     : 1500
 
   // ── Step 1: two-step web search (search first, then generate clean JSON) ────
