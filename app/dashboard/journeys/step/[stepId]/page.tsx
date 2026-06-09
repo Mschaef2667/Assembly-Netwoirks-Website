@@ -9,6 +9,7 @@ import TipsPanel from '@/components/ui/TipsPanel'
 import { STEP_TIPS } from '@/lib/tips'
 
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
+import CompetitorStepEditor from '@/components/journeys/CompetitorStepEditor'
 import AssessmentStepEditor from '@/components/journeys/AssessmentStepEditor'
 import BlendEditor from '@/components/journeys/BlendEditor'
 import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
@@ -922,6 +923,24 @@ export default function StepPage() {
     )
   }
 
+  if (stepId === '17' && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
+          {warningBanner}
+          <CompetitorStepEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+        {navBar}
+      </div>
+    )
+  }
+
   if (isPainPointStep && workspaceId) {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -944,7 +963,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
             autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
-            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : undefined}
+            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' ? 'Comp' : undefined}
             showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
