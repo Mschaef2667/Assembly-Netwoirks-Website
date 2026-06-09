@@ -54,7 +54,9 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
   const { currentContent, extraContext } = ctx
 
   if (stepId === '17-autofill') {
-    return `Based on this competitor profile, generate three short answers (1-2 sentences each): 1) Why do B2B SaaS buyers choose this competitor over a GTM strategy consultancy? 2) What is their primary value proposition or key promise to buyers? 3) Where are they most vulnerable or what do they fail to deliver? Return ONLY valid JSON: { why_buyers_choose_them: string, their_key_promise: string, their_vulnerability: string }
+    return `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose before or after the JSON.
+
+Based on this competitor profile, generate three short answers (1-2 sentences each): 1) Why do B2B SaaS buyers choose this competitor over a GTM strategy consultancy? 2) What is their primary value proposition or key promise to buyers? 3) Where are they most vulnerable or what do they fail to deliver? Return ONLY valid JSON: { why_buyers_choose_them: string, their_key_promise: string, their_vulnerability: string }
 
 COMPETITOR PROFILE:
 ${extraContext ?? 'Not provided.'}
