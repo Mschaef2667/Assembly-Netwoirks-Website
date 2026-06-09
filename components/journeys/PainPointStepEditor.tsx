@@ -553,6 +553,15 @@ export default function PainPointStepEditor({
 
   async function runCopilot() {
     if (copilotStreaming) return
+
+    const existing = (contentMap[activeTab] ?? '').trim()
+    if (existing.length > 50) {
+      const ok = typeof window !== 'undefined'
+        ? window.confirm('This will replace your current content for this pain point. Continue?')
+        : true
+      if (!ok) return
+    }
+
     setCopilotStreaming(true)
     setCopilotOutput(null)
     setCopilotError(null)

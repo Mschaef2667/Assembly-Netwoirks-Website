@@ -553,7 +553,13 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
 
     systemPrompt = `You are helping write Compelling Value Propositions (CVPs) using the C3 Method. Each CVP must be written as a promise that directly connects the company's product or service to a specific pain point and its business effect.
 
-FORMULA: 'If you [use/purchase {Company Product/Service}], it will solve [Pain Point from Step 4], thereby reducing [Effect from Step 6] on your business.'
+FORMULA: 'If you [partner with/use Company], it will solve [specific problem], thereby reducing [ONE specific consequence] on your business.'
+
+HARD CONSTRAINTS:
+- Maximum 2 sentences total. No more.
+- The "thereby reducing" clause must name ONE specific business consequence only -- not a list.
+- No stacking of multiple effects with commas (do NOT write "thereby reducing churn, lost revenue, and missed pipeline" -- pick the single most consequential one).
+- Keep the same promise formula structure: If you [partner with/use Company], it will solve [specific problem], thereby reducing [ONE specific consequence] on your business.
 
 CRITICAL ALIGNMENT CHECK: Before writing each CVP, verify that the company's product or service actually and specifically addresses the pain point. If the connection is weak or unclear, do NOT write a generic CVP -- instead flag it as: 'ALIGNMENT GAP: The product/service description does not clearly address this pain point. This is a critical point of failure. Review your product positioning or redefine this pain point.'
 
