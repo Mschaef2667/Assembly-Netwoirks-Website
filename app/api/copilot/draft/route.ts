@@ -794,6 +794,69 @@ ${step1Text}
 ${provisionalNote}
 ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
+  } else if (stepId === '16') {
+    // Step 16: Acid Test — does each decision maker believe each CVP can be delivered?
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step3 = contextPacket.prerequisites.find(p => p.step_id === '3')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step3Text = step3 ? JSON.stringify(step3.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+
+    // Steps 13 and 14 are not in step_dependency for Step 16 — fetch directly
+    let step13Text = 'Not yet available.'
+    let step14Text = 'Not yet available.'
+    try {
+      const { data: extraRows } = await supabase
+        .from('step_output')
+        .select('step_id, content, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', ['13', '14'])
+        .order('version', { ascending: false })
+      if (extraRows) {
+        const seen = new Set<string>()
+        for (const row of extraRows as Array<{ step_id: string; content: Record<string, unknown> }>) {
+          if (!seen.has(row.step_id)) {
+            seen.add(row.step_id)
+            const text = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '13') step13Text = text
+            if (row.step_id === '14') step14Text = text
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `You are helping complete the Acid Test for the C3 Method. Based on the decision makers in Step 3, the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }], "evidence_gaps": ["<gap 1>", "<gap 2>"] } No markdown no prose.
+
+Rules:
+- Use the exact decision maker labels (specific_title if present, otherwise role_category) from Step 3.
+- Produce one matrix entry per CVP from Step 11 (use the by_pain_point index as cvp_index).
+- Belief must be one of: yes, likely, unlikely, no — all lowercase.
+- Be honest: if Step 13 formulas or Step 14 competencies are thin or missing, lean toward unlikely or no for senior buyers.
+- evidence_gaps lists 3-5 specific proof points the company should build (e.g. peer reference from comparable customer, case study with quantified outcome, DCP Stage 4 evaluation signals).
+- Reason must be one sentence, grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
+
+PRIMARY SOURCE — Step 3 (Key Decision Makers and their primary concerns):
+${step3Text}
+
+PRIMARY SOURCE — Step 11 (Compelling Value Propositions — one per pain point index):
+${step11Text}
+
+PRIMARY SOURCE — Step 13 (Critical Success Formulas — repeatable processes):
+${step13Text}
+
+PRIMARY SOURCE — Step 14 (Core Competencies — internal capabilities):
+${step14Text}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+${provisionalNote}`
+
   } else if (stepId === '17') {
     // Step 17: Target Competition
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')

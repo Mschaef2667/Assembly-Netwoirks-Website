@@ -14,6 +14,7 @@ import AssessmentStepEditor from '@/components/journeys/AssessmentStepEditor'
 import BlendEditor from '@/components/journeys/BlendEditor'
 import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
 import DealScorecard from '@/components/journeys/DealScorecard'
+import AcidTestEditor from '@/components/journeys/AcidTestEditor'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ function makeBCEntry(): BuyingCenterEntry {
 const AUTOSAVE_DELAY_MS = 1200
 const STEP4_AUTOSAVE_DELAY_MS = 800
 
-const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
+const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '15', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
 const ASSESSMENT_STEPS = new Set(['13', '14'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
@@ -868,6 +869,7 @@ function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '13') return ['12']
   if (stepId === '14') return ['13']
   if (stepId === '15') return ['11', '13', '14']
+  if (stepId === '16') return ['3', '11', '13', '14']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -925,6 +927,12 @@ function buildWarningMessage(
   if (stepId === '15') {
     if (!hasPrereq('11') || !hasPrereq('13') || !hasPrereq('14')) {
       return 'Key Selling Points require: Step 11 (CVPs), Step 13 (Critical Success Formulas), and Step 14 (Core Competencies). Formula: We will deliver [CVP] by implementing [Formula] because of our [Competency].'
+    }
+    return null
+  }
+  if (stepId === '16') {
+    if (!hasPrereq('3') || !hasPrereq('11') || !hasPrereq('13') || !hasPrereq('14')) {
+      return 'The Acid Test requires: Step 3 (Decision Makers), Step 11 (CVPs), Step 13 (Formulas), and Step 14 (Competencies). It tests whether your buyers would actually believe you can deliver your promises.'
     }
     return null
   }
@@ -2389,6 +2397,9 @@ export default function StepPage() {
     hasContent = outputId !== null
   } else if (stepId === '21') {
     hasContent = true // Acid Test 2 placeholder — Next stays enabled
+  } else if (stepId === '16') {
+    const r = rawContent?.['ratings']
+    hasContent = r !== null && typeof r === 'object' && Object.keys(r as Record<string, unknown>).length > 0
   } else if (PAIN_POINT_STEPS.has(stepId)) {
     // Pain point editor saves { by_pain_point: [{ index, content }, …] }
     const bpp = rawContent?.['by_pain_point']
@@ -2514,6 +2525,24 @@ export default function StepPage() {
         <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
           {warningBanner}
           <AssessmentStepEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+      </div>
+    )
+  }
+
+  if (stepId === '16' && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
+          {warningBanner}
+          <AcidTestEditor
             workspaceId={workspaceId}
             stepId={stepId}
             stepTitle={stepTitle}
