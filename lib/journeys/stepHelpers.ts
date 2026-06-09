@@ -202,13 +202,13 @@ export function makeBCEntry(): BuyingCenterEntry {
 export const AUTOSAVE_DELAY_MS = 1200
 export const STEP4_AUTOSAVE_DELAY_MS = 800
 
-export const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '15', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
+export const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '15', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
 export const ASSESSMENT_STEPS = new Set(['13', '14'])
 export const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 export const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '18', '19', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '18', '19', '20', '21', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 export const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -418,6 +418,8 @@ export function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '16') return ['3', '11', '13', '14']
   if (stepId === '18') return ['4', '13', '17']
   if (stepId === '19') return ['17', '18']
+  if (stepId === '20') return ['17', '19']
+  if (stepId === '21') return ['3', '14', '17', '20']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -496,6 +498,18 @@ export function buildWarningMessage(
     }
     return null
   }
+  if (stepId === '20') {
+    if (!hasPrereq('17') || !hasPrereq('19')) {
+      return 'Competitive Threats require: Step 17 (Target Competition) and Step 19 (Competitive Advantages). For each competitor, identify what they do BETTER than you in specific situations.'
+    }
+    return null
+  }
+  if (stepId === '21') {
+    if (!hasPrereq('3') || !hasPrereq('14') || !hasPrereq('17') || !hasPrereq('20')) {
+      return 'Competitive Acid Test requires: Step 3 (Decision Makers), Step 14 (Core Competencies), Step 17 (Target Competition), Step 20 (Competitive Threats).'
+    }
+    return null
+  }
   if (stepId === '27') {
     const missing4 = !hasPrereq('4')
     const missing5 = !hasPrereq('5')
@@ -553,9 +567,6 @@ export function hasContentForStep({
   }
   if (stepId === '2' || stepId === '3' || stepId === '3.5') {
     return outputId !== null
-  }
-  if (stepId === '21') {
-    return true // Acid Test 2 placeholder — Next stays enabled
   }
   if (stepId === '16') {
     const r = rawContent?.['ratings']

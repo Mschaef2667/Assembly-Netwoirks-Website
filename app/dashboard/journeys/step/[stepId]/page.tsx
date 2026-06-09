@@ -799,56 +799,6 @@ export default function StepPage() {
     )
   }
 
-  if (stepId === '21') {
-    return (
-      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {header}
-        <div style={{ padding: '28px 32px', flex: 1 }}>
-          <div style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '12px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-            overflow: 'hidden',
-            maxWidth: '640px',
-          }}>
-            <div style={{
-              backgroundColor: '#0A1628',
-              padding: '20px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-            }}>
-              <h2 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: 0 }}>
-                Acid Test 2 — Competitive Gap Analysis
-              </h2>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '4px 12px',
-                backgroundColor: '#E8520A',
-                color: '#FFFFFF',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}>
-                Coming Soon
-              </span>
-            </div>
-            <div style={{ padding: '20px 24px' }}>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.65', margin: 0 }}>
-                This step will allow you to evaluate whether your competitors can deliver on your Critical Success Formulas. Coming in Sprint 4.
-              </p>
-            </div>
-          </div>
-        </div>
-        {navBar}
-      </div>
-    )
-  }
-
   if (stepId === '2') {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -963,7 +913,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
             autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
-            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' || stepId === '19' ? 'Comp' : undefined}
+            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' || stepId === '19' || stepId === '20' || stepId === '21' ? 'Comp' : undefined}
             showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />

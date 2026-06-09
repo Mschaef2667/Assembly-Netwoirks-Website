@@ -182,6 +182,86 @@ ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
+  if (stepId === '20') {
+    const step17Text = stepText(ctx, '17')
+    const step18Text = stepText(ctx, '18')
+    const step19Text = stepText(ctx, '19')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write the Competitive Threat for this specific competitor. A competitive threat identifies what makes THIS competitor's approach BETTER than ours in specific situations.
+
+Structure:
+1) The threat statement (what they do better and when)
+2) Classification: Exclusive, Relative, or First-Mover
+3) Which buyer types or deal situations where this threat is most dangerous
+
+Maximum 3 sentences. Be honest — understanding real threats is how you prepare to counter them.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<the 3-sentence threat covering statement, classification, and where it's most dangerous>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the threat assessment>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 17 — Target Competition:
+${step17Text}
+
+STEP 18 — Competitive Differentiators:
+${step18Text}
+
+STEP 19 — Competitive Advantages:
+${step19Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
+  if (stepId === '21') {
+    const step3Text = stepText(ctx, '3')
+    const step14Text = stepText(ctx, '14')
+    const step17Text = stepText(ctx, '17')
+    const step20Text = stepText(ctx, '20')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write the Competitive Acid Test for this competitor. The acid test asks: Does this competitor have the core competencies to implement their critical success formulas? And do the key decision makers in Step 3 believe this competitor can deliver?
+
+Structure:
+1) Assessment of competitor's competency (do they have what it takes?)
+2) What decision makers likely believe about this competitor's capability
+3) The key vulnerability this reveals
+
+Maximum 3 sentences. Be analytical and honest.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<the 3-sentence acid test covering competency assessment, decision-maker belief, and key vulnerability>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the acid test>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 3 — Decision Makers:
+${step3Text}
+
+STEP 14 — Core Competencies:
+${step14Text}
+
+STEP 17 — Target Competition:
+${step17Text}
+
+STEP 20 — Competitive Threats:
+${step20Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
   if (stepId === '19') {
     const step17Text = stepText(ctx, '17')
     const step18Text = stepText(ctx, '18')
