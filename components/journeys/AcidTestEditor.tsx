@@ -383,43 +383,58 @@ export default function AcidTestEditor({
         }),
       })
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         setGenError(copilotErrorMessage(res.status))
         return
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-      }
-
-      if (accumulated.includes('__STREAM_ERROR__')) {
-        const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
-        setGenError(copilotErrorMessage(match ? match[1] : 0))
-        return
-      }
-
-      let stripped = accumulated
-        .replace(/^```json\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/```\s*$/i, '')
-        .trim()
-      const firstBrace = stripped.indexOf('{')
-      const lastBrace = stripped.lastIndexOf('}')
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        stripped = stripped.slice(firstBrace, lastBrace + 1)
-      }
-
+      const contentType = res.headers.get('content-type') ?? ''
       let parsed: Record<string, unknown>
-      try {
-        parsed = JSON.parse(stripped) as Record<string, unknown>
-      } catch {
-        setGenError('Copilot returned an invalid response. Please try again.')
-        return
+
+      if (contentType.includes('application/json')) {
+        try {
+          parsed = await res.json() as Record<string, unknown>
+        } catch {
+          setGenError('Copilot returned an invalid response. Please try again.')
+          return
+        }
+      } else {
+        if (!res.body) {
+          setGenError(copilotErrorMessage(res.status))
+          return
+        }
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          accumulated += decoder.decode(value, { stream: true })
+        }
+
+        if (accumulated.includes('__STREAM_ERROR__')) {
+          const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
+          setGenError(copilotErrorMessage(match ? match[1] : 0))
+          return
+        }
+
+        let stripped = accumulated
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/```\s*$/i, '')
+          .trim()
+        const firstBrace = stripped.indexOf('{')
+        const lastBrace = stripped.lastIndexOf('}')
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          stripped = stripped.slice(firstBrace, lastBrace + 1)
+        }
+
+        try {
+          parsed = JSON.parse(stripped) as Record<string, unknown>
+        } catch {
+          setGenError('Copilot returned an invalid response. Please try again.')
+          return
+        }
       }
 
       const matrix = Array.isArray(parsed['matrix']) ? parsed['matrix'] as Array<Record<string, unknown>> : []
