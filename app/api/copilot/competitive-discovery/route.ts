@@ -29,7 +29,7 @@ interface AnthropicResponse {
 
 // ── Route config ──────────────────────────────────────────────────────────────
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // ── POST /api/copilot/competitive-discovery ───────────────────────────────────
 
@@ -84,7 +84,9 @@ async function handleDiscovery(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
   }
 
-  const systemPrompt = `You are a B2B competitive intelligence analyst. Use web search to research the competitive landscape for the company described below. Identify real companies that compete for the same buyers and budget.
+  const systemPrompt = `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose.
+
+You are a B2B competitive intelligence analyst. Use web search to research the competitive landscape for the company described below. Identify real companies that compete for the same buyers and budget.
 
 Return ONLY a valid JSON object. No markdown, no backticks, no explanation. Start with { and end with }.
 
@@ -107,7 +109,8 @@ Category definitions:
 - emerging_threats: Startups or category challengers who entered this space in the last 1-3 years with momentum
 
 RULES:
-- Return 3-5 items per category
+- Return a maximum of 6 competitors total across all categories combined
+- Keep each competitor description under 20 words
 - Use real company names found via web search
 - Be specific to the ICP industries, company sizes, and pain points provided
 - Prioritise relevance to the buyer profile over general market coverage
