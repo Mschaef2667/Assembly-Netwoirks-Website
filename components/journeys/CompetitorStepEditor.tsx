@@ -1,35 +1,38 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader2, Search, Lightbulb } from 'lucide-react'
+import { Loader2, Search, Lightbulb, X, AlertCircle, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type DealLossFrequency = '' | 'Frequently' | 'Sometimes' | 'Rarely' | 'Unknown'
+type CompetitorSource = '' | 'dcp' | 'discovery' | 'manual'
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-interface Competitor {
+interface CompetitorData {
   index: number
   name: string
-  why_buyers_choose: string
-  key_promise: string
+  whyBuyersChooseThem: string
+  keyPromise: string
   vulnerability: string
-  deal_loss_frequency: DealLossFrequency
+  dealFrequency: DealLossFrequency
+  source: CompetitorSource
 }
 
-type Category = 'agency' | 'consultancy' | 'fractional' | 'internal' | 'status quo'
-
-interface DiscoveryOption {
+interface DiscoveredCompetitor {
   name: string
+  category: string
   description: string
-  category: Category
-  alignment_score: number
+  alignmentScore: number
+  dcpIdentified: boolean
+  assignedToTab: number | null
 }
 
 interface DiscoveryApiCompetitor {
   name: string
   description: string
-  why_relevant: string
+  why_relevant?: string
   alignment_score?: number
 }
 
@@ -38,8 +41,6 @@ interface DiscoveryApiResult {
   adjacent_competitors?: DiscoveryApiCompetitor[]
   emerging_threats?: DiscoveryApiCompetitor[]
 }
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 export interface CompetitorStepEditorProps {
   workspaceId: string
@@ -50,35 +51,26 @@ export interface CompetitorStepEditorProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const AUTOSAVE_MS = 800
-const MAX_COMPETITORS = 4
+const AUTOSAVE_MS = 1500
+const TAB_COUNT = 4
+const STATUS_QUO_NAME = 'Status Quo / Do Nothing'
 
 const DEAL_LOSS_OPTIONS: DealLossFrequency[] = ['Frequently', 'Sometimes', 'Rarely', 'Unknown']
 
-const TIPS: Array<{ headline: string; body: string }> = [
-  {
-    headline: 'Competitors are anyone your buyer considers',
-    body: 'A competitor is any alternative your buyer considers — not just similar products.',
-  },
-  {
-    headline: 'Where deals actually go',
-    body: 'You most often lose to: other agencies, fractional executives, internal hires, or doing nothing.',
-  },
-  {
-    headline: 'Focus on lost deals',
-    body: 'Focus on who you LOSE DEALS to, not who has similar features.',
-  },
-  {
-    headline: 'Vulnerability wins the comparison',
-    body: 'Understanding their vulnerability is how you win the comparison.',
-  },
+const TIPS: string[] = [
+  'Your Select Set = the 3-4 competitors your buyers compare you against in final decisions.',
+  'Buyers typically narrow to 3-5 options. Focus your positioning on who actually makes their shortlist.',
+  'DCP Identified competitors were named by your actual buyers in the survey — prioritize these.',
 ]
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const PANEL_CARD: React.CSSProperties = {
   backgroundColor: '#FFFFFF',
   borderRadius: '12px',
   boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
   padding: '20px',
+  position: 'relative',
 }
 
 const LABEL_STYLE: React.CSSProperties = {
@@ -111,56 +103,32 @@ const FIELD_TEXTAREA: React.CSSProperties = {
   resize: 'vertical',
 }
 
-const STATUS_QUO_NAME = 'Status Quo / Do Nothing'
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeEmpty(idx: number): Competitor {
+function makeEmpty(idx: number): CompetitorData {
   return {
     index: idx,
     name: '',
-    why_buyers_choose: '',
-    key_promise: '',
+    whyBuyersChooseThem: '',
+    keyPromise: '',
     vulnerability: '',
-    deal_loss_frequency: '',
+    dealFrequency: '',
+    source: '',
   }
 }
 
-function defaultCompetitors(): Competitor[] {
+function defaultCompetitors(): CompetitorData[] {
   return [1, 2, 3, 4].map(makeEmpty)
 }
 
-function parseSaved(raw: unknown): Competitor[] {
-  if (!Array.isArray(raw)) return defaultCompetitors()
-  const out = defaultCompetitors()
-  for (const r of raw as Array<Record<string, unknown>>) {
-    const idx = Number(r['index'])
-    if (!Number.isFinite(idx) || idx < 1 || idx > MAX_COMPETITORS) continue
-    const freqRaw = String(r['deal_loss_frequency'] ?? '')
-    const freq: DealLossFrequency =
-      freqRaw === 'Frequently' || freqRaw === 'Sometimes' || freqRaw === 'Rarely' || freqRaw === 'Unknown'
-        ? freqRaw
-        : ''
-    out[idx - 1] = {
-      index: idx,
-      name: String(r['name'] ?? ''),
-      why_buyers_choose: String(r['why_buyers_choose'] ?? ''),
-      key_promise: String(r['key_promise'] ?? ''),
-      vulnerability: String(r['vulnerability'] ?? ''),
-      deal_loss_frequency: freq,
-    }
-  }
-  return out
+function asSource(raw: unknown): CompetitorSource {
+  const s = String(raw ?? '')
+  return s === 'dcp' || s === 'discovery' || s === 'manual' ? s : ''
 }
 
-function categorise(name: string, description: string, group: 'known' | 'adjacent' | 'emerging'): Category {
-  const blob = `${name} ${description}`.toLowerCase()
-  if (blob.includes('agency') || blob.includes('agencies')) return 'agency'
-  if (blob.includes('consultanc') || blob.includes('consultant')) return 'consultancy'
-  if (blob.includes('fractional') || blob.includes('interim')) return 'fractional'
-  if (blob.includes('in-house') || blob.includes('internal hire') || blob.includes('build in-house')) return 'internal'
-  if (group === 'adjacent') return 'consultancy'
-  return 'agency'
+function asDealFrequency(raw: unknown): DealLossFrequency {
+  const s = String(raw ?? '')
+  return s === 'Frequently' || s === 'Sometimes' || s === 'Rarely' || s === 'Unknown' ? s : ''
 }
 
 function parseAlignmentScore(raw: unknown): number {
@@ -169,54 +137,101 @@ function parseAlignmentScore(raw: unknown): number {
   return Math.max(1, Math.min(10, Math.round(v)))
 }
 
-function flattenDiscovery(api: DiscoveryApiResult): DiscoveryOption[] {
-  const flat: DiscoveryOption[] = []
-  for (const c of api.known_validators ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'known'), alignment_score: parseAlignmentScore(c.alignment_score) })
+function parseSavedCompetitors(raw: unknown): CompetitorData[] {
+  if (!Array.isArray(raw)) return defaultCompetitors()
+  const out = defaultCompetitors()
+  for (const r of raw as Array<Record<string, unknown>>) {
+    const idx = Number(r['index'])
+    if (!Number.isFinite(idx) || idx < 1 || idx > TAB_COUNT) continue
+    out[idx - 1] = {
+      index: idx,
+      name: String(r['name'] ?? ''),
+      whyBuyersChooseThem: String(r['whyBuyersChooseThem'] ?? r['why_buyers_choose'] ?? ''),
+      keyPromise: String(r['keyPromise'] ?? r['key_promise'] ?? ''),
+      vulnerability: String(r['vulnerability'] ?? ''),
+      dealFrequency: asDealFrequency(r['dealFrequency'] ?? r['deal_loss_frequency']),
+      source: asSource(r['source']),
+    }
   }
-  for (const c of api.adjacent_competitors ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'adjacent'), alignment_score: parseAlignmentScore(c.alignment_score) })
-  }
-  for (const c of api.emerging_threats ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'emerging'), alignment_score: parseAlignmentScore(c.alignment_score) })
-  }
-  return flat
-    .filter(o => !o.name.toLowerCase().includes('status quo'))
-    .sort((a, b) => b.alignment_score - a.alignment_score)
+  return out
 }
 
-function threatBadge(score: number): { label: string; color: string; bg: string } {
-  if (score >= 8) return { label: 'HIGH THREAT', color: '#FFFFFF', bg: '#EF4444' }
-  if (score >= 5) return { label: 'MODERATE', color: '#FFFFFF', bg: '#F59E0B' }
-  return { label: 'INDIRECT', color: '#FFFFFF', bg: '#10B981' }
+function parseSavedDiscovered(raw: unknown): DiscoveredCompetitor[] {
+  if (!Array.isArray(raw)) return []
+  return (raw as Array<Record<string, unknown>>).map(d => ({
+    name: String(d['name'] ?? ''),
+    category: String(d['category'] ?? 'Alternative'),
+    description: String(d['description'] ?? ''),
+    alignmentScore: parseAlignmentScore(d['alignmentScore']),
+    dcpIdentified: Boolean(d['dcpIdentified']),
+    assignedToTab: d['assignedToTab'] == null ? null : Number(d['assignedToTab']),
+  })).filter(d => d.name.length > 0)
 }
 
-function categoryColor(c: Category): string {
-  switch (c) {
-    case 'agency': return '#0EA5E9'
-    case 'consultancy': return '#A855F7'
-    case 'fractional': return '#F59E0B'
-    case 'internal': return '#10B981'
-    case 'status quo': return '#6B7280'
+function categorise(name: string, description: string): string {
+  const blob = `${name} ${description}`.toLowerCase()
+  if (blob.includes('agency') || blob.includes('agencies')) return 'Agency'
+  if (blob.includes('consultanc') || blob.includes('consultant')) return 'Consultancy'
+  if (blob.includes('fractional') || blob.includes('interim')) return 'Fractional'
+  if (blob.includes('in-house') || blob.includes('internal hire') || blob.includes('build in-house')) return 'Internal'
+  return 'Alternative'
+}
+
+function flattenDiscovery(api: DiscoveryApiResult): Array<Omit<DiscoveredCompetitor, 'dcpIdentified' | 'assignedToTab'>> {
+  const flat: Array<Omit<DiscoveredCompetitor, 'dcpIdentified' | 'assignedToTab'>> = []
+  const groups = [api.known_validators ?? [], api.adjacent_competitors ?? [], api.emerging_threats ?? []]
+  for (const group of groups) {
+    for (const c of group) {
+      if (!c?.name) continue
+      flat.push({
+        name: c.name,
+        description: c.description ?? '',
+        category: categorise(c.name, c.description ?? ''),
+        alignmentScore: parseAlignmentScore(c.alignment_score),
+      })
+    }
   }
+  return flat.filter(o => !o.name.toLowerCase().includes('status quo'))
 }
 
-function categoryLabel(c: Category): string {
-  if (c === 'status quo') return 'Alternative'
-  return c.charAt(0).toUpperCase() + c.slice(1)
+function alignmentBadge(score: number): { label: string; bg: string; color: string } {
+  if (score >= 8) return { label: 'HIGH', bg: '#EF4444', color: '#FFFFFF' }
+  if (score >= 5) return { label: 'MODERATE', bg: '#F59E0B', color: '#FFFFFF' }
+  return { label: 'INDIRECT', bg: '#10B981', color: '#FFFFFF' }
+}
+
+function categoryColor(category: string): string {
+  const c = category.toLowerCase()
+  if (c === 'agency') return '#0EA5E9'
+  if (c === 'consultancy') return '#A855F7'
+  if (c === 'fractional') return '#F59E0B'
+  if (c === 'internal') return '#10B981'
+  return '#6B7280'
+}
+
+function sourceBadge(source: CompetitorSource): { label: string; bg: string; color: string } | null {
+  if (source === 'dcp') return { label: 'DCP Identified', bg: 'rgba(14,165,233,0.18)', color: '#0EA5E9' }
+  if (source === 'discovery') return { label: 'Discovery', bg: 'rgba(232,82,10,0.18)', color: '#FDBA74' }
+  if (source === 'manual') return { label: 'Manual', bg: 'rgba(255,255,255,0.10)', color: '#9CA3AF' }
+  return null
+}
+
+function nameInText(name: string, blob: string): boolean {
+  if (!name || !blob) return false
+  return blob.toLowerCase().includes(name.toLowerCase())
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SaveIndicator({ state }: { state: SaveState }) {
-  if (state === 'idle') return null
   if (state === 'saving') return (
     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#6B7280' }}>
       <Loader2 size={12} className="animate-spin" /> Saving…
     </span>
   )
   if (state === 'saved') return <span style={{ fontSize: '12px', color: '#16A34A' }}>Saved</span>
-  return <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>
+  if (state === 'error') return <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>
+  return null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -227,43 +242,68 @@ export default function CompetitorStepEditor({
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
 }: CompetitorStepEditorProps) {
+  void stepTitle
+
   const [loading, setLoading] = useState(true)
-  const [competitors, setCompetitors] = useState<Competitor[]>(defaultCompetitors())
-  const [activeTab, setActiveTab] = useState(1)
+  const [competitors, setCompetitors] = useState<CompetitorData[]>(defaultCompetitors())
+  const [activeTab, setActiveTab] = useState<number>(1)
   const [outputId, setOutputId] = useState<string | null>(null)
   const [outputVersion, setOutputVersion] = useState(1)
   const [saveState, setSaveState] = useState<SaveState>('idle')
 
-  const [discoveryLoading, setDiscoveryLoading] = useState(false)
-  const [discoveryOptions, setDiscoveryOptions] = useState<DiscoveryOption[] | null>(null)
+  const [discoveryOpen, setDiscoveryOpen] = useState(false)
+  const [discoveredList, setDiscoveredList] = useState<DiscoveredCompetitor[]>([])
+  const [discovering, setDiscovering] = useState(false)
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
-  const [selectedNames, setSelectedNames] = useState<string[]>([])
-  const [applyMsg, setApplyMsg] = useState<string | null>(null)
-  const [applying, setApplying] = useState(false)
+
+  const [autoFillingTab, setAutoFillingTab] = useState<number | null>(null)
+  const [statusQuoActive, setStatusQuoActive] = useState(false)
+  const [dcpStage5Text, setDcpStage5Text] = useState<string>('')
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase
-          .from('step_output')
-          .select('id, content, version')
-          .eq('workspace_id', workspaceId)
-          .eq('step_id', stepId)
-          .order('version', { ascending: false })
-          .limit(1)
+        const [stepRes, dcpRes] = await Promise.all([
+          supabase
+            .from('step_output')
+            .select('id, content, version')
+            .eq('workspace_id', workspaceId)
+            .eq('step_id', stepId)
+            .order('version', { ascending: false })
+            .limit(1),
+          supabase
+            .from('dcp_analysis')
+            .select('stage_summaries')
+            .eq('org_id', workspaceId)
+            .maybeSingle(),
+        ])
 
-        if (data && data.length > 0) {
-          const row = data[0] as Record<string, unknown>
+        if (stepRes.data && stepRes.data.length > 0) {
+          const row = stepRes.data[0] as Record<string, unknown>
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
-          if (c && Array.isArray(c['competitors'])) {
-            setCompetitors(parseSaved(c['competitors']))
+          if (c) {
+            if (Array.isArray(c['competitors'])) setCompetitors(parseSavedCompetitors(c['competitors']))
+            if (Array.isArray(c['discoveredList'])) setDiscoveredList(parseSavedDiscovered(c['discoveredList']))
+            if (c['statusQuoActive'] === true) setStatusQuoActive(true)
+          }
+        }
+
+        if (dcpRes.data) {
+          const summaries = (dcpRes.data as Record<string, unknown>)['stage_summaries']
+          if (Array.isArray(summaries)) {
+            const stage5 = (summaries as Array<Record<string, unknown>>).find(s => Number(s['stage_number']) === 5)
+            if (stage5) {
+              const parts: string[] = []
+              if (stage5['summary']) parts.push(String(stage5['summary']))
+              if (Array.isArray(stage5['key_signals'])) parts.push(...(stage5['key_signals'] as unknown[]).map(String))
+              setDcpStage5Text(parts.join(' \n '))
+            }
           }
         }
       } catch {
@@ -277,16 +317,24 @@ export default function CompetitorStepEditor({
 
   // ── Save ────────────────────────────────────────────────────────────────────
 
-  const persistContent = useCallback(async (rows: Competitor[]) => {
+  const persistContent = useCallback(async (
+    rows: CompetitorData[],
+    list: DiscoveredCompetitor[],
+    sqActive: boolean,
+  ) => {
     setSaveState('saving')
     try {
-      const contentPayload = { competitors: rows }
+      const payload = {
+        competitors: rows,
+        discoveredList: list,
+        statusQuoActive: sqActive,
+      }
       const now = new Date().toISOString()
 
       if (outputId) {
         const { error } = await supabase
           .from('step_output')
-          .update({ content: contentPayload, last_saved_at: now, last_updated_at: now })
+          .update({ content: payload, last_saved_at: now, last_updated_at: now })
           .eq('id', outputId)
         if (error) throw error
       } else {
@@ -297,7 +345,7 @@ export default function CompetitorStepEditor({
             step_id: stepId,
             version: outputVersion,
             status: 'draft',
-            content: contentPayload,
+            content: payload,
             copilot_assisted: false,
             last_saved_at: now,
             last_updated_at: now,
@@ -305,7 +353,7 @@ export default function CompetitorStepEditor({
           .select('id')
           .single()
         if (error) throw error
-        if (data) setOutputId((data as Record<string, unknown>)['id'] as string)
+        if (data) setOutputId(String((data as Record<string, unknown>)['id'] ?? ''))
       }
       setSaveState('saved')
       setTimeout(() => setSaveState('idle'), 2500)
@@ -314,141 +362,156 @@ export default function CompetitorStepEditor({
     }
   }, [outputId, outputVersion, stepId, workspaceId])
 
-  saveRef.current = async () => { await persistContent(competitors) }
-
-  function scheduleSave(next?: Competitor[]) {
+  const scheduleSave = useCallback((
+    nextComp?: CompetitorData[],
+    nextList?: DiscoveredCompetitor[],
+    nextSq?: boolean,
+  ) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      if (next) void persistContent(next)
-      else void saveRef.current()
-    }, AUTOSAVE_MS)
-  }
+    const comp = nextComp ?? competitors
+    const list = nextList ?? discoveredList
+    const sq = nextSq ?? statusQuoActive
+    saveTimer.current = setTimeout(() => { void persistContent(comp, list, sq) }, AUTOSAVE_MS)
+  }, [competitors, discoveredList, statusQuoActive, persistContent])
 
-  function updateField<K extends keyof Competitor>(idx: number, field: K, value: Competitor[K]) {
+  // ── Field updates ───────────────────────────────────────────────────────────
+
+  function updateField<K extends keyof CompetitorData>(idx: number, field: K, value: CompetitorData[K]) {
     setCompetitors(prev => {
-      const next = prev.map(c => c.index === idx ? { ...c, [field]: value } : c)
+      const next = prev.map(c => {
+        if (c.index !== idx) return c
+        const updated = { ...c, [field]: value }
+        if (field === 'name') {
+          const newName = String(value).trim()
+          if (newName === '') {
+            updated.source = ''
+          } else if (c.source === '') {
+            updated.source = 'manual'
+          }
+        }
+        return updated
+      })
       scheduleSave(next)
       return next
     })
   }
 
-  function handleBlur() {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    void saveRef.current()
-  }
-
   // ── Discovery ───────────────────────────────────────────────────────────────
 
+  async function buildDiscoveryContext() {
+    const [s1, s2, s3, s11, icpRes] = await Promise.all([
+      supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '1').order('version', { ascending: false }).limit(1),
+      supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '2').order('version', { ascending: false }).limit(1),
+      supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '3').order('version', { ascending: false }).limit(1),
+      supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '11').order('version', { ascending: false }).limit(1),
+      supabase.from('icp_definition').select('segment_name, industry_verticals, company_size_range, job_titles').eq('org_id', workspaceId),
+    ])
+
+    function stepText(data: Array<Record<string, unknown>> | null): string {
+      if (!data || data.length === 0) return 'Not provided.'
+      const c = data[0]['content']
+      return c ? JSON.stringify(c, null, 2) : 'Not provided.'
+    }
+
+    const companyContext = [
+      'STEP 1 - PRODUCT/SERVICE PROFILE:\n' + stepText(s1.data as Array<Record<string, unknown>> | null),
+      'STEP 2 - TARGET SEGMENTS:\n' + stepText(s2.data as Array<Record<string, unknown>> | null),
+      'STEP 3 - DECISION MAKERS:\n' + stepText(s3.data as Array<Record<string, unknown>> | null),
+    ].join('\n\n')
+
+    const cvpContext = 'STEP 11 - CUSTOMER VALUE PROPOSITIONS:\n' + stepText(s11.data as Array<Record<string, unknown>> | null)
+
+    const icpLines: string[] = []
+    if (icpRes.data) {
+      for (const rawRow of icpRes.data) {
+        const row = rawRow as Record<string, unknown>
+        const verticals = Array.isArray(row['industry_verticals'])
+          ? (row['industry_verticals'] as unknown[]).map(String).join(', ')
+          : ''
+        const size = row['company_size_range'] != null ? String(row['company_size_range']) : ''
+        const titles = Array.isArray(row['job_titles'])
+          ? (row['job_titles'] as unknown[]).map(String).join(', ')
+          : ''
+        icpLines.push(`Segment: ${String(row['segment_name'] ?? '')} | Industries: ${verticals} | Size: ${size} | Titles: ${titles}`)
+      }
+    }
+    const icpContext = icpLines.length > 0 ? icpLines.join('\n') : 'Not provided.'
+
+    return { companyContext, cvpContext, icpContext, painPointContext: 'See Step 4 endemic problem and Step 11 CVPs above.' }
+  }
+
   async function runDiscovery() {
-    if (discoveryLoading) return
-    setDiscoveryLoading(true)
-    setDiscoveryOptions(null)
+    if (discovering) return
+    setDiscovering(true)
     setDiscoveryError(null)
-    setSelectedNames([])
 
     try {
-      const [s1, s2, s3, s11, icpFirm] = await Promise.all([
-        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '1').order('version', { ascending: false }).limit(1),
-        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '2').order('version', { ascending: false }).limit(1),
-        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '3').order('version', { ascending: false }).limit(1),
-        supabase.from('step_output').select('content').eq('workspace_id', workspaceId).eq('step_id', '11').order('version', { ascending: false }).limit(1),
-        supabase.from('icp_definition').select('segment_name, industry_verticals, company_size_range, job_titles').eq('org_id', workspaceId),
-      ] as const)
-
-      function getStepText(data: Array<Record<string, unknown>> | null): string {
-        if (!data || data.length === 0) return 'Not provided.'
-        const c = data[0]['content']
-        return c ? JSON.stringify(c, null, 2) : 'Not provided.'
-      }
-
-      const companyContext = [
-        'STEP 1 - PRODUCT/SERVICE PROFILE:\n' + getStepText(s1.data as Array<Record<string, unknown>> | null),
-        'STEP 2 - TARGET SEGMENTS:\n' + getStepText(s2.data as Array<Record<string, unknown>> | null),
-        'STEP 3 - DECISION MAKERS:\n' + getStepText(s3.data as Array<Record<string, unknown>> | null),
-      ].join('\n\n')
-
-      const cvpContext = 'STEP 11 - CUSTOMER VALUE PROPOSITIONS:\n' + getStepText(s11.data as Array<Record<string, unknown>> | null)
-
-      const icpLines: string[] = []
-      if (icpFirm.data) {
-        for (const rawRow of icpFirm.data) {
-          const row = rawRow as Record<string, unknown>
-          const verticals = Array.isArray(row['industry_verticals'])
-            ? (row['industry_verticals'] as unknown[]).map(String).join(', ')
-            : ''
-          const size = row['company_size_range'] != null ? String(row['company_size_range']) : ''
-          const titles = Array.isArray(row['job_titles'])
-            ? (row['job_titles'] as unknown[]).map(String).join(', ')
-            : ''
-          icpLines.push(`Segment: ${String(row['segment_name'] ?? '')} | Industries: ${verticals} | Size: ${size} | Titles: ${titles}`)
-        }
-      }
-      const icpContext = icpLines.length > 0 ? icpLines.join('\n') : 'Not provided.'
-
-      const painPointContext = 'See Step 4 endemic problem and Step 11 CVPs above.'
-
+      const ctx = await buildDiscoveryContext()
       const res = await fetch('/api/copilot/competitive-discovery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspaceId,
-          companyContext,
-          icpContext,
-          painPointContext,
-          cvpContext,
+          companyContext: ctx.companyContext,
+          icpContext: ctx.icpContext,
+          painPointContext: ctx.painPointContext,
+          cvpContext: ctx.cvpContext,
           preferredModel,
         }),
       })
 
       if (!res.ok) {
-        let errMsg = `Error ${res.status}`
+        let msg = `Error ${res.status}`
         try {
-          const errBody = (await res.json()) as Record<string, unknown>
-          errMsg = String(errBody['error'] ?? errMsg)
+          const body = (await res.json()) as Record<string, unknown>
+          msg = String(body['error'] ?? msg)
         } catch { /* ignore */ }
-        setDiscoveryError(res.status === 422 ? 'Could not parse competitor data. Please try again.' : errMsg)
+        setDiscoveryError(res.status === 422 ? 'Could not parse competitor data. Please try again.' : msg)
         return
       }
 
       const data = (await res.json()) as DiscoveryApiResult
-      const discovered = flattenDiscovery(data)
-      console.log('[CompetitorStepEditor] discovered array length:', discovered.length, discovered)
-      setDiscoveryOptions(discovered)
+      const fresh = flattenDiscovery(data)
+
+      setDiscoveredList(prev => {
+        const byName = new Map(prev.map(d => [d.name.toLowerCase(), d]))
+        for (const f of fresh) {
+          const key = f.name.toLowerCase()
+          if (byName.has(key)) {
+            const existing = byName.get(key)!
+            byName.set(key, {
+              ...existing,
+              category: existing.category || f.category,
+              description: existing.description || f.description,
+              alignmentScore: existing.alignmentScore || f.alignmentScore,
+              dcpIdentified: existing.dcpIdentified || nameInText(f.name, dcpStage5Text),
+            })
+          } else {
+            byName.set(key, {
+              name: f.name,
+              category: f.category,
+              description: f.description,
+              alignmentScore: f.alignmentScore,
+              dcpIdentified: nameInText(f.name, dcpStage5Text),
+              assignedToTab: null,
+            })
+          }
+        }
+        const merged = Array.from(byName.values())
+        scheduleSave(undefined, merged, undefined)
+        return merged
+      })
     } catch (err) {
       setDiscoveryError(err instanceof Error ? err.message : 'An error occurred during discovery.')
     } finally {
-      setDiscoveryLoading(false)
+      setDiscovering(false)
     }
   }
 
-  const includeStatusQuo = competitors[3]?.name === STATUS_QUO_NAME
-  const maxSelectable = includeStatusQuo ? MAX_COMPETITORS - 1 : MAX_COMPETITORS
+  // ── Auto-fill ───────────────────────────────────────────────────────────────
 
-  function toggleSelect(name: string) {
-    setSelectedNames(prev => {
-      if (prev.includes(name)) return prev.filter(n => n !== name)
-      if (prev.length >= maxSelectable) return prev
-      return [...prev, name]
-    })
-  }
-
-  function toggleStatusQuo() {
-    setCompetitors(prev => {
-      const next = prev.map(c => ({ ...c }))
-      const c4 = next[3]
-      if (c4.name === STATUS_QUO_NAME) {
-        next[3] = makeEmpty(4)
-      } else {
-        next[3] = { ...makeEmpty(4), name: STATUS_QUO_NAME }
-      }
-      scheduleSave(next)
-      return next
-    })
-    setSelectedNames(prev => prev.slice(0, MAX_COMPETITORS - 1))
-  }
-
-  async function autofillCompetitor(opt: DiscoveryOption): Promise<{ why_buyers_choose_them: string; their_key_promise: string; their_vulnerability: string }> {
-    const empty = { why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
+  async function autofillFromCard(card: DiscoveredCompetitor, tabIndex: number) {
+    setAutoFillingTab(tabIndex)
     try {
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
@@ -460,10 +523,12 @@ export default function CompetitorStepEditor({
           stepDescription: '',
           currentContent: '',
           preferredModel,
-          extraContext: `Competitor: ${opt.name}\nDescription: ${opt.description}`,
+          extraContext: `Competitor: ${card.name}\nDescription: ${card.description}`,
         }),
       })
-      if (!res.ok || !res.body) return empty
+
+      if (!res.ok || !res.body) return
+
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
@@ -472,7 +537,8 @@ export default function CompetitorStepEditor({
         if (done) break
         accumulated += decoder.decode(value, { stream: true })
       }
-      if (accumulated.includes('__STREAM_ERROR__')) return empty
+      if (accumulated.includes('__STREAM_ERROR__')) return
+
       const stripped = accumulated
         .replace(/^```json\s*/i, '')
         .replace(/^```\s*/i, '')
@@ -480,71 +546,118 @@ export default function CompetitorStepEditor({
         .trim()
       const firstBrace = stripped.indexOf('{')
       const lastBrace = stripped.lastIndexOf('}')
-      const jsonText = firstBrace !== -1 && lastBrace > firstBrace ? stripped.slice(firstBrace, lastBrace + 1) : stripped
-      const parsed = JSON.parse(jsonText) as Record<string, unknown>
-      return {
-        why_buyers_choose_them: String(parsed['why_buyers_choose_them'] ?? ''),
-        their_key_promise: String(parsed['their_key_promise'] ?? ''),
-        their_vulnerability: String(parsed['their_vulnerability'] ?? ''),
-      }
+      const jsonText = firstBrace !== -1 && lastBrace > firstBrace
+        ? stripped.slice(firstBrace, lastBrace + 1)
+        : stripped
+
+      let parsed: Record<string, unknown> = {}
+      try { parsed = JSON.parse(jsonText) as Record<string, unknown> } catch { return }
+
+      const why = String(parsed['why_buyers_choose_them'] ?? '')
+      const promise = String(parsed['their_key_promise'] ?? '')
+      const vuln = String(parsed['their_vulnerability'] ?? '')
+
+      setCompetitors(prev => {
+        const next = prev.map(c => c.index === tabIndex
+          ? { ...c, whyBuyersChooseThem: why || c.whyBuyersChooseThem, keyPromise: promise || c.keyPromise, vulnerability: vuln || c.vulnerability }
+          : c
+        )
+        scheduleSave(next)
+        return next
+      })
     } catch {
-      return empty
-    }
-  }
-
-  async function applySelection() {
-    if (selectedNames.length === 0 || applying) return
-    setApplying(true)
-    try {
-      const optionsByName = new Map((discoveryOptions ?? []).map(o => [o.name, o]))
-      const maxFill = includeStatusQuo ? MAX_COMPETITORS - 1 : MAX_COMPETITORS
-      const targets = selectedNames.slice(0, maxFill)
-
-      let appliedCount = 0
-      for (let i = 0; i < targets.length; i++) {
-        const name = targets[i]
-        const tabIndex = i + 1
-        const opt = optionsByName.get(name)
-        const fill = opt
-          ? await autofillCompetitor(opt)
-          : { why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
-
-        setCompetitors(prev => {
-          const next = prev.map(c => ({ ...c }))
-          const target = next.find(c => c.index === tabIndex)
-          if (target) {
-            target.name = name
-            if (fill.why_buyers_choose_them) target.why_buyers_choose = fill.why_buyers_choose_them
-            if (fill.their_key_promise) target.key_promise = fill.their_key_promise
-            if (fill.their_vulnerability) target.vulnerability = fill.their_vulnerability
-          }
-          scheduleSave(next)
-          return next
-        })
-        appliedCount++
-      }
-
-      setApplyMsg(`Added ${appliedCount} competitor${appliedCount === 1 ? '' : 's'} to your tabs ✓`)
-      setSelectedNames([])
-      setTimeout(() => setApplyMsg(null), 2500)
+      // non-fatal
     } finally {
-      setApplying(false)
+      setAutoFillingTab(null)
     }
   }
 
-  function dismissDiscovery() {
-    setDiscoveryOptions(null)
-    setSelectedNames([])
+  // ── Card click / tab assignment ─────────────────────────────────────────────
+
+  function findNextEmptyTab(reserveTab4: boolean): number | null {
+    const upper = reserveTab4 ? TAB_COUNT - 1 : TAB_COUNT
+    for (let i = 0; i < upper; i++) {
+      if (!competitors[i].name.trim()) return i + 1
+    }
+    return null
   }
 
-  function removeActiveCompetitor() {
-    if (typeof window !== 'undefined' && !window.confirm('Remove this competitor and clear all fields?')) return
+  function handleCardClick(card: DiscoveredCompetitor) {
+    if (card.assignedToTab != null) return
+    const targetTab = findNextEmptyTab(statusQuoActive)
+    if (targetTab == null) return
+
+    const newSource: CompetitorSource = card.dcpIdentified ? 'dcp' : 'discovery'
+
     setCompetitors(prev => {
-      const next = prev.map(c => c.index === activeTab ? makeEmpty(activeTab) : c)
+      const next = prev.map(c => c.index === targetTab
+        ? { ...c, name: card.name, source: newSource }
+        : c
+      )
       scheduleSave(next)
       return next
     })
+
+    setDiscoveredList(prev => {
+      const next = prev.map(d => d.name === card.name ? { ...d, assignedToTab: targetTab } : d)
+      scheduleSave(undefined, next, undefined)
+      return next
+    })
+
+    setActiveTab(targetTab)
+    void autofillFromCard(card, targetTab)
   }
+
+  // ── Remove ──────────────────────────────────────────────────────────────────
+
+  function removeCompetitor(tabIndex: number) {
+    setCompetitors(prev => {
+      const next = prev.map(c => c.index === tabIndex ? makeEmpty(tabIndex) : c)
+      scheduleSave(next)
+      return next
+    })
+
+    setDiscoveredList(prev => {
+      const next = prev.map(d => d.assignedToTab === tabIndex ? { ...d, assignedToTab: null } : d)
+      scheduleSave(undefined, next, undefined)
+      return next
+    })
+
+    if (tabIndex === TAB_COUNT && statusQuoActive) {
+      setStatusQuoActive(false)
+      scheduleSave(undefined, undefined, false)
+    }
+  }
+
+  // ── Status Quo toggle ───────────────────────────────────────────────────────
+
+  function toggleStatusQuo() {
+    setStatusQuoActive(prev => {
+      const nextActive = !prev
+      setCompetitors(curr => {
+        const next = curr.map(c => ({ ...c }))
+        if (nextActive) {
+          next[3] = {
+            ...makeEmpty(TAB_COUNT),
+            name: STATUS_QUO_NAME,
+            source: 'manual',
+          }
+        } else if (next[3].name === STATUS_QUO_NAME) {
+          next[3] = makeEmpty(TAB_COUNT)
+        }
+        scheduleSave(next, undefined, nextActive)
+        return next
+      })
+      return nextActive
+    })
+  }
+
+  // ── Sort discovered cards ───────────────────────────────────────────────────
+
+  const sortedDiscovered = [...discoveredList].sort((a, b) => {
+    if (a.dcpIdentified !== b.dcpIdentified) return a.dcpIdentified ? -1 : 1
+    return b.alignmentScore - a.alignmentScore
+  })
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -557,199 +670,208 @@ export default function CompetitorStepEditor({
   }
 
   const active = competitors[activeTab - 1]
-  void stepTitle
+  const activeBadge = sourceBadge(active.source)
+  const isStatusQuoTab = active.index === TAB_COUNT && active.name === STATUS_QUO_NAME
 
   return (
     <>
-      {/* ── Discover Competitors button ────────────────────────────────────── */}
-      <div style={{ marginBottom: '24px' }}>
+      {/* ── Open Discovery button ─────────────────────────────────────────── */}
+      <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <button
-          onClick={() => void runDiscovery()}
-          disabled={discoveryLoading}
+          onClick={() => setDiscoveryOpen(o => !o)}
           style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '10px 20px', minHeight: '44px',
-            backgroundColor: discoveryLoading ? '#F3F4F6' : '#0EA5E9',
-            color: discoveryLoading ? '#9CA3AF' : '#FFFFFF',
+            backgroundColor: '#0EA5E9', color: '#FFFFFF',
             border: 'none', borderRadius: '8px',
-            fontSize: '14px', fontWeight: 600,
-            cursor: discoveryLoading ? 'not-allowed' : 'pointer',
+            fontSize: '14px', fontWeight: 600, cursor: 'pointer',
           }}
         >
-          {discoveryLoading
-            ? <><Loader2 size={15} className="animate-spin" /> Searching for competitors…</>
-            : <><Search size={15} /> Discover Competitors with Copilot</>
-          }
+          <Search size={15} /> {discoveryOpen ? 'Hide Select Set Discovery' : 'Open Select Set Discovery'}
         </button>
-        <p style={{
-          margin: '8px 0 0',
-          fontSize: '12px',
-          color: 'rgba(255,255,255,0.55)',
-        }}>
-          Copilot uses web search across your company profile, ICPs, and CVPs to surface the alternatives your buyers actually consider.
+        <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.55)', maxWidth: '520px' }}>
+          Identify the 3-4 competitors your buyers most often compare you against in final evaluations.
         </p>
       </div>
 
-      {discoveryError && (
-        <div style={{
-          padding: '12px 16px', backgroundColor: '#FEF2F2',
-          border: '1px solid #FCA5A5', borderRadius: '8px', marginBottom: '16px',
-        }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#991B1B' }}>{discoveryError}</p>
-        </div>
-      )}
-
-      {discoveryOptions && (
+      {/* ── Discovery panel ───────────────────────────────────────────────── */}
+      {discoveryOpen && (
         <div style={{ backgroundColor: '#0F2140', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
-            <div>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            <div style={{ flex: 1, minWidth: '260px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
-                Potential Competitors
+                Select Set Discovery
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.55)' }}>
-                Select up to {maxSelectable} to populate your competitor tabs ({selectedNames.length}/{maxSelectable} selected).
+                Identify the 3-4 competitors your buyers most often compare you against in final evaluations.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 onClick={toggleStatusQuo}
                 style={{
-                  background: includeStatusQuo ? 'rgba(232,82,10,0.18)' : 'none',
-                  border: `1px solid ${includeStatusQuo ? '#E8520A' : '#374151'}`,
+                  background: statusQuoActive ? 'rgba(232,82,10,0.18)' : 'none',
+                  border: `1px solid ${statusQuoActive ? '#E8520A' : '#374151'}`,
                   borderRadius: '6px',
-                  color: includeStatusQuo ? '#FDBA74' : '#9CA3AF',
+                  color: statusQuoActive ? '#FDBA74' : '#9CA3AF',
                   fontSize: '12px', fontWeight: 600,
-                  padding: '6px 12px', minHeight: '32px',
-                  cursor: 'pointer',
+                  padding: '6px 12px', minHeight: '32px', cursor: 'pointer',
                 }}
               >
-                {includeStatusQuo ? '✓ ' : ''}Include Status Quo / Do Nothing
+                {statusQuoActive ? '✓ ' : ''}Reserve Tab 4 for Status Quo
               </button>
               <button
-                onClick={dismissDiscovery}
+                onClick={() => void runDiscovery()}
+                disabled={discovering}
                 style={{
-                  background: 'none', border: '1px solid #374151', borderRadius: '6px',
-                  color: '#9CA3AF', fontSize: '12px', padding: '6px 12px',
-                  cursor: 'pointer', minHeight: '32px',
-                }}
-              >
-                Dismiss
-              </button>
-              <button
-                onClick={() => void applySelection()}
-                disabled={selectedNames.length === 0 || applying}
-                style={{
-                  backgroundColor: selectedNames.length === 0 || applying ? '#6B7280' : '#E8520A',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  backgroundColor: discovering ? '#374151' : '#E8520A',
                   border: 'none', borderRadius: '6px',
                   color: '#FFFFFF', fontSize: '12px', fontWeight: 600,
                   padding: '6px 14px', minHeight: '32px',
-                  cursor: selectedNames.length === 0 || applying ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px',
+                  cursor: discovering ? 'not-allowed' : 'pointer',
                 }}
               >
-                {applying && <Loader2 size={12} className="animate-spin" />}
-                {applying ? 'Generating profiles…' : 'Apply Selection'}
+                {discovering
+                  ? <><Loader2 size={12} className="animate-spin" /> Discovering…</>
+                  : <><Sparkles size={12} /> Discover Competitors</>
+                }
+              </button>
+              <button
+                onClick={() => setDiscoveryOpen(false)}
+                aria-label="Dismiss"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: '1px solid #374151', borderRadius: '6px',
+                  color: '#9CA3AF', padding: '6px 10px', minHeight: '32px', cursor: 'pointer',
+                }}
+              >
+                <X size={14} />
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-            {discoveryOptions.slice(0, 6).map((opt, i) => {
-              const isSelected = selectedNames.includes(opt.name)
-              const atLimit = !isSelected && selectedNames.length >= maxSelectable
-              const threat = threatBadge(opt.alignment_score)
-              return (
-                <button
-                  key={`${opt.name}-${i}`}
-                  onClick={() => { if (!atLimit) toggleSelect(opt.name) }}
-                  disabled={atLimit}
-                  style={{
-                    textAlign: 'left',
-                    backgroundColor: isSelected ? 'rgba(232,82,10,0.18)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${isSelected ? '#E8520A' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '8px',
-                    padding: '12px',
-                    cursor: atLimit ? 'not-allowed' : 'pointer',
-                    opacity: atLimit ? 0.45 : 1,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>{opt.name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      <span style={{
-                        fontSize: '10px', fontWeight: 700,
-                        padding: '2px 8px', borderRadius: '999px',
-                        backgroundColor: threat.bg,
-                        color: threat.color,
-                        textTransform: 'uppercase', letterSpacing: '0.06em',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {threat.label}
-                      </span>
-                      <span style={{
-                        fontSize: '10px', fontWeight: 700,
-                        padding: '2px 8px', borderRadius: '999px',
-                        backgroundColor: `${categoryColor(opt.category)}22`,
-                        color: categoryColor(opt.category),
-                        textTransform: 'uppercase', letterSpacing: '0.06em',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {categoryLabel(opt.category)}
-                      </span>
-                    </div>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
-                    {opt.description}
-                  </p>
-                </button>
-              )
-            })}
+          {/* Best practice tip banner */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            backgroundColor: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: '8px', padding: '10px 14px',
+            marginBottom: '16px',
+          }}>
+            <AlertCircle size={15} style={{ color: '#FBBF24', flexShrink: 0, marginTop: '1px' }} />
+            <p style={{ margin: 0, fontSize: '12px', color: '#FCD34D', lineHeight: '1.55' }}>
+              Focus on 3-4 Select Set competitors. These are the firms your buyers actually choose between in final decisions — not every company in your space.
+            </p>
           </div>
+
+          {/* Error */}
+          {discoveryError && (
+            <div style={{
+              padding: '10px 14px', backgroundColor: 'rgba(239,68,68,0.12)',
+              border: '1px solid rgba(239,68,68,0.4)', borderRadius: '8px',
+              marginBottom: '16px',
+            }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#FCA5A5' }}>{discoveryError}</p>
+            </div>
+          )}
+
+          {/* Cards */}
+          {sortedDiscovered.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+              No competitors yet. Click <strong>Discover Competitors</strong> to surface candidates from your company profile, ICPs, and CVPs.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+              {sortedDiscovered.map(card => {
+                const isAssigned = card.assignedToTab != null
+                const align = alignmentBadge(card.alignmentScore)
+                return (
+                  <button
+                    key={card.name}
+                    onClick={() => handleCardClick(card)}
+                    disabled={isAssigned}
+                    title={isAssigned ? `Assigned to Comp ${card.assignedToTab}` : 'Click to assign to the next empty tab'}
+                    style={{
+                      textAlign: 'left',
+                      backgroundColor: isAssigned ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.05)',
+                      border: `1px solid ${isAssigned ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.10)'}`,
+                      borderRadius: '8px', padding: '12px',
+                      cursor: isAssigned ? 'default' : 'pointer',
+                      opacity: isAssigned ? 0.55 : 1,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>{card.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 700,
+                          padding: '2px 8px', borderRadius: '999px',
+                          backgroundColor: align.bg, color: align.color,
+                          textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+                        }}>{align.label}</span>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 700,
+                          padding: '2px 8px', borderRadius: '999px',
+                          backgroundColor: `${categoryColor(card.category)}22`,
+                          color: categoryColor(card.category),
+                          textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+                        }}>{card.category}</span>
+                        {card.dcpIdentified && (
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700,
+                            padding: '2px 8px', borderRadius: '999px',
+                            backgroundColor: 'rgba(14,165,233,0.18)', color: '#0EA5E9',
+                            textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+                          }}>DCP Identified</span>
+                        )}
+                        {isAssigned && (
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700,
+                            padding: '2px 8px', borderRadius: '999px',
+                            backgroundColor: 'rgba(232,82,10,0.18)', color: '#FDBA74',
+                            textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+                          }}>Comp {card.assignedToTab}</span>
+                        )}
+                      </div>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
+                      {card.description}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {applyMsg && (
-        <div style={{
-          padding: '10px 14px', backgroundColor: 'rgba(22,163,74,0.15)',
-          border: '1px solid rgba(22,163,74,0.45)', borderRadius: '8px',
-          marginBottom: '16px',
-          fontSize: '13px', fontWeight: 600, color: '#86EFAC',
-        }}>
-          {applyMsg}
-        </div>
-      )}
-
+      {/* ── Main grid: tabs+form (left) / tips (right) ────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
 
-        {/* ── Left: tabs + form ─────────────────────────────────────────────── */}
+        {/* Left column */}
         <div>
+          {/* Tabs */}
           <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {[1, 2, 3, 4].map(idx => {
               const comp = competitors[idx - 1]
-              const fullLabel = comp.name.trim() || `Comp ${idx}`
-              const label = `Comp ${idx}`
               const isActive = idx === activeTab
+              const isReserved = idx === TAB_COUNT && statusQuoActive && comp.name === STATUS_QUO_NAME
+              const label = `Comp ${idx}`
               return (
                 <button
                   key={idx}
                   onClick={() => setActiveTab(idx)}
-                  title={fullLabel}
+                  title={comp.name || label}
                   style={{
-                    padding: '6px 14px',
-                    minHeight: '36px',
-                    maxWidth: '200px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    padding: '6px 14px', minHeight: '36px', maxWidth: '200px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     backgroundColor: isActive ? '#E8520A' : '#FFFFFF',
                     color: isActive ? '#FFFFFF' : '#0D0D0D',
-                    border: `1px solid ${isActive ? '#E8520A' : '#E5E7EB'}`,
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s, color 0.15s',
+                    border: `1px solid ${isActive ? '#E8520A' : isReserved ? '#FDBA74' : '#E5E7EB'}`,
+                    borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   {label}
@@ -758,23 +880,59 @@ export default function CompetitorStepEditor({
             })}
           </div>
 
+          {/* Editor card */}
           <div style={PANEL_CARD}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <label style={LABEL_STYLE}>Competitor {activeTab}</label>
+            {/* Loading overlay */}
+            {autoFillingTab === activeTab && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 5,
+                backgroundColor: 'rgba(255,255,255,0.75)',
+                borderRadius: '12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: '10px',
+              }}>
+                <Loader2 size={26} className="animate-spin" style={{ color: '#E8520A' }} />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#0A1628' }}>Copilot is filling in details…</span>
+              </div>
+            )}
+
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <label style={LABEL_STYLE}>Comp {activeTab}</label>
+                {activeBadge && (
+                  <span style={{
+                    fontSize: '10px', fontWeight: 700,
+                    padding: '2px 8px', borderRadius: '999px',
+                    backgroundColor: activeBadge.bg, color: activeBadge.color,
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                  }}>{activeBadge.label}</span>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <SaveIndicator state={saveState} />
-                <button
-                  onClick={removeActiveCompetitor}
-                  style={{
-                    background: 'none', border: 'none', padding: '2px 4px',
-                    color: '#EF4444', fontSize: '11px', fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Remove Competitor
-                </button>
+                {active.name.trim() !== '' && (
+                  <button
+                    onClick={() => removeCompetitor(activeTab)}
+                    style={{
+                      background: 'none', border: 'none', padding: '2px 4px',
+                      color: '#EF4444', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
+
+            {active.name.trim() === '' ? (
+              <p style={{
+                margin: 0, fontSize: '13px', color: '#6B7280',
+                fontStyle: 'italic', padding: '24px 0', textAlign: 'center',
+              }}>
+                Click a competitor in the discovery panel or enter manually
+              </p>
+            ) : null}
 
             {/* Competitor Name */}
             <div style={{ marginBottom: '16px' }}>
@@ -785,9 +943,9 @@ export default function CompetitorStepEditor({
                 type="text"
                 value={active.name}
                 onChange={e => updateField(activeTab, 'name', e.target.value)}
-                onBlur={handleBlur}
-                placeholder="e.g. Acme Consulting, Status Quo / Do Nothing"
-                style={FIELD_INPUT}
+                placeholder="e.g. Acme Consulting"
+                disabled={isStatusQuoTab}
+                style={{ ...FIELD_INPUT, backgroundColor: isStatusQuoTab ? '#F3F4F6' : '#FFFFFF' }}
               />
             </div>
 
@@ -795,9 +953,8 @@ export default function CompetitorStepEditor({
             <div style={{ marginBottom: '16px' }}>
               <label style={LABEL_STYLE}>Why Buyers Choose Them</label>
               <textarea
-                value={active.why_buyers_choose}
-                onChange={e => updateField(activeTab, 'why_buyers_choose', e.target.value)}
-                onBlur={handleBlur}
+                value={active.whyBuyersChooseThem}
+                onChange={e => updateField(activeTab, 'whyBuyersChooseThem', e.target.value)}
                 placeholder="What do buyers say when they choose this competitor over you?"
                 style={FIELD_TEXTAREA}
               />
@@ -807,10 +964,9 @@ export default function CompetitorStepEditor({
             <div style={{ marginBottom: '16px' }}>
               <label style={LABEL_STYLE}>Their Key Promise</label>
               <textarea
-                value={active.key_promise}
-                onChange={e => updateField(activeTab, 'key_promise', e.target.value)}
-                onBlur={handleBlur}
-                placeholder="What is their primary value proposition or CVP?"
+                value={active.keyPromise}
+                onChange={e => updateField(activeTab, 'keyPromise', e.target.value)}
+                placeholder="What is their primary value proposition?"
                 style={FIELD_TEXTAREA}
               />
             </div>
@@ -821,7 +977,6 @@ export default function CompetitorStepEditor({
               <textarea
                 value={active.vulnerability}
                 onChange={e => updateField(activeTab, 'vulnerability', e.target.value)}
-                onBlur={handleBlur}
                 placeholder="Where are they weakest? What do they fail to deliver?"
                 style={FIELD_TEXTAREA}
               />
@@ -831,9 +986,8 @@ export default function CompetitorStepEditor({
             <div>
               <label style={LABEL_STYLE}>Deal Loss Frequency</label>
               <select
-                value={active.deal_loss_frequency}
-                onChange={e => updateField(activeTab, 'deal_loss_frequency', e.target.value as DealLossFrequency)}
-                onBlur={handleBlur}
+                value={active.dealFrequency}
+                onChange={e => updateField(activeTab, 'dealFrequency', e.target.value as DealLossFrequency)}
                 style={FIELD_INPUT}
               >
                 <option value="">How often do you lose to them?</option>
@@ -845,7 +999,7 @@ export default function CompetitorStepEditor({
           </div>
         </div>
 
-        {/* ── Right: Tips panel ─────────────────────────────────────────────── */}
+        {/* Right column: tips */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{
             backgroundColor: '#0F2140',
@@ -857,11 +1011,9 @@ export default function CompetitorStepEditor({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <Lightbulb size={15} style={{ color: '#E8520A', flexShrink: 0 }} />
               <span style={{
-                fontSize: '11px',
-                fontWeight: 700,
+                fontSize: '11px', fontWeight: 700,
                 color: 'rgba(255,255,255,0.45)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
+                textTransform: 'uppercase', letterSpacing: '0.07em',
               }}>
                 Tips &amp; Best Practices
               </span>
@@ -869,14 +1021,12 @@ export default function CompetitorStepEditor({
             <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: '14px' }} />
             {TIPS.map((tip, i) => (
               <div key={i}>
-                <div style={{ paddingBottom: i < TIPS.length - 1 ? '12px' : '0' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px', lineHeight: '1.4' }}>
-                    {tip.headline}
-                  </p>
-                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: '1.6' }}>
-                    {tip.body}
-                  </p>
-                </div>
+                <p style={{
+                  fontSize: '13px', color: 'rgba(255,255,255,0.75)',
+                  margin: 0, lineHeight: '1.6',
+                }}>
+                  {tip}
+                </p>
                 {i < TIPS.length - 1 && (
                   <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)', margin: '12px 0' }} />
                 )}
