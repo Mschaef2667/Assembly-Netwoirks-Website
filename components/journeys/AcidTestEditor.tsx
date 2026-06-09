@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Loader2, Wand2, AlertTriangle, Lightbulb, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -16,6 +16,13 @@ interface CvpEntry {
 interface RoleEntry {
   key: string
   label: string
+  influence: string
+}
+
+interface SegmentInfo {
+  key: string
+  name: string
+  decisionMakers: RoleEntry[]
 }
 
 interface AcidTestContent {
@@ -24,6 +31,7 @@ interface AcidTestContent {
   ratings: Record<string, Record<string, Belief>>
   evidence: Record<string, string>
   strengthen: Record<string, string>
+  selected_segment_key?: string
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -122,8 +130,14 @@ export default function AcidTestEditor({
 
   // Upstream data
   const [cvps, setCvps] = useState<CvpEntry[]>([])
-  const [decisionMakers, setDecisionMakers] = useState<RoleEntry[]>([])
+  const [segments, setSegments] = useState<SegmentInfo[]>([])
+  const [selectedSegmentKey, setSelectedSegmentKey] = useState<string>('segment_1')
   const [missingUpstream, setMissingUpstream] = useState<string[]>([])
+
+  const decisionMakers = useMemo<RoleEntry[]>(() => {
+    const seg = segments.find(s => s.key === selectedSegmentKey) ?? segments[0]
+    return seg?.decisionMakers ?? []
+  }, [segments, selectedSegmentKey])
 
   // Step output state
   const [ratings, setRatings] = useState<Record<string, Record<string, Belief>>>({})
@@ -155,7 +169,7 @@ export default function AcidTestEditor({
           .from('step_output')
           .select('step_id, content, id, version')
           .eq('workspace_id', workspaceId)
-          .in('step_id', ['3', '4', '11', '16'])
+          .in('step_id', ['2', '3', '4', '11', '16'])
           .order('version', { ascending: false })
 
         if (cancelled) return
@@ -171,24 +185,35 @@ export default function AcidTestEditor({
           })
         }
 
-        // ── Decision makers from Step 3 ─────────────────────────────────────
-        const dms: RoleEntry[] = []
-        const seenKeys = new Set<string>()
+        // ── Decision makers from Step 3, grouped by segment ────────────────
+        const segs: SegmentInfo[] = []
+        const s2 = latest.get('2')?.content
+        const s2Segments = Array.isArray(s2?.['segments'])
+          ? (s2!['segments'] as Array<Record<string, unknown>>)
+          : []
         const s3 = latest.get('3')?.content
         const dmRaw = s3?.['decision_makers'] as Record<string, unknown> | undefined
         if (dmRaw) {
-          for (const segKey of ['segment_1', 'segment_2', 'segment_3']) {
+          for (let i = 0; i < 3; i++) {
+            const segKey = `segment_${i + 1}`
             const arr = dmRaw[segKey]
             if (!Array.isArray(arr)) continue
+            const segName = String(s2Segments[i]?.['name'] ?? '').trim() || `Segment ${i + 1}`
+            const segDms: RoleEntry[] = []
+            const seenKeys = new Set<string>()
             for (const dm of arr as Array<Record<string, unknown>>) {
               const role = String(dm['role_category'] ?? '').trim()
               const title = String(dm['specific_title'] ?? '').trim()
+              const influence = String(dm['influence_level'] ?? '').trim()
               const label = title || role
               if (!label) continue
               const key = roleKey(label)
               if (seenKeys.has(key)) continue
               seenKeys.add(key)
-              dms.push({ key, label })
+              segDms.push({ key, label, influence })
+            }
+            if (segDms.length > 0) {
+              segs.push({ key: segKey, name: segName, decisionMakers: segDms })
             }
           }
         }
@@ -215,12 +240,13 @@ export default function AcidTestEditor({
 
         // ── Missing upstream check ──────────────────────────────────────────
         const missing: string[] = []
-        if (dms.length === 0) missing.push('Step 3 (Decision Makers)')
+        if (segs.length === 0) missing.push('Step 3 (Decision Makers)')
         if (cvpEntries.length === 0) missing.push('Step 11 (CVPs)')
         setMissingUpstream(missing)
 
-        setDecisionMakers(dms)
+        setSegments(segs)
         setCvps(cvpEntries)
+        if (segs.length > 0) setSelectedSegmentKey(segs[0].key)
 
         // ── Load saved Step 16 ──────────────────────────────────────────────
         const saved = latest.get('16')
@@ -240,6 +266,12 @@ export default function AcidTestEditor({
           setRatings(savedRatings)
           setEvidence(savedEvidence)
           setStrengthen(savedStrengthen)
+          const savedSegKey = typeof c['selected_segment_key'] === 'string'
+            ? (c['selected_segment_key'] as string)
+            : ''
+          if (savedSegKey && segs.some(s => s.key === savedSegKey)) {
+            setSelectedSegmentKey(savedSegKey)
+          }
         }
       } catch {
         /* non-fatal */
@@ -263,6 +295,7 @@ export default function AcidTestEditor({
         ratings: ratingsRef.current,
         evidence: evidenceRef.current,
         strengthen: strengthenRef.current,
+        selected_segment_key: selectedSegmentKey,
       }
       if (outputId) {
         const { error } = await supabase
@@ -293,7 +326,7 @@ export default function AcidTestEditor({
     } catch {
       setSaveState('error')
     }
-  }, [outputId, outputVersion, workspaceId, stepId, cvps, decisionMakers])
+  }, [outputId, outputVersion, workspaceId, stepId, cvps, decisionMakers, selectedSegmentKey])
 
   const scheduleSave = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -395,6 +428,8 @@ export default function AcidTestEditor({
       const nextEvidence: Record<string, string> = { ...evidenceRef.current }
       const nextStrengthen: Record<string, string> = { ...strengthenRef.current }
 
+      const allDms = segments.flatMap(s => s.decisionMakers)
+
       for (const row of matrix) {
         const cvpIndex = Number(row['cvp_index'] ?? 0)
         if (!cvpIndex) continue
@@ -403,7 +438,7 @@ export default function AcidTestEditor({
         for (const rt of ratingsArr) {
           const roleLabel = String(rt['role'] ?? '').trim()
           if (!roleLabel) continue
-          const dm = decisionMakers.find(d => d.label === roleLabel || d.key === roleKey(roleLabel))
+          const dm = allDms.find(d => d.label === roleLabel || d.key === roleKey(roleLabel))
           if (!dm) continue
           const belief = String(rt['belief'] ?? '').toLowerCase()
           if (belief === 'yes' || belief === 'likely' || belief === 'unlikely' || belief === 'no') {
@@ -412,7 +447,7 @@ export default function AcidTestEditor({
         }
         nextRatings[String(cvpIndex)] = rowRatings
 
-        const evText = String(row['evidence'] ?? '').trim()
+        const evText = String(row['current_evidence'] ?? row['evidence'] ?? '').trim()
         if (evText) nextEvidence[String(cvpIndex)] = evText
         const strText = String(row['strengthen'] ?? '').trim()
         if (strText) nextStrengthen[String(cvpIndex)] = strText
@@ -484,6 +519,49 @@ export default function AcidTestEditor({
             For each decision maker, assess whether they would believe Assembly Networks has the formulas and competencies to fulfill each CVP promise. How do you know?
           </p>
         </div>
+
+        {/* Segment selector — only when multiple segments have decision makers */}
+        {segments.length > 1 && (
+          <div style={{
+            ...PANEL_CARD,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}>
+            <span style={{
+              fontSize: '11px', fontWeight: 700,
+              color: 'rgba(255,255,255,0.55)',
+              textTransform: 'uppercase', letterSpacing: '0.07em',
+            }}>
+              Segment
+            </span>
+            <select
+              value={selectedSegmentKey}
+              onChange={e => setSelectedSegmentKey(e.target.value)}
+              style={{
+                minHeight: '40px',
+                padding: '8px 12px',
+                backgroundColor: '#FFFFFF',
+                color: '#0D0D0D',
+                border: '1px solid #9CA3AF',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            >
+              {segments.map(s => (
+                <option key={s.key} value={s.key}>{s.name}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+              {decisionMakers.length} decision maker{decisionMakers.length === 1 ? '' : 's'}
+            </span>
+          </div>
+        )}
 
         {/* Generate + save */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -591,13 +669,28 @@ export default function AcidTestEditor({
                           }}
                         >
                           <span style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: '#FFFFFF',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
                             flex: '1 1 180px',
                             minWidth: '140px',
                           }}>
-                            {dm.label}
+                            <span style={{
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: '#FFFFFF',
+                            }}>
+                              {dm.label}
+                            </span>
+                            {dm.influence && (
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: 500,
+                                color: 'rgba(255,255,255,0.55)',
+                              }}>
+                                {dm.influence}
+                              </span>
+                            )}
                           </span>
                           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                             {BELIEFS.map(b => {

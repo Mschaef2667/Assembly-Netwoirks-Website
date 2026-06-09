@@ -833,7 +833,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
 
     systemPrompt = `CRITICAL: Respond with ONLY valid JSON starting with {
 
-You are helping complete the Acid Test for the C3 Method. Based ONLY on the decision makers actually defined in Step 3 (do not invent, substitute, or add generic roles), the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "evidence": "<current evidence sentence>", "strengthen": "<how to strengthen sentence>", "ratings": [{ "role": "<decision maker role or title exactly as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }] }] } No markdown no prose.
+You are helping complete the Acid Test for the C3 Method. Based ONLY on the decision makers actually defined in Step 3 (do not invent, substitute, or add generic roles), the CVPs in Step 11, the formulas in Step 13, and the competencies in Step 14, assess how likely each decision maker is to believe the company can deliver each CVP. Return ONLY valid JSON: { "matrix": [{ "cvp_index": <number>, "cvp_label": "<short label>", "ratings": [{ "role": "<decision maker role or title exactly as written in Step 3>", "belief": "yes" | "likely" | "unlikely" | "no", "reason": "<one sentence reason>" }], "current_evidence": "<what proof currently exists>", "strengthen": "<specific actions to build more credibility with these decision makers>" }] } No markdown no prose.
 
 Rules:
 - Decision makers MUST come ONLY from Step 3 (specific_title if present, otherwise role_category) — never use generic titles like "CEO" or "VP of Sales" unless they appear in Step 3.
@@ -842,8 +842,8 @@ Rules:
 - Belief must be one of: yes, likely, unlikely, no — all lowercase.
 - Be honest: if Step 13 formulas or Step 14 competencies are thin or missing, lean toward unlikely or no for senior buyers.
 - Reason must be one sentence, grounded in Steps 13/14 and the buyer's primary concerns from Step 3.
-- "evidence" must be one sentence summarising current proof (references, case studies, DCP research, demos) that supports the beliefs assigned for this CVP. If proof is missing, say so explicitly.
-- "strengthen" must be one sentence proposing concrete actions to increase decision maker confidence in this CVP (e.g. gather references, create case studies, run a pilot, share methodology).
+- "current_evidence" must summarise what proof currently exists to support the beliefs assigned for this CVP (references, case studies, DCP research, demos, pilot results). If proof is missing, say so explicitly.
+- "strengthen" must list concrete, specific actions to build more credibility with these decision makers — name the asset, the audience, and a measurable outcome where possible (e.g. "Request 2 peer references from B2B SaaS CROs, create a case study showing pipeline impact within 60 days, offer a paid diagnostic pilot"). Do not write vague guidance like "gather more proof".
 
 PRIMARY SOURCE — Step 3 (Key Decision Makers — the ONLY allowed source for decision maker roles in this step):
 ${step3Text}
