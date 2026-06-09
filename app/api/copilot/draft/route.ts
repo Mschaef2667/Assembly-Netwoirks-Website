@@ -355,6 +355,13 @@ RULES FOR THE DRAFT:
 - Draft directly from the available context below. Do not ask for more information.
 - Be specific to the industry and buyer roles shown. Avoid generic statements.
 
+PAIN POINTS:
+- Generate 3 DISTINCT pain points. Each pain point should represent a different facet of the endemic problem from the buyer perspective.
+- Pain Point 1 = the strategic/systemic problem.
+- Pain Point 2 = the operational/execution problem.
+- Pain Point 3 = the measurement/visibility problem.
+- Do not repeat the same content across pain points.
+
 CONFIDENCE SCORING:
 - 71-100: DCP Stage 1 and Stage 2 summaries are present and specific; company profile is complete
 - 41-70: DCP stages present but thin, or company profile is partially complete

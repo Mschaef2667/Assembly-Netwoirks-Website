@@ -324,6 +324,7 @@ export default function PainPointStepEditor({
             setPainPoints(parsed)
             setActiveCount(Math.max(1, Math.min(4, Number(c?.['active_count'] ?? parsed.length))))
             setStep4Found(true)
+            console.log('[AutoGen] step4Found set true, activeCount:', activeCount)
           }
         }
 
@@ -389,6 +390,7 @@ export default function PainPointStepEditor({
   // Sequentially drafts content for each empty pain point tab when autoGenerate is on
   // and upstream Step 4 data exists. Guarded by a ref so it never re-fires.
   useEffect(() => {
+    console.log('[AutoGen] effect fired, autoGenerate:', autoGenerate, 'step4Found:', step4Found, 'loading:', loading, 'started:', autoGenerateStartedRef.current)
     if (!autoGenerate) return
     if (loading) return
     if (!step4Found) return
@@ -411,9 +413,12 @@ export default function PainPointStepEditor({
       const icpOfferBlock = buildIcpOfferContext(icpRecords, offerRecords)
 
       for (const tabIdx of emptyTabs) {
+        console.log('[AutoGen] generating for tab:', tabIdx)
         try {
           const activePP = painPoints.find(pp => pp.index === tabIdx)
           const extraContext = [
+            `IMPORTANT: This is Pain Point ${tabIdx} of ${activeCount}. Generate UNIQUE content specifically for this pain point number. Do NOT repeat content from other pain points. Each pain point should represent a different aspect of the endemic problem.`,
+            '',
             'PAIN POINT CONTEXT (from Step 4 — The Problem):',
             `Title: ${activePP?.title?.trim() || `Pain Point ${tabIdx}`}`,
             `Description: ${activePP?.description?.trim() || 'Not yet defined.'}`,
