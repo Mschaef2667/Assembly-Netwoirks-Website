@@ -561,6 +561,19 @@ export function hasContentForStep({
     const r = rawContent?.['ratings']
     return r !== null && typeof r === 'object' && Object.keys(r as Record<string, unknown>).length > 0
   }
+  if (stepId === '17') {
+    // CompetitorStepEditor saves either an array of competitors or { competitors: [...] }
+    const raw: unknown = rawContent
+    const competitors: unknown = Array.isArray(raw)
+      ? raw
+      : (raw && typeof raw === 'object' ? (raw as Record<string, unknown>)['competitors'] : null)
+    if (!Array.isArray(competitors)) return false
+    return competitors.some(c =>
+      c !== null && typeof c === 'object' &&
+      typeof (c as Record<string, unknown>)['name'] === 'string' &&
+      ((c as Record<string, unknown>)['name'] as string).trim().length > 2,
+    )
+  }
   if (PAIN_POINT_STEPS.has(stepId)) {
     // Pain point editor saves { by_pain_point: [{ index, content }, …] }
     const bpp = rawContent?.['by_pain_point']
