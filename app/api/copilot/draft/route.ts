@@ -725,6 +725,75 @@ ${step1Text}
 ${provisionalNote}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
 
+  } else if (stepId === '15') {
+    // Step 15: Key Selling Points — sales narrative connecting CVP, Formula, and Competency
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
+
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+    const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
+
+    // Steps 13 and 14 aren't in step_dependency for Step 15 — fetch directly
+    let step13Text = 'Not yet available.'
+    let step14Text = 'Not yet available.'
+    try {
+      const { data: extraRows } = await supabase
+        .from('step_output')
+        .select('step_id, content, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', ['13', '14'])
+        .order('version', { ascending: false })
+      if (extraRows) {
+        const seen = new Set<string>()
+        for (const row of extraRows as Array<{ step_id: string; content: Record<string, unknown> }>) {
+          if (!seen.has(row.step_id)) {
+            seen.add(row.step_id)
+            const text = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '13') step13Text = text
+            if (row.step_id === '14') step14Text = text
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `Write the Key Selling Point for this pain point using this exact formula: We will deliver [CVP] by implementing [Critical Success Formula] because of the [Core Competency] we have accumulated. Be specific -- use the actual CVP from Step 11, the actual formula from Step 13, and the actual competency from Step 14. This is the sales narrative that connects promise to process to proof. Maximum 2-3 sentences. Write in first person plural (We will...). Do not use placeholders -- use the real content from the upstream steps.
+
+CONFIDENCE SCORING:
+- 71-100: Steps 11, 13, and 14 are all present and specific
+- 41-70: One of Steps 11, 13, or 14 is thin or missing
+- 0-40: Multiple primary sources missing, draft is speculative
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<Key Selling Point, maximum 2-3 sentences>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question the user should answer>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+CVP BEING DRAFTED FOR:
+${extraContext || 'No specific CVP provided.'}
+
+PRIMARY SOURCE — Step 11 (Compelling Value Propositions):
+${step11Text}
+
+PRIMARY SOURCE — Step 13 (Critical Success Formulas):
+${step13Text}
+
+PRIMARY SOURCE — Step 14 (Core Competencies):
+${step14Text}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+${provisionalNote}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+
   } else if (stepId === '17') {
     // Step 17: Target Competition
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')

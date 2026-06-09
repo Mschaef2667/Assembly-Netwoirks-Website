@@ -225,7 +225,7 @@ const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -867,6 +867,7 @@ function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '12') return ['11']
   if (stepId === '13') return ['12']
   if (stepId === '14') return ['13']
+  if (stepId === '15') return ['11', '13', '14']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -918,6 +919,12 @@ function buildWarningMessage(
   if (stepId === '14') {
     if (!hasPrereq('13')) {
       return 'Core Competencies require completed Critical Success Formulas from Step 13. Each competency is the internal capability needed to execute a formula.'
+    }
+    return null
+  }
+  if (stepId === '15') {
+    if (!hasPrereq('11') || !hasPrereq('13') || !hasPrereq('14')) {
+      return 'Key Selling Points require: Step 11 (CVPs), Step 13 (Critical Success Formulas), and Step 14 (Core Competencies). Formula: We will deliver [CVP] by implementing [Formula] because of our [Competency].'
     }
     return null
   }
@@ -2664,7 +2671,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
             autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
-            tabLabel={stepId === '12' ? 'CVP' : undefined}
+            tabLabel={stepId === '12' || stepId === '15' ? 'CVP' : undefined}
             showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
