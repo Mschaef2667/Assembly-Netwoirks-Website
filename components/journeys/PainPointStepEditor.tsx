@@ -419,7 +419,10 @@ export default function PainPointStepEditor({
   useEffect(() => {
     if (!autoGenerate) return
     if (loading) return
-    if (!step4Found) return
+    // Step 4 pain points may not be flagged found for steps whose pain points are
+    // sourced indirectly (e.g. Step 15 KSPs). Allow the fallback when the component
+    // has loaded and active tabs exist.
+    if (!step4Found && activeCount === 0) return
     if (activeCount === 0) return
     if (autoGenerateStartedRef.current) return
     if (activeCount < 1) return
@@ -1136,6 +1139,23 @@ export default function PainPointStepEditor({
                 margin: 0, whiteSpace: 'pre-wrap',
               }}>
                 {upstreamContextMap[activeTab]}
+              </p>
+            </div>
+          )}
+          {stepId === '15' && (
+            <div style={{
+              padding: '12px 14px',
+              marginBottom: '12px',
+              backgroundColor: '#F3F4F6',
+              border: '1px solid #D1D5DB',
+              borderRadius: '8px',
+            }}>
+              <p style={{
+                fontSize: '13px', color: '#374151', lineHeight: '1.55',
+                margin: 0, whiteSpace: 'pre-wrap',
+              }}>
+                <span style={{ fontWeight: 700 }}>Pain Point {activeTab}:</span>{' '}
+                {activePainPoint?.title?.trim() || 'Untitled pain point'}
               </p>
             </div>
           )}
