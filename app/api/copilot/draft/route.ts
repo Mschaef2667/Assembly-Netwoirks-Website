@@ -1530,6 +1530,25 @@ Be specific, actionable, and grounded in the prerequisite data. Do not hallucina
         }
       }
 
+      // Step 16: attempt server-side JSON parse and log raw response if parsing fails
+      if (stepId === '16' && !streamError && fullText.length > 0) {
+        let stripped = fullText
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/```\s*$/i, '')
+          .trim()
+        const firstBrace = stripped.indexOf('{')
+        const lastBrace = stripped.lastIndexOf('}')
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          stripped = stripped.slice(firstBrace, lastBrace + 1)
+        }
+        try {
+          JSON.parse(stripped)
+        } catch {
+          console.error('[copilot/draft] Step 16 JSON parse failed. Raw response (first 800 chars):', fullText.slice(0, 800))
+        }
+      }
+
       // Write to copilot_run — non-fatal
       try {
         await supabase.from('copilot_run').insert({
