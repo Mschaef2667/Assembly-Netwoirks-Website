@@ -604,6 +604,11 @@ export default function JourneysPage() {
               const nextInPhase = getNextStepInPhase(phaseSteps, outputMap)
               const isExpanded = expandedPhases.has(item.phase)
 
+              const completeGroupForThisPhase: 2 | 3 | null =
+                phaseSteps.some(s => s.id === '16') ? 2
+                : phaseSteps.some(s => s.id === '26') ? 3
+                : null
+
               return (
                 <div key={`phase-${item.phase}`} style={{
                   backgroundColor: '#0F2140',
@@ -696,24 +701,114 @@ export default function JourneysPage() {
                         )
                       })}
 
-                      {nextInPhase && (
+                      {(nextInPhase || completeGroupForThisPhase !== null) && (
                         <div style={{
                           padding: '8px 12px',
                           borderTop: '1px solid rgba(255,255,255,0.07)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
                         }}>
-                          <Link
-                            href={`/dashboard/journeys/step/${nextInPhase.id}`}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '6px',
-                              padding: '6px 14px', minHeight: '36px',
-                              backgroundColor: '#E8520A', color: '#FFFFFF',
-                              borderRadius: '6px', fontSize: '12px', fontWeight: 700,
-                              textDecoration: 'none',
-                            }}
-                          >
-                            <ChevronRight size={13} />
-                            {`Continue: ${nextInPhase.title.length > 28 ? nextInPhase.title.slice(0, 28) + '…' : nextInPhase.title}`}
-                          </Link>
+                          {nextInPhase && (
+                            <Link
+                              href={`/dashboard/journeys/step/${nextInPhase.id}`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '6px 14px', minHeight: '36px',
+                                backgroundColor: '#E8520A', color: '#FFFFFF',
+                                borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              <ChevronRight size={13} />
+                              {`Continue: ${nextInPhase.title.length > 28 ? nextInPhase.title.slice(0, 28) + '…' : nextInPhase.title}`}
+                            </Link>
+                          )}
+                          {completeGroupForThisPhase !== null && (() => {
+                            const groupNum = completeGroupForThisPhase
+                            const group = PHASE_GROUPS.find(g => g.groupNum === groupNum)
+                            if (!group) return null
+                            const total = group.stepIds.length
+                            const withContent = group.stepIds.filter(id => outputMap.has(id)).length
+                            const approvedAll = group.stepIds.every(id => outputMap.get(id)?.status === 'approved')
+                            const allHaveContent = withContent === total
+                            const state: 'locked' | 'ready' | 'done' =
+                              approvedAll ? 'done' : allHaveContent ? 'ready' : 'locked'
+                            const isBusy = completingGroup === groupNum
+
+                            const containerStyle: React.CSSProperties = {
+                              marginLeft: 'auto',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 14px',
+                              minHeight: '40px',
+                              width: 'fit-content',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontFamily: 'inherit',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              textAlign: 'left',
+                            }
+
+                            if (state === 'done') {
+                              return (
+                                <div style={{
+                                  ...containerStyle,
+                                  backgroundColor: 'rgba(22,163,74,0.15)',
+                                  color: '#16A34A',
+                                  cursor: 'default',
+                                }}>
+                                  <CheckCircle2 size={14} />
+                                  <span>{`Phase ${groupNum} Complete`}</span>
+                                </div>
+                              )
+                            }
+
+                            if (state === 'locked') {
+                              return (
+                                <div style={{
+                                  ...containerStyle,
+                                  backgroundColor: 'rgba(255,255,255,0.08)',
+                                  color: 'rgba(255,255,255,0.5)',
+                                  cursor: 'not-allowed',
+                                }}>
+                                  <Lock size={14} />
+                                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                                    <span>{`Complete Phase ${groupNum}`}</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 500, opacity: 0.85 }}>
+                                      {`${withContent} of ${total} steps have content`}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <button
+                                onClick={() => void handleCompletePhase(groupNum)}
+                                disabled={isBusy}
+                                style={{
+                                  ...containerStyle,
+                                  backgroundColor: '#E8520A',
+                                  color: '#FFFFFF',
+                                  cursor: isBusy ? 'not-allowed' : 'pointer',
+                                  opacity: isBusy ? 0.7 : 1,
+                                }}
+                              >
+                                <CheckCircle2 size={14} />
+                                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                                  <span>{isBusy ? 'Completing…' : `Complete Phase ${groupNum}`}</span>
+                                  {!isBusy && (
+                                    <span style={{ fontSize: '10px', fontWeight: 500, opacity: 0.85 }}>
+                                      All steps complete — click to approve
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>
@@ -723,61 +818,6 @@ export default function JourneysPage() {
             })}
           </div>
         )}
-
-        {hasAnyProgress && (() => {
-          const phase2 = PHASE_GROUPS.find(g => g.groupNum === 2)
-          const phase3 = PHASE_GROUPS.find(g => g.groupNum === 3)
-          if (!phase2 || !phase3) return null
-
-          const phase2HasDraft = phase2.stepIds.some(id => outputMap.get(id)?.status === 'draft')
-          const phase3HasDraft = phase3.stepIds.some(id => outputMap.get(id)?.status === 'draft')
-          if (!phase2HasDraft && !phase3HasDraft) return null
-
-          const phase2WithContent = phase2.stepIds.filter(id => outputMap.has(id)).length
-          const phase3WithContent = phase3.stepIds.filter(id => outputMap.has(id)).length
-
-          const buttonStyle = (groupNum: 2 | 3): React.CSSProperties => ({
-            width: '100%',
-            minHeight: '48px',
-            padding: '12px 18px',
-            backgroundColor: '#E8520A',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 700,
-            cursor: completingGroup !== null ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit',
-            opacity: completingGroup === groupNum ? 0.7 : 1,
-          })
-
-          return (
-            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {phase2HasDraft && (
-                <button
-                  onClick={() => void handleCompletePhase(2)}
-                  disabled={completingGroup !== null}
-                  style={buttonStyle(2)}
-                >
-                  {completingGroup === 2
-                    ? 'Completing…'
-                    : `Complete Phase 2 (${phase2WithContent} of ${phase2.stepIds.length} steps have content)`}
-                </button>
-              )}
-              {phase3HasDraft && (
-                <button
-                  onClick={() => void handleCompletePhase(3)}
-                  disabled={completingGroup !== null}
-                  style={buttonStyle(3)}
-                >
-                  {completingGroup === 3
-                    ? 'Completing…'
-                    : `Complete Phase 3 (${phase3WithContent} of ${phase3.stepIds.length} steps have content)`}
-                </button>
-              )}
-            </div>
-          )
-        })()}
 
       </div>
     </div>
