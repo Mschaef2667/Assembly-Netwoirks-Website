@@ -431,8 +431,10 @@ export default function AcidTestEditor({
 
         try {
           parsed = JSON.parse(stripped) as Record<string, unknown>
-        } catch {
-          setGenError('Copilot returned an invalid response. Please try again.')
+        } catch (parseErr) {
+          const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+          const preview = accumulated.slice(0, 200).replace(/\s+/g, ' ').trim()
+          setGenError(`Copilot returned invalid JSON: ${errMsg}. Raw response (first 200 chars): ${preview}`)
           return
         }
       }
