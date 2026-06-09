@@ -266,6 +266,7 @@ export default function PainPointStepEditor({
   const [copilotOutput, setCopilotOutput] = useState<CopilotResult | null>(null)
   const [copilotError, setCopilotError] = useState<string | null>(null)
   const [showAppliedFlash, setShowAppliedFlash] = useState(false)
+  const [painPointDescExpanded, setPainPointDescExpanded] = useState(false)
 
   const [discoveryLoading, setDiscoveryLoading] = useState(false)
   const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult | null>(null)
@@ -1142,23 +1143,51 @@ export default function PainPointStepEditor({
               </p>
             </div>
           )}
-          {stepId === '15' && (
-            <div style={{
-              padding: '12px 14px',
-              marginBottom: '12px',
-              backgroundColor: '#F3F4F6',
-              border: '1px solid #D1D5DB',
-              borderRadius: '8px',
-            }}>
-              <p style={{
-                fontSize: '13px', color: '#374151', lineHeight: '1.55',
-                margin: 0, whiteSpace: 'pre-wrap',
+          {(stepId === '15' || stepId === '12') && (() => {
+            const fullDesc = activePainPoint?.description?.trim() || ''
+            const hasDesc = fullDesc.length > 0
+            const isLong = fullDesc.length > 300
+            const displayedDesc = !hasDesc
+              ? 'No description provided.'
+              : isLong && !painPointDescExpanded
+                ? `${fullDesc.slice(0, 300)}...`
+                : fullDesc
+            return (
+              <div style={{
+                padding: '12px 14px',
+                marginBottom: '12px',
+                backgroundColor: '#F3F4F6',
+                border: '1px solid #D1D5DB',
+                borderRadius: '8px',
               }}>
-                <span style={{ fontWeight: 700 }}>Pain Point {activeTab}:</span>{' '}
-                {activePainPoint?.title?.trim() || 'Untitled pain point'}
-              </p>
-            </div>
-          )}
+                <p style={{
+                  fontSize: '13px', color: '#374151', lineHeight: '1.55',
+                  margin: 0, whiteSpace: 'pre-wrap',
+                }}>
+                  <span style={{ fontWeight: 700 }}>Pain Point {activeTab}:</span>{' '}
+                  {displayedDesc}
+                </p>
+                {hasDesc && isLong && (
+                  <button
+                    type="button"
+                    onClick={() => setPainPointDescExpanded(v => !v)}
+                    style={{
+                      marginTop: '8px',
+                      padding: 0,
+                      background: 'none',
+                      border: 'none',
+                      color: '#0EA5E9',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {painPointDescExpanded ? 'Show less' : 'Show more'}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
           <textarea
             value={contentMap[activeTab] ?? ''}
             onChange={e => handleContentChange(activeTab, e.target.value)}
