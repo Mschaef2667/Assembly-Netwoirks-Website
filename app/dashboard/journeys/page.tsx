@@ -57,6 +57,12 @@ const GATES: { afterPhase: number; label: string; gateStepId: string }[] = [
   { afterPhase: 6, label: 'Gate 4 — Action Plan Review', gateStepId: '38' },
 ]
 
+// C3 Method phase groupings — different from DB step_definition.phase numbering.
+const PHASE_GROUPS: { groupNum: 2 | 3; label: string; stepIds: string[] }[] = [
+  { groupNum: 2, label: 'Phase 2 — Endemic Problems & Company Formulas', stepIds: ['4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'] },
+  { groupNum: 3, label: 'Phase 3 — Competitive Environments', stepIds: ['17', '18', '19', '20', '21', '22', '23', '24', '25', '26'] },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function numericId(id: string): number {
@@ -238,6 +244,9 @@ export default function JourneysPage() {
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6]))
   const [multiSegmentNames, setMultiSegmentNames] = useState<string[]>([])
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [completingGroup, setCompletingGroup] = useState<number | null>(null)
+  const [completeSuccess, setCompleteSuccess] = useState<string | null>(null)
 
   function togglePhase(phase: number) {
     setExpandedPhases(prev => {
@@ -245,6 +254,90 @@ export default function JourneysPage() {
       if (s.has(phase)) s.delete(phase); else s.add(phase)
       return s
     })
+  }
+
+  async function reloadOutputs(wsId: string, parsedSteps: StepDef[], dm: Map<string, string[]>) {
+    const { data } = await supabase
+      .from('step_output')
+      .select('step_id, status, version, original_confidence, last_reviewed_at, created_at')
+      .eq('workspace_id', wsId)
+      .order('version', { ascending: false })
+    const om = new Map<string, StepOutputRow>()
+    for (const row of ((data ?? []) as Array<Record<string, unknown>>)) {
+      const sid = String(row['step_id'] ?? '')
+      if (!om.has(sid)) {
+        om.set(sid, {
+          status: (row['status'] as StepStatus) ?? 'not_started',
+          original_confidence: typeof row['original_confidence'] === 'number' ? row['original_confidence'] : null,
+          last_reviewed_at: typeof row['last_reviewed_at'] === 'string' ? row['last_reviewed_at'] : null,
+          created_at: String(row['created_at'] ?? new Date().toISOString()),
+        })
+      }
+    }
+    setOutputMap(om)
+    setContinueStepId(getContinueStepId(parsedSteps, dm, om))
+  }
+
+  async function handleCompletePhase(groupNum: 2 | 3) {
+    if (!workspaceId) return
+    const group = PHASE_GROUPS.find(g => g.groupNum === groupNum)
+    if (!group) return
+    const message = 'Mark all steps in this phase as approved? You can still edit them later.'
+    if (!window.confirm(message)) return
+
+    setCompletingGroup(groupNum)
+    try {
+      const { data: existingRows } = await supabase
+        .from('step_output')
+        .select('id, step_id, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', group.stepIds)
+        .order('version', { ascending: false })
+
+      const seen = new Set<string>()
+      const latest: Array<{ id: string; step_id: string }> = []
+      for (const row of (existingRows ?? []) as Array<Record<string, unknown>>) {
+        const sid = String(row['step_id'] ?? '')
+        if (seen.has(sid)) continue
+        seen.add(sid)
+        latest.push({ id: String(row['id']), step_id: sid })
+      }
+
+      const now = new Date().toISOString()
+      if (latest.length > 0) {
+        const { error } = await supabase
+          .from('step_output')
+          .update({ status: 'approved', last_updated_at: now, last_reviewed_at: now })
+          .in('id', latest.map(r => r.id))
+        if (error) throw error
+      }
+
+      const missing = group.stepIds.filter(id => !seen.has(id))
+      if (missing.length > 0) {
+        const inserts = missing.map(stepId => ({
+          workspace_id: workspaceId,
+          step_id: stepId,
+          version: 1,
+          status: 'approved',
+          content: {},
+          copilot_assisted: false,
+          last_updated_at: now,
+          last_reviewed_at: now,
+        }))
+        const { error } = await supabase.from('step_output').insert(inserts)
+        if (error) throw error
+      }
+
+      await reloadOutputs(workspaceId, steps, depsMap)
+      setCompleteSuccess(`Phase ${groupNum} marked complete — ${group.stepIds.length} steps approved.`)
+      window.setTimeout(() => setCompleteSuccess(null), 4000)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark phase complete'
+      setCompleteSuccess(`Error: ${msg}`)
+      window.setTimeout(() => setCompleteSuccess(null), 4000)
+    } finally {
+      setCompletingGroup(null)
+    }
   }
 
   useEffect(() => {
@@ -257,6 +350,7 @@ export default function JourneysPage() {
           .from('users').select('org_id').eq('id', user.id).single()
         if (!userRow) return
         const wsId = (userRow as Record<string, unknown>)['org_id'] as string
+        setWorkspaceId(wsId)
 
         const [defsRes, depsRes, outputsRes] = await Promise.all([
           supabase.from('step_definition').select('id, title, description, phase'),
@@ -609,6 +703,76 @@ export default function JourneysPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {hasAnyProgress && (
+          <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {completeSuccess && (
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: completeSuccess.startsWith('Error') ? 'rgba(239,68,68,0.12)' : 'rgba(22,163,74,0.15)',
+                border: `1px solid ${completeSuccess.startsWith('Error') ? 'rgba(239,68,68,0.45)' : 'rgba(22,163,74,0.45)'}`,
+                borderRadius: '8px',
+                color: completeSuccess.startsWith('Error') ? '#FCA5A5' : '#86EFAC',
+                fontSize: '13px',
+                fontWeight: 600,
+              }}>
+                {completeSuccess}
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+              {PHASE_GROUPS.map(group => {
+                const approvedInGroup = group.stepIds.filter(id => outputMap.get(id)?.status === 'approved').length
+                const total = group.stepIds.length
+                const allApproved = approvedInGroup === total
+                return (
+                  <div key={group.groupNum} style={{
+                    backgroundColor: '#0F2140',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                        {group.label}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>
+                        {approvedInGroup} of {total} steps approved
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => void handleCompletePhase(group.groupNum)}
+                      disabled={completingGroup !== null || allApproved}
+                      style={{
+                        minHeight: '40px',
+                        padding: '0 18px',
+                        borderRadius: '8px',
+                        backgroundColor: allApproved ? 'rgba(255,255,255,0.06)' : '#E8520A',
+                        color: allApproved ? 'rgba(255,255,255,0.5)' : '#FFFFFF',
+                        border: 'none',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: completingGroup !== null || allApproved ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                        opacity: completingGroup === group.groupNum ? 0.7 : 1,
+                      }}
+                    >
+                      {allApproved
+                        ? 'All steps approved'
+                        : completingGroup === group.groupNum
+                          ? 'Completing…'
+                          : 'Complete Phase'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

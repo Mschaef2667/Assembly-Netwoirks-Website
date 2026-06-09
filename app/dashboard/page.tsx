@@ -390,10 +390,11 @@ export default function DashboardPage() {
   const PHASE1_STEPS = ['1', '2', '3', '3.5']
   const phase1Complete = PHASE1_STEPS.every(id => approvedSet.has(id))
 
-  // Recommended next steps: not yet approved, all prereqs met, Phase 1 steps hidden once all approved
+  // Recommended next steps: have no step_output row yet, all prereqs met,
+  // Phase 1 steps hidden once all approved
   const journeyNotStarted = latestOutputs.size === 0
   const recommended = sortedDefs
-    .filter(s => !approvedSet.has(s.id))
+    .filter(s => !latestOutputs.has(s.id))
     .filter(s => s.id !== '4.5' && !(phase1Complete && PHASE1_STEPS.includes(s.id)))
     .filter(s => (depsMap.get(s.id) ?? []).every(p => approvedSet.has(p)))
     .slice(0, 3)
@@ -422,11 +423,26 @@ export default function DashboardPage() {
 
         {/* ── Widget 1: Journey Progress (full width) ─────────────────────── */}
         <div id="widget-journey" style={CARD}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <p style={{ ...CARD_HDR, margin: 0 }}>Journey Progress</p>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#0EA5E9' }}>
-              {overallPct}% Complete
+              {totalApproved} of 38 steps approved · {overallPct}%
             </span>
+          </div>
+          <div style={{
+            height: '8px',
+            borderRadius: '999px',
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            overflow: 'hidden',
+            marginBottom: '20px',
+          }}>
+            <div style={{
+              height: '100%',
+              borderRadius: '999px',
+              width: `${overallPct}%`,
+              backgroundColor: overallPct === 100 ? '#16A34A' : '#0EA5E9',
+              transition: 'width 0.5s ease',
+            }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {SECTIONS.map(section => {
