@@ -2627,6 +2627,7 @@ export default function StepPage() {
             stepTitle={stepTitle}
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
+            autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>

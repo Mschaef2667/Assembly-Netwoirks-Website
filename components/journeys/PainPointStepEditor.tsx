@@ -72,6 +72,7 @@ export interface PainPointStepEditorProps {
   stepTitle: string
   preferredModel?: string
   autoApply?: boolean
+  autoGenerate?: boolean
   onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
@@ -239,6 +240,7 @@ export default function PainPointStepEditor({
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
   autoApply = false,
+  autoGenerate = false,
   onContentChange,
 }: PainPointStepEditorProps) {
   const [loading, setLoading] = useState(true)
@@ -266,9 +268,12 @@ export default function PainPointStepEditor({
   const [addedCompetitors, setAddedCompetitors] = useState<Set<string>>(new Set())
   const [addSuccessMsg, setAddSuccessMsg] = useState<string | null>(null)
 
+  const [autoGenerating, setAutoGenerating] = useState(false)
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoGenerateStartedRef = useRef(false)
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -379,6 +384,101 @@ export default function PainPointStepEditor({
     const hasNonEmpty = Object.values(contentMap).some(v => (v ?? '').trim().length > 0)
     onContentChange(hasNonEmpty)
   }, [contentMap, onContentChange])
+
+  // ── Auto-generation on first load ───────────────────────────────────────────
+  // Sequentially drafts content for each empty pain point tab when autoGenerate is on
+  // and upstream Step 4 data exists. Guarded by a ref so it never re-fires.
+  useEffect(() => {
+    if (!autoGenerate) return
+    if (loading) return
+    if (!step4Found) return
+    if (autoGenerateStartedRef.current) return
+    if (activeCount < 1) return
+
+    const emptyTabs = [1, 2, 3, 4]
+      .filter(idx => idx <= activeCount)
+      .filter(idx => !(contentMap[idx] ?? '').trim())
+
+    if (emptyTabs.length === 0) return
+
+    autoGenerateStartedRef.current = true
+    setAutoGenerating(true)
+
+    void (async () => {
+      const dcpBlock = dcpSummaries.length > 0
+        ? dcpSummaries.map(s => `Stage ${s.stage_number} — ${s.stage_name}:\n${s.summary}`).join('\n\n')
+        : 'No DCP buyer research data available yet.'
+      const icpOfferBlock = buildIcpOfferContext(icpRecords, offerRecords)
+
+      for (const tabIdx of emptyTabs) {
+        try {
+          const activePP = painPoints.find(pp => pp.index === tabIdx)
+          const extraContext = [
+            'PAIN POINT CONTEXT (from Step 4 — The Problem):',
+            `Title: ${activePP?.title?.trim() || `Pain Point ${tabIdx}`}`,
+            `Description: ${activePP?.description?.trim() || 'Not yet defined.'}`,
+            '',
+            'DCP STAGE SUMMARIES (buyer journey research):',
+            dcpBlock,
+            '',
+            icpOfferBlock,
+          ].join('\n')
+
+          const res = await fetch('/api/copilot/draft', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stepId,
+              workspaceId,
+              stepTitle,
+              stepDescription: `Generate content specifically for the pain point: "${activePP?.title?.trim() || `Pain Point ${tabIdx}`}"`,
+              currentContent: '',
+              preferredModel,
+              extraContext,
+            }),
+          })
+
+          if (!res.ok || !res.body) continue
+
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let accumulated = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            accumulated += decoder.decode(value, { stream: true })
+          }
+          if (accumulated.includes('__STREAM_ERROR__')) continue
+
+          let draftText = ''
+          try {
+            const stripped = accumulated
+              .replace(/^```json\s*/i, '')
+              .replace(/^```\s*/i, '')
+              .replace(/```\s*$/i, '')
+              .trim()
+            const parsed = JSON.parse(stripped) as CopilotResult
+            draftText = extractDraft(parsed.draft)
+          } catch {
+            draftText = extractDraft(accumulated)
+          }
+          if (!draftText.trim()) continue
+
+          // Never overwrite existing content — only fill if still empty
+          setContentMap(prev => {
+            if ((prev[tabIdx] ?? '').trim()) return prev
+            return { ...prev, [tabIdx]: draftText }
+          })
+          scheduleSave()
+        } catch {
+          // skip this tab on error; continue with the next
+        }
+        await new Promise(r => setTimeout(r, 400))
+      }
+      setAutoGenerating(false)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate, loading, step4Found, activeCount])
 
   // ── Save ────────────────────────────────────────────────────────────────────
 
@@ -753,6 +853,20 @@ export default function PainPointStepEditor({
 
   return (
     <>
+    {/* ── Auto-generation indicator ──────────────────────────────────────── */}
+    {autoGenerating && (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '10px 14px', marginBottom: '16px',
+        backgroundColor: '#FEF3C7', border: '1px solid #FCD34D',
+        borderRadius: '8px',
+        fontSize: '13px', fontWeight: 600, color: '#92400E',
+      }}>
+        <Loader2 size={14} className="animate-spin" />
+        Copilot is generating content for your pain points…
+      </div>
+    )}
+
     {/* ── Step 17: Competitive Discovery ─────────────────────────────────── */}
     {stepId === '17' && (
       <div id="step-competitive" style={{ marginBottom: '24px' }}>
