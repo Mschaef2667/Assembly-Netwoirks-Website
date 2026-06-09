@@ -500,29 +500,31 @@ export default function CompetitorStepEditor({
       const maxFill = includeStatusQuo ? MAX_COMPETITORS - 1 : MAX_COMPETITORS
       const targets = selectedNames.slice(0, maxFill)
 
-      const fills = await Promise.all(targets.map(async name => {
+      let appliedCount = 0
+      for (let i = 0; i < targets.length; i++) {
+        const name = targets[i]
+        const tabIndex = i + 1
         const opt = optionsByName.get(name)
-        if (!opt) return { name, why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
-        const fill = await autofillCompetitor(opt)
-        return { name, ...fill }
-      }))
+        const fill = opt
+          ? await autofillCompetitor(opt)
+          : { why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
 
-      setCompetitors(prev => {
-        const next = prev.map(c => ({ ...c }))
-        for (let i = 0; i < fills.length; i++) {
-          const fill = fills[i]
-          const target = next[i]
-          target.name = fill.name
-          if (fill.why_buyers_choose_them) target.why_buyers_choose = fill.why_buyers_choose_them
-          if (fill.their_key_promise) target.key_promise = fill.their_key_promise
-          if (fill.their_vulnerability) target.vulnerability = fill.their_vulnerability
-        }
-        scheduleSave(next)
-        return next
-      })
+        setCompetitors(prev => {
+          const next = prev.map(c => ({ ...c }))
+          const target = next.find(c => c.index === tabIndex)
+          if (target) {
+            target.name = name
+            if (fill.why_buyers_choose_them) target.why_buyers_choose = fill.why_buyers_choose_them
+            if (fill.their_key_promise) target.key_promise = fill.their_key_promise
+            if (fill.their_vulnerability) target.vulnerability = fill.their_vulnerability
+          }
+          scheduleSave(next)
+          return next
+        })
+        appliedCount++
+      }
 
-      const count = fills.length
-      setApplyMsg(`Added ${count} competitor${count === 1 ? '' : 's'} to your tabs ✓`)
+      setApplyMsg(`Added ${appliedCount} competitor${appliedCount === 1 ? '' : 's'} to your tabs ✓`)
       setSelectedNames([])
       setTimeout(() => setApplyMsg(null), 2500)
     } finally {
