@@ -398,7 +398,9 @@ export default function CompetitorStepEditor({
       }
 
       const data = (await res.json()) as DiscoveryApiResult
-      setDiscoveryOptions(flattenDiscovery(data))
+      const discovered = flattenDiscovery(data)
+      console.log('[CompetitorStepEditor] discovered array length:', discovered.length, discovered)
+      setDiscoveryOptions(discovered)
     } catch (err) {
       setDiscoveryError(err instanceof Error ? err.message : 'An error occurred during discovery.')
     } finally {
