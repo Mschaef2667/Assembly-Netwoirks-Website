@@ -219,7 +219,7 @@ function makeBCEntry(): BuyingCenterEntry {
 const AUTOSAVE_DELAY_MS = 1200
 const STEP4_AUTOSAVE_DELAY_MS = 800
 
-const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
+const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
@@ -750,8 +750,8 @@ function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
 
 // ── Step nav bar ──────────────────────────────────────────────────────────────
 
-function StepNavBar({ stepIndex, total, prevId, nextId, hasContent }: {
-  stepIndex: number
+function StepNavBar({ stepId, total, prevId, nextId, hasContent }: {
+  stepId: string
   total: number
   prevId: string | null
   nextId: string | null
@@ -793,7 +793,7 @@ function StepNavBar({ stepIndex, total, prevId, nextId, hasContent }: {
         ) : <span />}
       </div>
       <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
-        {stepIndex >= 0 ? `Step ${stepIndex + 1} of ${total}` : `${total} steps`}
+        {stepId ? `Step ${stepId} of ${total}` : `${total} steps`}
       </span>
       <div style={{ minWidth: '140px', display: 'flex', justifyContent: 'flex-end' }}>
         {nextId ? (
@@ -2355,8 +2355,6 @@ export default function StepPage() {
     hasContent = painPoints.slice(0, activeCount).some(pp => (pp.description ?? '').trim().length > 50)
   } else if (stepId === '2' || stepId === '3' || stepId === '3.5') {
     hasContent = outputId !== null
-  } else if (stepId === '9') {
-    hasContent = Boolean(step9Data?.gateApproved && step9Data?.stage)
   } else if (stepId === '21') {
     hasContent = true // Acid Test 2 placeholder — Next stays enabled
   } else if (PAIN_POINT_STEPS.has(stepId)) {
@@ -2468,25 +2466,6 @@ export default function StepPage() {
     </header>
   )
 
-  if (stepId === '9') {
-    return (
-      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {header}
-        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
-          {warningBanner}
-          {dcpBanner}
-          {step9Data
-            ? <Step9Display {...step9Data} />
-            : <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: '#6B7280' }} />
-              </div>
-          }
-        </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
-      </div>
-    )
-  }
-
   if (stepId === '14' && workspaceId) {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -2494,7 +2473,7 @@ export default function StepPage() {
         <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
           <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2544,7 +2523,7 @@ export default function StepPage() {
             </div>
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2566,7 +2545,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2593,7 +2572,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2618,7 +2597,7 @@ export default function StepPage() {
             <TipsPanel tips={STEP_TIPS[stepId] ?? []} />
           </div>
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2633,6 +2612,11 @@ export default function StepPage() {
         >
           {warningBanner}
           {dcpBanner}
+          {stepId === '9' && step9Data && (
+            <div style={{ marginBottom: '16px' }}>
+              <Step9Display {...step9Data} />
+            </div>
+          )}
           <PainPointStepEditor
             workspaceId={workspaceId}
             stepId={stepId}
@@ -2641,7 +2625,7 @@ export default function StepPage() {
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2659,7 +2643,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2677,7 +2661,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -2693,7 +2677,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
           />
         </div>
-        <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+        <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>
     )
   }
@@ -3053,7 +3037,7 @@ export default function StepPage() {
           )}
         </div>
       </div>
-      <StepNavBar stepIndex={stepIndex} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
+      <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
     </div>
   )
 }
