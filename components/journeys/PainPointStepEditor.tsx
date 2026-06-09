@@ -72,6 +72,7 @@ export interface PainPointStepEditorProps {
   stepTitle: string
   preferredModel?: string
   autoApply?: boolean
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -238,6 +239,7 @@ export default function PainPointStepEditor({
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
   autoApply = false,
+  onContentChange,
 }: PainPointStepEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -368,6 +370,15 @@ export default function PainPointStepEditor({
     }
     void load()
   }, [workspaceId, stepId])
+
+  // Notify parent whenever contentMap has any non-empty value so its hasContent
+  // gate can re-evaluate (needed after Copilot auto-apply, where the parent's
+  // cached rawContent does not see the new draft).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasNonEmpty = Object.values(contentMap).some(v => (v ?? '').trim().length > 0)
+    onContentChange(hasNonEmpty)
+  }, [contentMap, onContentChange])
 
   // ── Save ────────────────────────────────────────────────────────────────────
 
@@ -990,7 +1001,7 @@ export default function PainPointStepEditor({
           >
             {copilotStreaming
               ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
-              : <><Wand2 size={15} /> Draft for {tabLabel}</>
+              : <><Wand2 size={15} /> Draft</>
             }
           </button>
           <p style={{ fontSize: '11px', color: '#6B7280', margin: '8px 0 0', lineHeight: '1.5' }}>

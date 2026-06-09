@@ -1442,6 +1442,9 @@ export default function StepPage() {
 
   // Raw loaded content (used for hasContent checks on pain-point and other steps)
   const [rawContent, setRawContent] = useState<Record<string, unknown> | null>(null)
+  // Flips to true when PainPointStepEditor reports non-empty content (e.g. after
+  // Copilot auto-apply) so the Next button activates without needing a reload.
+  const [rawContentUpdated, setRawContentUpdated] = useState(false)
 
   // Prerequisite step statuses for soft dependency warnings
   const [prereqContent, setPrereqContent] = useState<Record<string, PrereqInfo>>({})
@@ -2360,10 +2363,11 @@ export default function StepPage() {
   } else if (PAIN_POINT_STEPS.has(stepId)) {
     // Pain point editor saves { by_pain_point: [{ index, content }, …] }
     const bpp = rawContent?.['by_pain_point']
-    hasContent = Array.isArray(bpp)
+    const savedHasContent = Array.isArray(bpp)
       && (bpp as Array<Record<string, unknown>>).some(p =>
         typeof p['content'] === 'string' && (p['content'] as string).trim().length > 50,
       )
+    hasContent = savedHasContent || rawContentUpdated
   } else if (stepId === '14' || stepId === '38' || ACTION_PLAN_STEPS.has(stepId)) {
     // Component-managed editors — fall back to any substantive saved string
     hasContent = valuesLongerThan(rawContent, 50)
@@ -2623,6 +2627,7 @@ export default function StepPage() {
             stepTitle={stepTitle}
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
