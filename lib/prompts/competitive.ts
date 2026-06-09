@@ -53,6 +53,15 @@ function formatCompetitorBlock(currentContent: string): string {
 export function buildPrompt(stepId: string, ctx: PromptContext): string {
   const { currentContent, extraContext } = ctx
 
+  if (stepId === '17-autofill') {
+    return `Based on this competitor profile, generate three short answers (1-2 sentences each): 1) Why do B2B SaaS buyers choose this competitor over a GTM strategy consultancy? 2) What is their primary value proposition or key promise to buyers? 3) Where are they most vulnerable or what do they fail to deliver? Return ONLY valid JSON: { why_buyers_choose_them: string, their_key_promise: string, their_vulnerability: string }
+
+COMPETITOR PROFILE:
+${extraContext ?? 'Not provided.'}
+
+Respond with ONLY the JSON object. No markdown, no backticks, no prose. Start with { and end with }.`
+  }
+
   if (stepId === '17') {
     const step1Text = stepText(ctx, '1')
     const step2Text = stepText(ctx, '2')

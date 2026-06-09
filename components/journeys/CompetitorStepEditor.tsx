@@ -23,12 +23,14 @@ interface DiscoveryOption {
   name: string
   description: string
   category: Category
+  alignment_score: number
 }
 
 interface DiscoveryApiCompetitor {
   name: string
   description: string
   why_relevant: string
+  alignment_score?: number
 }
 
 interface DiscoveryApiResult {
@@ -109,11 +111,7 @@ const FIELD_TEXTAREA: React.CSSProperties = {
   resize: 'vertical',
 }
 
-const STATUS_QUO_OPTION: DiscoveryOption = {
-  name: 'Status Quo / Do Nothing',
-  description: 'Buyers choose to delay, use existing resources, or do nothing instead of hiring outside help.',
-  category: 'status quo',
-}
+const STATUS_QUO_NAME = 'Status Quo / Do Nothing'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -165,18 +163,32 @@ function categorise(name: string, description: string, group: 'known' | 'adjacen
   return 'agency'
 }
 
+function parseAlignmentScore(raw: unknown): number {
+  const v = Number(raw)
+  if (!Number.isFinite(v)) return 5
+  return Math.max(1, Math.min(10, Math.round(v)))
+}
+
 function flattenDiscovery(api: DiscoveryApiResult): DiscoveryOption[] {
   const flat: DiscoveryOption[] = []
   for (const c of api.known_validators ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'known') })
+    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'known'), alignment_score: parseAlignmentScore(c.alignment_score) })
   }
   for (const c of api.adjacent_competitors ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'adjacent') })
+    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'adjacent'), alignment_score: parseAlignmentScore(c.alignment_score) })
   }
   for (const c of api.emerging_threats ?? []) {
-    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'emerging') })
+    flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'emerging'), alignment_score: parseAlignmentScore(c.alignment_score) })
   }
-  return flat.filter(o => !o.name.toLowerCase().includes('status quo'))
+  return flat
+    .filter(o => !o.name.toLowerCase().includes('status quo'))
+    .sort((a, b) => b.alignment_score - a.alignment_score)
+}
+
+function threatBadge(score: number): { label: string; color: string; bg: string } {
+  if (score >= 8) return { label: 'HIGH THREAT', color: '#FFFFFF', bg: '#EF4444' }
+  if (score >= 5) return { label: 'MODERATE', color: '#FFFFFF', bg: '#F59E0B' }
+  return { label: 'INDIRECT', color: '#FFFFFF', bg: '#10B981' }
 }
 
 function categoryColor(c: Category): string {
@@ -227,6 +239,7 @@ export default function CompetitorStepEditor({
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [selectedNames, setSelectedNames] = useState<string[]>([])
   const [applyMsg, setApplyMsg] = useState<string | null>(null)
+  const [applying, setApplying] = useState(false)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
@@ -408,33 +421,127 @@ export default function CompetitorStepEditor({
     }
   }
 
+  const includeStatusQuo = competitors[3]?.name === STATUS_QUO_NAME
+  const maxSelectable = includeStatusQuo ? MAX_COMPETITORS - 1 : MAX_COMPETITORS
+
   function toggleSelect(name: string) {
     setSelectedNames(prev => {
       if (prev.includes(name)) return prev.filter(n => n !== name)
-      if (prev.length >= MAX_COMPETITORS) return prev
+      if (prev.length >= maxSelectable) return prev
       return [...prev, name]
     })
   }
 
-  function applySelection() {
-    if (selectedNames.length === 0) return
+  function toggleStatusQuo() {
     setCompetitors(prev => {
-      const next = prev.map((c, i) => {
-        const picked = selectedNames[i]
-        return picked ? { ...c, name: picked } : c
-      })
+      const next = prev.map(c => ({ ...c }))
+      const c4 = next[3]
+      if (c4.name === STATUS_QUO_NAME) {
+        next[3] = makeEmpty(4)
+      } else {
+        next[3] = { ...makeEmpty(4), name: STATUS_QUO_NAME }
+      }
       scheduleSave(next)
       return next
     })
-    setApplyMsg(`Added ${selectedNames.length} competitor${selectedNames.length === 1 ? '' : 's'} to your tabs ✓`)
-    setDiscoveryOptions(null)
-    setSelectedNames([])
-    setTimeout(() => setApplyMsg(null), 2500)
+    setSelectedNames(prev => prev.slice(0, MAX_COMPETITORS - 1))
+  }
+
+  async function autofillCompetitor(opt: DiscoveryOption): Promise<{ why_buyers_choose_them: string; their_key_promise: string; their_vulnerability: string }> {
+    const empty = { why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
+    try {
+      const res = await fetch('/api/copilot/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId: '17-autofill',
+          workspaceId,
+          stepTitle: 'Competitor Autofill',
+          stepDescription: '',
+          currentContent: '',
+          preferredModel,
+          extraContext: `Competitor: ${opt.name}\nDescription: ${opt.description}`,
+        }),
+      })
+      if (!res.ok || !res.body) return empty
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+      if (accumulated.includes('__STREAM_ERROR__')) return empty
+      const stripped = accumulated
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim()
+      const firstBrace = stripped.indexOf('{')
+      const lastBrace = stripped.lastIndexOf('}')
+      const jsonText = firstBrace !== -1 && lastBrace > firstBrace ? stripped.slice(firstBrace, lastBrace + 1) : stripped
+      const parsed = JSON.parse(jsonText) as Record<string, unknown>
+      return {
+        why_buyers_choose_them: String(parsed['why_buyers_choose_them'] ?? ''),
+        their_key_promise: String(parsed['their_key_promise'] ?? ''),
+        their_vulnerability: String(parsed['their_vulnerability'] ?? ''),
+      }
+    } catch {
+      return empty
+    }
+  }
+
+  async function applySelection() {
+    if (selectedNames.length === 0 || applying) return
+    setApplying(true)
+    try {
+      const optionsByName = new Map((discoveryOptions ?? []).map(o => [o.name, o]))
+      const maxFill = includeStatusQuo ? MAX_COMPETITORS - 1 : MAX_COMPETITORS
+      const targets = selectedNames.slice(0, maxFill)
+
+      const fills = await Promise.all(targets.map(async name => {
+        const opt = optionsByName.get(name)
+        if (!opt) return { name, why_buyers_choose_them: '', their_key_promise: '', their_vulnerability: '' }
+        const fill = await autofillCompetitor(opt)
+        return { name, ...fill }
+      }))
+
+      setCompetitors(prev => {
+        const next = prev.map(c => ({ ...c }))
+        for (let i = 0; i < fills.length; i++) {
+          const fill = fills[i]
+          const target = next[i]
+          target.name = fill.name
+          if (fill.why_buyers_choose_them) target.why_buyers_choose = fill.why_buyers_choose_them
+          if (fill.their_key_promise) target.key_promise = fill.their_key_promise
+          if (fill.their_vulnerability) target.vulnerability = fill.their_vulnerability
+        }
+        scheduleSave(next)
+        return next
+      })
+
+      const count = fills.length
+      setApplyMsg(`Added ${count} competitor${count === 1 ? '' : 's'} to your tabs ✓`)
+      setSelectedNames([])
+      setTimeout(() => setApplyMsg(null), 2500)
+    } finally {
+      setApplying(false)
+    }
   }
 
   function dismissDiscovery() {
     setDiscoveryOptions(null)
     setSelectedNames([])
+  }
+
+  function removeActiveCompetitor() {
+    if (typeof window !== 'undefined' && !window.confirm('Remove this competitor and clear all fields?')) return
+    setCompetitors(prev => {
+      const next = prev.map(c => c.index === activeTab ? makeEmpty(activeTab) : c)
+      scheduleSave(next)
+      return next
+    })
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -490,24 +597,33 @@ export default function CompetitorStepEditor({
         </div>
       )}
 
-      {discoveryOptions && (() => {
-        const displayCompetitors: DiscoveryOption[] = [
-          STATUS_QUO_OPTION,
-          ...discoveryOptions.slice(0, 6),
-        ]
-        return (
+      {discoveryOptions && (
         <div style={{ backgroundColor: '#0F2140', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
                 Potential Competitors
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.55)' }}>
-                Select up to {MAX_COMPETITORS} to populate your competitor tabs ({selectedNames.length}/{MAX_COMPETITORS} selected).
+                Select up to {maxSelectable} to populate your competitor tabs ({selectedNames.length}/{maxSelectable} selected).
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={toggleStatusQuo}
+                style={{
+                  background: includeStatusQuo ? 'rgba(232,82,10,0.18)' : 'none',
+                  border: `1px solid ${includeStatusQuo ? '#E8520A' : '#374151'}`,
+                  borderRadius: '6px',
+                  color: includeStatusQuo ? '#FDBA74' : '#9CA3AF',
+                  fontSize: '12px', fontWeight: 600,
+                  padding: '6px 12px', minHeight: '32px',
+                  cursor: 'pointer',
+                }}
+              >
+                {includeStatusQuo ? '✓ ' : ''}Include Status Quo / Do Nothing
+              </button>
               <button
                 onClick={dismissDiscovery}
                 style={{
@@ -519,25 +635,28 @@ export default function CompetitorStepEditor({
                 Dismiss
               </button>
               <button
-                onClick={applySelection}
-                disabled={selectedNames.length === 0}
+                onClick={() => void applySelection()}
+                disabled={selectedNames.length === 0 || applying}
                 style={{
-                  backgroundColor: selectedNames.length === 0 ? '#6B7280' : '#E8520A',
+                  backgroundColor: selectedNames.length === 0 || applying ? '#6B7280' : '#E8520A',
                   border: 'none', borderRadius: '6px',
                   color: '#FFFFFF', fontSize: '12px', fontWeight: 600,
                   padding: '6px 14px', minHeight: '32px',
-                  cursor: selectedNames.length === 0 ? 'not-allowed' : 'pointer',
+                  cursor: selectedNames.length === 0 || applying ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px',
                 }}
               >
-                Apply Selection
+                {applying && <Loader2 size={12} className="animate-spin" />}
+                {applying ? 'Generating profiles…' : 'Apply Selection'}
               </button>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-            {displayCompetitors.map((opt, i) => {
+            {discoveryOptions.slice(0, 6).map((opt, i) => {
               const isSelected = selectedNames.includes(opt.name)
-              const atLimit = !isSelected && selectedNames.length >= MAX_COMPETITORS
+              const atLimit = !isSelected && selectedNames.length >= maxSelectable
+              const threat = threatBadge(opt.alignment_score)
               return (
                 <button
                   key={`${opt.name}-${i}`}
@@ -553,18 +672,30 @@ export default function CompetitorStepEditor({
                     opacity: atLimit ? 0.45 : 1,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>{opt.name}</span>
-                    <span style={{
-                      fontSize: '10px', fontWeight: 700,
-                      padding: '2px 8px', borderRadius: '999px',
-                      backgroundColor: `${categoryColor(opt.category)}22`,
-                      color: categoryColor(opt.category),
-                      textTransform: 'uppercase', letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
-                      {categoryLabel(opt.category)}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700,
+                        padding: '2px 8px', borderRadius: '999px',
+                        backgroundColor: threat.bg,
+                        color: threat.color,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {threat.label}
+                      </span>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700,
+                        padding: '2px 8px', borderRadius: '999px',
+                        backgroundColor: `${categoryColor(opt.category)}22`,
+                        color: categoryColor(opt.category),
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {categoryLabel(opt.category)}
+                      </span>
+                    </div>
                   </div>
                   <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}>
                     {opt.description}
@@ -574,8 +705,7 @@ export default function CompetitorStepEditor({
             })}
           </div>
         </div>
-        )
-      })()}
+      )}
 
       {applyMsg && (
         <div style={{
@@ -629,7 +759,19 @@ export default function CompetitorStepEditor({
           <div style={PANEL_CARD}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <label style={LABEL_STYLE}>Competitor {activeTab}</label>
-              <SaveIndicator state={saveState} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <SaveIndicator state={saveState} />
+                <button
+                  onClick={removeActiveCompetitor}
+                  style={{
+                    background: 'none', border: 'none', padding: '2px 4px',
+                    color: '#EF4444', fontSize: '11px', fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Remove Competitor
+                </button>
+              </div>
             </div>
 
             {/* Competitor Name */}

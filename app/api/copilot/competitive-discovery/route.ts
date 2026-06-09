@@ -93,13 +93,13 @@ Return ONLY a valid JSON object. No markdown, no backticks, no explanation. Star
 JSON structure:
 {
   "known_validators": [
-    { "name": "<company name>", "description": "<1-2 sentence description of what they do and who they serve>", "why_relevant": "<why this buyer would compare us against them>" }
+    { "name": "<company name>", "description": "<1-2 sentence description of what they do and who they serve>", "why_relevant": "<why this buyer would compare us against them>", "alignment_score": <integer 1-10> }
   ],
   "adjacent_competitors": [
-    { "name": "<company name>", "description": "<1-2 sentence description>", "why_relevant": "<why they could capture the same budget even from a different category>" }
+    { "name": "<company name>", "description": "<1-2 sentence description>", "why_relevant": "<why they could capture the same budget even from a different category>", "alignment_score": <integer 1-10> }
   ],
   "emerging_threats": [
-    { "name": "<company name>", "description": "<1-2 sentence description>", "why_relevant": "<why they are an emerging threat — funded, growing, or displacing incumbents>" }
+    { "name": "<company name>", "description": "<1-2 sentence description>", "why_relevant": "<why they are an emerging threat — funded, growing, or displacing incumbents>", "alignment_score": <integer 1-10> }
   ]
 }
 
@@ -108,12 +108,15 @@ Category definitions:
 - adjacent_competitors: Vendors from adjacent categories that could solve the same problem differently and compete for the same budget
 - emerging_threats: Startups or category challengers who entered this space in the last 1-3 years with momentum
 
+For each competitor include an alignment_score from 1-10 representing how directly they compete for the same deals (10 = direct head-to-head competitor, 1 = rarely compete). Return alignment_score as an integer in the JSON.
+
 RULES:
 - Return a maximum of 6 competitors total across all categories combined
 - Keep each competitor description under 20 words
 - Use real company names found via web search
 - Be specific to the ICP industries, company sizes, and pain points provided
 - Prioritise relevance to the buyer profile over general market coverage
+- Every competitor entry MUST include an integer alignment_score between 1 and 10
 
 COMPANY CONTEXT:
 ${companyContext || 'Not provided.'}
