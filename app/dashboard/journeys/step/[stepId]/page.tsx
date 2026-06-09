@@ -224,7 +224,7 @@ const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '11', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 

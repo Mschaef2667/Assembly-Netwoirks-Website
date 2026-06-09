@@ -394,6 +394,7 @@ export default function PainPointStepEditor({
     if (!autoGenerate) return
     if (loading) return
     if (!step4Found) return
+    if (activeCount === 0) return
     if (autoGenerateStartedRef.current) return
     if (activeCount < 1) return
 
