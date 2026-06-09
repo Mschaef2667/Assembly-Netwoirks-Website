@@ -10,7 +10,7 @@ import TipsPanel from '@/components/ui/TipsPanel'
 import { STEP_TIPS } from '@/lib/tips'
 
 import PainPointStepEditor from '@/components/journeys/PainPointStepEditor'
-import Step14Editor from '@/components/journeys/Step14Editor'
+import AssessmentStepEditor from '@/components/journeys/AssessmentStepEditor'
 import BlendEditor from '@/components/journeys/BlendEditor'
 import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
 import DealScorecard from '@/components/journeys/DealScorecard'
@@ -219,7 +219,8 @@ function makeBCEntry(): BuyingCenterEntry {
 const AUTOSAVE_DELAY_MS = 1200
 const STEP4_AUTOSAVE_DELAY_MS = 800
 
-const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '13', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
+const PAIN_POINT_STEPS = new Set(['5', '6', '7', '8', '9', '10', '11', '12', '15', '16', '17', '18', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '30'])
+const ASSESSMENT_STEPS = new Set(['13', '14'])
 const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
@@ -864,6 +865,8 @@ function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '10') return ['4', '6', '8']
   if (stepId === '11') return ['4', '6']
   if (stepId === '12') return ['11']
+  if (stepId === '13') return ['12']
+  if (stepId === '14') return ['13']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -903,6 +906,18 @@ function buildWarningMessage(
   if (stepId === '12') {
     if (!hasPrereq('11')) {
       return 'Critical Success Factors require completed CVPs from Step 11. Each CSF answers: What must we do to fulfill this CVP promise?'
+    }
+    return null
+  }
+  if (stepId === '13') {
+    if (!hasPrereq('12')) {
+      return 'Critical Success Formulas require completed Critical Success Factors from Step 12. Each formula is a repeatable, documented process that fulfills one CSF.'
+    }
+    return null
+  }
+  if (stepId === '14') {
+    if (!hasPrereq('13')) {
+      return 'Core Competencies require completed Critical Success Formulas from Step 13. Each competency is the internal capability needed to execute a formula.'
     }
     return null
   }
@@ -2375,7 +2390,15 @@ export default function StepPage() {
         typeof p['content'] === 'string' && (p['content'] as string).trim().length > 50,
       )
     hasContent = savedHasContent || rawContentUpdated
-  } else if (stepId === '14' || stepId === '38' || ACTION_PLAN_STEPS.has(stepId)) {
+  } else if (ASSESSMENT_STEPS.has(stepId)) {
+    // AssessmentStepEditor saves { items: [{ label, description, currentState, ... }, …] }
+    const it = rawContent?.['items']
+    hasContent = Array.isArray(it)
+      && (it as Array<Record<string, unknown>>).some(item =>
+        (typeof item['label'] === 'string' && (item['label'] as string).trim().length > 0) ||
+        (typeof item['description'] === 'string' && (item['description'] as string).trim().length > 0),
+      )
+  } else if (stepId === '38' || ACTION_PLAN_STEPS.has(stepId)) {
     // Component-managed editors — fall back to any substantive saved string
     hasContent = valuesLongerThan(rawContent, 50)
   } else {
@@ -2477,12 +2500,18 @@ export default function StepPage() {
     </header>
   )
 
-  if (stepId === '14' && workspaceId) {
+  if (ASSESSMENT_STEPS.has(stepId) && workspaceId) {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', maxWidth: '1200px', flex: 1 }}>
-          <Step14Editor workspaceId={workspaceId} preferredModel={preferredModel} />
+        <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
+          {warningBanner}
+          <AssessmentStepEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
         </div>
         <StepNavBar stepId={stepId} total={allSteps.length} prevId={prevStep?.id ?? null} nextId={nextStep?.id ?? null} hasContent={hasContent} />
       </div>

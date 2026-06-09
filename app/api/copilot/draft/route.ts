@@ -640,62 +640,90 @@ ${provisionalNote}
 ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
 
   } else if (stepId === '13') {
-    // Step 13: Key Selling Points
+    // Step 13: Critical Success Formulas — repeatable processes that fulfill each CSF
     const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
-    const step2 = contextPacket.prerequisites.find(p => p.step_id === '2')
     const step11 = contextPacket.prerequisites.find(p => p.step_id === '11')
-    const step4 = contextPacket.prerequisites.find(p => p.step_id === '4')
 
     const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
-    const step2Text = step2 ? JSON.stringify(step2.content, null, 2) : 'Not yet available.'
     const step11Text = step11 ? JSON.stringify(step11.content, null, 2) : 'Not yet available.'
-    const step4Text = step4 ? JSON.stringify(step4.content, null, 2) : 'Not yet available.'
+
+    // Step 12 isn't in step_dependency for Step 13 — fetch directly
+    let step12Text = 'Not yet available.'
+    try {
+      const { data: extraRows } = await supabase
+        .from('step_output')
+        .select('step_id, content, version')
+        .eq('workspace_id', workspaceId)
+        .eq('step_id', '12')
+        .order('version', { ascending: false })
+        .limit(1)
+      if (extraRows && extraRows.length > 0) {
+        const row = extraRows[0] as { step_id: string; content: Record<string, unknown> }
+        step12Text = JSON.stringify(row.content, null, 2)
+      }
+    } catch { /* non-fatal */ }
 
     const provisionalNote = contextPacket.is_provisional
       ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
       : ''
 
-    systemPrompt = `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+    systemPrompt = `Generate the Critical Success Formulas this company needs to fulfill their Critical Success Factors. A formula is a repeatable documented process. For each CSF from Step 12, generate one formula with a clear name and 2-3 sentence description of the process. Return ONLY valid JSON: { "items": [{ "label": "<formula name>", "description": "<2-3 sentence process description>" }] } with 3-5 items. No markdown, no prose, no explanation before or after the JSON.
 
-Your task: Write Key Selling Points (KSPs) for Step 13.
+PRIMARY SOURCE — Step 12 (Critical Success Factors — the promises that must be kept):
+${step12Text}
 
-Key Selling Points are 3-5 specific proof points that support the Compelling Value Proposition from Step 11. Each KSP is a single sentence containing a concrete claim or metric that a sales rep can use in conversation to substantiate the CVP. They are NOT features — they are evidence that the CVP is true.
-
-RULES:
-- Write exactly 3-5 KSPs. Each is one sentence.
-- Each KSP must contain a concrete, specific claim — a metric, a named capability, a quantified outcome, or a verifiable fact.
-- KSPs must directly support the CVP from Step 11. If Step 11 is not yet available, derive KSPs from the company profile and endemic problem.
-- Do not use vague language like 'best-in-class', 'industry-leading', or 'proven'. Use specific claims instead.
-- If a metric is not available in the context, use a reasonable placeholder in brackets, e.g. [X%] or [Y days].
-
-CONFIDENCE SCORING:
-- 71-100: CVP (Step 11) and company profile are both present and specific
-- 41-70: CVP is missing but company profile is sufficient to derive KSPs
-- 0-40: Neither CVP nor sufficient company context is available
-
-OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
-{
-  "draft": "<KSP 1>\\n<KSP 2>\\n<KSP 3>\\n[<KSP 4>]\\n[<KSP 5>]",
-  "confidence": <integer 0-100>,
-  "sources": ["<sources used>"],
-  "assumptions": ["<assumption made>"],
-  "open_questions": ["<question the user should answer to sharpen a KSP>"],
-  "verification_checks": ["<factual claim the user should verify before using in sales conversations>"]
-}
-
-STEP 11 — Compelling Value Proposition (what the KSPs must prove):
+SUPPORTING CONTEXT — Step 11 (Compelling Value Propositions):
 ${step11Text}
 
-STEP 1 — Company Profile:
+SUPPORTING CONTEXT — Step 1 (Company Profile):
 ${step1Text}
-
-STEP 2 — Product / Service Description:
-${step2Text}
-
-STEP 4 — Endemic Problem (buyer context):
-${step4Text}
 ${provisionalNote}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}${currentContent ? `\nCURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+
+  } else if (stepId === '14') {
+    // Step 14: Core Competencies — internal capabilities required to execute the Critical Success Formulas
+    const step1 = contextPacket.prerequisites.find(p => p.step_id === '1')
+    const step1Text = step1 ? JSON.stringify(step1.content, null, 2) : 'Not yet available.'
+
+    // Steps 12 and 13 aren't in step_dependency for Step 14 — fetch directly
+    let step12Text = 'Not yet available.'
+    let step13Text = 'Not yet available.'
+    try {
+      const { data: extraRows } = await supabase
+        .from('step_output')
+        .select('step_id, content, version')
+        .eq('workspace_id', workspaceId)
+        .in('step_id', ['12', '13'])
+        .order('version', { ascending: false })
+      if (extraRows) {
+        const seen = new Set<string>()
+        for (const row of extraRows as Array<{ step_id: string; content: Record<string, unknown> }>) {
+          if (!seen.has(row.step_id)) {
+            seen.add(row.step_id)
+            const text = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '12') step12Text = text
+            if (row.step_id === '13') step13Text = text
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    const provisionalNote = contextPacket.is_provisional
+      ? '\nNOTE: Some prerequisite data is not yet approved — mark confidence accordingly.\n'
+      : ''
+
+    systemPrompt = `Generate the Core Competencies this company needs to execute their Critical Success Formulas. A core competency is an internal capability that is difficult to replicate. For each formula from Step 13, identify the underlying competency required. Return ONLY valid JSON: { "items": [{ "label": "<competency name>", "description": "<2-3 sentence description of the capability and why it matters>" }] } with 3-5 items. No markdown, no prose, no explanation before or after the JSON.
+
+PRIMARY SOURCE — Step 13 (Critical Success Formulas — the processes that must be executed):
+${step13Text}
+
+SUPPORTING CONTEXT — Step 12 (Critical Success Factors):
+${step12Text}
+
+SUPPORTING CONTEXT — Step 1 (Company Profile):
+${step1Text}
+${provisionalNote}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
 
   } else if (stepId === '17') {
     // Step 17: Target Competition
