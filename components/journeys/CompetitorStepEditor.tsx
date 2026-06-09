@@ -111,7 +111,7 @@ const FIELD_TEXTAREA: React.CSSProperties = {
 
 const STATUS_QUO_OPTION: DiscoveryOption = {
   name: 'Status Quo / Do Nothing',
-  description: 'The buyer chooses to stick with their current process or postpones the decision indefinitely.',
+  description: 'Buyers choose to delay, use existing resources, or do nothing instead of hiring outside help.',
   category: 'status quo',
 }
 
@@ -176,10 +176,7 @@ function flattenDiscovery(api: DiscoveryApiResult): DiscoveryOption[] {
   for (const c of api.emerging_threats ?? []) {
     flat.push({ name: c.name, description: c.description, category: categorise(c.name, c.description, 'emerging') })
   }
-  if (!flat.some(o => o.name.toLowerCase().includes('status quo'))) {
-    flat.push(STATUS_QUO_OPTION)
-  }
-  return flat.slice(0, 8)
+  return flat.filter(o => !o.name.toLowerCase().includes('status quo'))
 }
 
 function categoryColor(c: Category): string {
@@ -193,6 +190,7 @@ function categoryColor(c: Category): string {
 }
 
 function categoryLabel(c: Category): string {
+  if (c === 'status quo') return 'Alternative'
   return c.charAt(0).toUpperCase() + c.slice(1)
 }
 
@@ -490,8 +488,14 @@ export default function CompetitorStepEditor({
         </div>
       )}
 
-      {discoveryOptions && (
+      {discoveryOptions && (() => {
+        const displayCompetitors: DiscoveryOption[] = [
+          STATUS_QUO_OPTION,
+          ...discoveryOptions.slice(0, 6),
+        ]
+        return (
         <div style={{ backgroundColor: '#0F2140', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
@@ -529,7 +533,7 @@ export default function CompetitorStepEditor({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-            {discoveryOptions.map((opt, i) => {
+            {displayCompetitors.map((opt, i) => {
               const isSelected = selectedNames.includes(opt.name)
               const atLimit = !isSelected && selectedNames.length >= MAX_COMPETITORS
               return (
@@ -568,7 +572,8 @@ export default function CompetitorStepEditor({
             })}
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {applyMsg && (
         <div style={{
