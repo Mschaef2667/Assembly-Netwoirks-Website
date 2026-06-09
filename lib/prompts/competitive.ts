@@ -49,7 +49,7 @@ function formatCompetitorBlock(currentContent: string): string {
   return lines.join('\n').trim()
 }
 
-// Steps 17-26 — only Step 17 has a custom prompt; 18-26 fall through to the generic builder.
+// Steps 17-26 — Steps 17, 18, 19 have custom prompts; 20-26 fall through to the generic builder.
 export function buildPrompt(stepId: string, ctx: PromptContext): string {
   const { currentContent, extraContext } = ctx
 
@@ -140,6 +140,78 @@ STEP 13 — Key Selling Points:
 ${step13Text}
 
 ${competitorSection}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
+  if (stepId === '18') {
+    const step4Text = stepText(ctx, '4')
+    const step13Text = stepText(ctx, '13')
+    const step17Text = stepText(ctx, '17')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write the Competitive Differentiator for this pain point. A differentiator explains how the company's Critical Success Formulas solve this pain point DIFFERENTLY than the target competitors.
+
+Structure the response as:
+1) The differentiator statement (how we solve it differently)
+2) Classification: Exclusive (only we have this), Relative (we do it better), or First-Mover (we got there first)
+3) Why competitors cannot easily replicate this
+
+Maximum 3 sentences total. Be specific — reference the actual formula from Step 13 and the actual competitors from Step 17.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<the 3-sentence differentiator covering statement, classification, and why-not-replicable>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the differentiator>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 4 — Pain Points (The Problem):
+${step4Text}
+
+STEP 13 — Critical Success Formulas:
+${step13Text}
+
+STEP 17 — Target Competition:
+${step17Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
+  if (stepId === '19') {
+    const step17Text = stepText(ctx, '17')
+    const step18Text = stepText(ctx, '18')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Your task: Write the Competitive Advantage over this specific competitor. A competitive advantage explains what makes the company's differentiators BETTER than this specific competitor.
+
+Structure the response as:
+1) The advantage statement (why we win against this competitor specifically)
+2) Classification: Exclusive, Relative, or First-Mover
+3) The competitor's vulnerability that this advantage exploits (from Step 17 vulnerability field)
+
+Maximum 3 sentences. Be specific — name the competitor and reference actual differentiators from Step 18.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<the 3-sentence advantage covering statement, classification, and the competitor's vulnerability>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the advantage>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 17 — Target Competition (includes each competitor's vulnerability):
+${step17Text}
+
+STEP 18 — Competitive Differentiators:
+${step18Text}
 ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }

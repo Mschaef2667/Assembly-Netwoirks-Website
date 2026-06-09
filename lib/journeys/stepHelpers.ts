@@ -208,7 +208,7 @@ export const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 export const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '18', '19', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 export const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -416,6 +416,8 @@ export function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '14') return ['13']
   if (stepId === '15') return ['11', '13', '14']
   if (stepId === '16') return ['3', '11', '13', '14']
+  if (stepId === '18') return ['4', '13', '17']
+  if (stepId === '19') return ['17', '18']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -479,6 +481,18 @@ export function buildWarningMessage(
   if (stepId === '16') {
     if (!hasPrereq('3') || !hasPrereq('11') || !hasPrereq('13') || !hasPrereq('14')) {
       return 'The Acid Test requires: Step 3 (Decision Makers), Step 11 (CVPs), Step 13 (Formulas), and Step 14 (Competencies). It tests whether your buyers would actually believe you can deliver your promises.'
+    }
+    return null
+  }
+  if (stepId === '18') {
+    if (!hasPrereq('4') || !hasPrereq('13') || !hasPrereq('17')) {
+      return 'Competitive Differentiators require: Step 4 (Pain Points), Step 13 (Critical Success Formulas), and Step 17 (Target Competition). For each pain point, explain how your formulas solve it differently than your Select Set competitors.'
+    }
+    return null
+  }
+  if (stepId === '19') {
+    if (!hasPrereq('17') || !hasPrereq('18')) {
+      return 'Competitive Advantages require: Step 17 (Target Competition) and Step 18 (Differentiators). For each Select Set competitor, explain specifically why your differentiators make you the better choice.'
     }
     return null
   }

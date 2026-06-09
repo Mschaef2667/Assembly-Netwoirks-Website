@@ -963,7 +963,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
             autoApply={AUTO_APPLY_STEPS.has(stepId)}
             autoGenerate={AUTO_APPLY_STEPS.has(stepId)}
-            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' ? 'Comp' : undefined}
+            tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' || stepId === '19' ? 'Comp' : undefined}
             showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
