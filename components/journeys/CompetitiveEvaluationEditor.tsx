@@ -311,6 +311,7 @@ export default function CompetitiveEvaluationEditor({
     setCopilotError(null)
 
     try {
+      console.log('[Step22] starting fetch')
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -324,6 +325,7 @@ export default function CompetitiveEvaluationEditor({
         }),
       })
 
+      console.log('[Step22] res.ok:', res.ok, 'res.status:', res.status)
       if (!res.ok || !res.body) {
         setCopilotError(copilotErrorMessage(res.status))
         return
@@ -338,12 +340,14 @@ export default function CompetitiveEvaluationEditor({
         accumulated += decoder.decode(value, { stream: true })
       }
 
+      console.log('[Step22] accumulated length:', accumulated.length, 'first 100:', accumulated.slice(0, 100))
       if (accumulated.includes('__STREAM_ERROR__')) {
         const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
         setCopilotError(copilotErrorMessage(match ? match[1] : 0))
         return
       }
 
+      console.log('[Step22] past stream error check')
       const parsed = parseCopilotJson(accumulated)
       if (!parsed) {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
