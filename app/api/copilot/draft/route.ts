@@ -30,6 +30,16 @@ interface DraftRequestBody {
 
 export const maxDuration = 30
 
+// Strip markdown bold markers and bullet markers from a draft.
+// Preserves numbered lists (1. 2. 3.) — only rewrites asterisk bullets.
+function stripMarkdownFormatting(text: string): string {
+  let result = text
+  result = result.replace(/\*\*/g, '')
+  result = result.replace(/__/g, '')
+  result = result.replace(/^(\s*)[*+]\s+/gm, '$1- ')
+  return result
+}
+
 // ── POST /api/copilot/draft ───────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -356,6 +366,9 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   let streamErrorCode = 'unknown'
   const maxAttempts = 3
 
+  const MARKDOWN_STRIP_STEPS = new Set(['20', '21', '24', '25', '26'])
+  const shouldStripMarkdown = MARKDOWN_STRIP_STEPS.has(stepId)
+
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
@@ -376,8 +389,13 @@ async function handleDraft(req: NextRequest): Promise<Response> {
             ) {
               const text = chunk.delta.text
               fullText += text
-              controller.enqueue(encoder.encode(text))
+              if (!shouldStripMarkdown) {
+                controller.enqueue(encoder.encode(text))
+              }
             }
+          }
+          if (shouldStripMarkdown && fullText.length > 0) {
+            controller.enqueue(encoder.encode(stripMarkdownFormatting(fullText)))
           }
           break outer // success
         } catch (err) {
