@@ -121,7 +121,10 @@ function safeTitle(raw: unknown): string {
 }
 
 function stripMarkdown(text: string): string {
-  return text.replace(/\*\*(.*?)\*\*/g, '$1')
+  let out = text.replace(/\*\*(.*?)\*\*/g, '$1')
+  out = out.replace(/__(.*?)__/g, '$1')
+  out = out.replace(/^[ \t]*[*-][ \t]+/gm, '')
+  return out
 }
 
 function extractDraft(raw: string): string {
@@ -510,7 +513,7 @@ export default function PainPointStepEditor({
           }
           if (!draftText.trim()) continue
 
-          const appliedText = AUTO_APPLY_STEPS.has(stepId) ? stripMarkdown(draftText) : draftText
+          const appliedText = stripMarkdown(draftText)
 
           // Never overwrite existing content — only fill if still empty
           setContentMap(prev => {
@@ -702,7 +705,7 @@ export default function PainPointStepEditor({
       }
 
       if (autoApply) {
-        const appliedText = AUTO_APPLY_STEPS.has(stepId) ? stripMarkdown(draftText) : draftText
+        const appliedText = stripMarkdown(draftText)
         setContentMap(prev => ({ ...prev, [activeTab]: appliedText }))
         scheduleSave()
         setShowAppliedFlash(true)
