@@ -82,6 +82,8 @@ export interface PainPointStepEditorProps {
 
 const AUTOSAVE_MS = 800
 
+const AUTO_APPLY_STEPS = new Set(['24', '25', '26'])
+
 const PANEL_CARD: React.CSSProperties = {
   backgroundColor: '#FFFFFF',
   borderRadius: '12px',
@@ -116,6 +118,10 @@ function safeTitle(raw: unknown): string {
   if (!s || s === 'undefined' || s === 'null') return ''
   if (s.startsWith('{') || s.startsWith('[')) return ''
   return s
+}
+
+function stripMarkdown(text: string): string {
+  return text.replace(/\*\*(.*?)\*\*/g, '$1')
 }
 
 function extractDraft(raw: string): string {
@@ -504,10 +510,12 @@ export default function PainPointStepEditor({
           }
           if (!draftText.trim()) continue
 
+          const appliedText = AUTO_APPLY_STEPS.has(stepId) ? stripMarkdown(draftText) : draftText
+
           // Never overwrite existing content — only fill if still empty
           setContentMap(prev => {
             if ((prev[tabIdx] ?? '').trim()) return prev
-            return { ...prev, [tabIdx]: draftText }
+            return { ...prev, [tabIdx]: appliedText }
           })
           scheduleSave()
         } catch {
@@ -694,7 +702,8 @@ export default function PainPointStepEditor({
       }
 
       if (autoApply) {
-        setContentMap(prev => ({ ...prev, [activeTab]: draftText }))
+        const appliedText = AUTO_APPLY_STEPS.has(stepId) ? stripMarkdown(draftText) : draftText
+        setContentMap(prev => ({ ...prev, [activeTab]: appliedText }))
         scheduleSave()
         setShowAppliedFlash(true)
         setTimeout(() => setShowAppliedFlash(false), 2000)
