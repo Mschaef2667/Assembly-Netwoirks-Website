@@ -343,6 +343,7 @@ export default function CompetitiveEvaluationEditor({
         return
       }
 
+      console.log('[Step22]', 'accumulated first 300 chars:', accumulated.slice(0, 300))
       const parsed = parseCopilotJson(accumulated)
       if (!parsed) {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
