@@ -309,6 +309,32 @@ ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
+  if (stepId === '23') {
+    const step2Text = stepText(ctx, '2')
+    const step3Block = ctx.step3Text && ctx.step3Text !== 'Not yet available.'
+      ? ctx.step3Text
+      : stepText(ctx, '3')
+    const dcpStage6 = ctx.dcpStage6Summary || 'Not yet available.'
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Based on the decision factor ranking provided and the DCP Stage 6 (Purchase Decision) intelligence, write a 2-3 sentence Decision Pattern describing how this segment makes their final GTM partner selection. What drives the final choice? Who has final say? What tips the decision? Be specific to this segment.
+
+Return plain text only — no JSON, no markdown fences, no bullet points. Just 2-3 sentences of clear, specific prose.
+
+STEP 2 — Target Segments:
+${step2Text}
+
+STEP 3 — Decision Makers:
+${step3Block}
+
+DCP MAP — Stage 6 (Purchase Decision):
+${dcpStage6}
+
+${extraContext ?? ''}
+${provisionalNote(ctx)}`
+  }
+
   if (stepId === '19') {
     const step17Text = stepText(ctx, '17')
     const step18Text = stepText(ctx, '18')

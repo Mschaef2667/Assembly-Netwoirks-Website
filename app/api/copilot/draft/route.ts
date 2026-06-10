@@ -49,7 +49,7 @@ function dispatchPrompt(stepId: string, ctx: PromptContext): string {
   if (stepId === '1' || stepId === '2' || stepId === '3') return buildFoundationPrompt(stepId, ctx)
   if (['4', '5', '6', '7', '8', '9', '10'].includes(stepId)) return buildEndemicPrompt(stepId, ctx)
   if (['11', '12', '13', '14', '15', '16'].includes(stepId)) return buildCompanyPrompt(stepId, ctx)
-  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22') return buildCompetitivePrompt(stepId, ctx)
+  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22' || stepId === '23') return buildCompetitivePrompt(stepId, ctx)
   if (['27', '28', '29', '30'].includes(stepId)) return buildMessagesPrompt(stepId, ctx)
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return buildActionPrompt(stepId, ctx)
   if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording' || stepId === 'survey-builder-interview-probes') {
@@ -141,7 +141,7 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   let dcpStage5Summary = ''
   let dcpStage6Summary = ''
   const ENDEMIC_STEPS = new Set(['4', '5', '6', '7', '8', '9'])
-  if (ENDEMIC_STEPS.has(stepId) || stepId === '22') {
+  if (ENDEMIC_STEPS.has(stepId) || stepId === '22' || stepId === '23') {
     try {
       const { data: dcpRow } = await supabase
         .from('dcp_analysis')
@@ -244,14 +244,16 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   const needsStep14 = ['15', '16', '28', '29', '30'].includes(stepId)
   const needsStep16Extras = stepId === '16' // pulls 13 and 14
   const needsStep22Extras = stepId === '22' // pulls 3 and 17
+  const needsStep23Extras = stepId === '23' // pulls 3
   const needsCompetitiveExtras = ['28', '29', '30'].includes(stepId) // pulls 14, 18, 19
 
-  if (needsStep12 || needsStep13 || needsStep14 || needsStep16Extras || needsStep22Extras || needsCompetitiveExtras) {
+  if (needsStep12 || needsStep13 || needsStep14 || needsStep16Extras || needsStep22Extras || needsStep23Extras || needsCompetitiveExtras) {
     const idsToFetch = new Set<string>()
     if (needsStep12 || stepId === '13' || stepId === '14') idsToFetch.add('12')
     if (needsStep13 || stepId === '14' || stepId === '15' || stepId === '16') idsToFetch.add('13')
     if (needsStep14) idsToFetch.add('14')
     if (needsStep22Extras) { idsToFetch.add('3'); idsToFetch.add('17') }
+    if (needsStep23Extras) { idsToFetch.add('3') }
     if (needsCompetitiveExtras && stepId === '29') idsToFetch.add('18')
     if (needsCompetitiveExtras && stepId === '30') idsToFetch.add('19')
     if (needsCompetitiveExtras) { idsToFetch.add('14'); idsToFetch.add('18'); idsToFetch.add('19') }
