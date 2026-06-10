@@ -175,9 +175,7 @@ function extractFirstJsonObject(raw: string): string | null {
     else if (ch === '}') {
       depth--
       if (depth === 0) {
-        const extracted = raw.slice(start, i + 1)
-        console.log('[Step22 extract]', 'extracted:', extracted?.slice(0, 50))
-        return extracted
+        return raw.slice(start, i + 1)
       }
     }
   }
@@ -186,7 +184,7 @@ function extractFirstJsonObject(raw: string): string | null {
 
 function parseCopilotJson(raw: string): Partial<SectionContent> | null {
   try {
-    const start = raw.indexOf('{')
+    const start = raw.indexOf('{\n') !== -1 ? raw.indexOf('{\n') : raw.indexOf('{')
     const end = raw.lastIndexOf('}')
     if (start === -1 || end === -1) return null
     const jsonStr = raw.slice(start, end + 1)
@@ -200,10 +198,8 @@ function parseCopilotJson(raw: string): Partial<SectionContent> | null {
         matched = true
       }
     }
-    console.log('[Step22] matched:', matched, 'keys found:', Object.keys(result))
     return matched ? result : null
-  } catch (e) {
-    console.log('[Step22] parse error:', e)
+  } catch {
     return null
   }
 }
@@ -320,7 +316,6 @@ export default function CompetitiveEvaluationEditor({
   // ── Copilot ────────────────────────────────────────────────────────────────
 
   async function runCopilot() {
-    console.log('[Step22] runCopilot called, stepId:', stepId, 'workspaceId:', workspaceId)
     if (copilotLoading) return
     setCopilotLoading(true)
     setCopilotError(null)
@@ -345,7 +340,6 @@ export default function CompetitiveEvaluationEditor({
       }
 
       const text = await res.text()
-      console.log('[Step22] text length:', text.length, 'first 400:', JSON.stringify(text.slice(0, 400)))
 
       if (text.includes('__STREAM_ERROR__')) {
         const match = text.match(/__STREAM_ERROR__:(\w+)/)
