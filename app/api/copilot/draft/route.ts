@@ -28,7 +28,7 @@ interface DraftRequestBody {
 
 // ── Route config ─────────────────────────────────────────────────────────────
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // Strip markdown bold markers and bullet markers from a draft.
 // Preserves numbered lists (1. 2. 3.) — only rewrites asterisk bullets.
