@@ -273,7 +273,9 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
     const dcpStage5 = ctx.dcpStage5Summary || 'Not yet available.'
     const dcpStage6 = ctx.dcpStage6Summary || 'Not yet available.'
 
-    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+    return `CRITICAL: Respond with ONLY a valid JSON object. Start your response with { and end with }. No markdown, no backticks, no prose before or after the JSON.
+
+You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
 Write the Competitive Evaluation playbook for this company. Using the DCP Map intelligence and decision maker data, describe how buyers evaluate GTM strategy partners in each phase of the process. Be specific and actionable — this is a deal playbook, not generic advice.
 
