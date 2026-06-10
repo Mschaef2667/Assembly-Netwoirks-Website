@@ -217,7 +217,8 @@ ${step18Text}
 STEP 19 — Competitive Advantages:
 ${step19Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
   }
 
   if (stepId === '21') {
@@ -259,7 +260,8 @@ ${step17Text}
 STEP 20 — Competitive Threats:
 ${step20Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
   }
 
   if (stepId === '24') {
@@ -290,7 +292,8 @@ ${step18Text}
 STEP 20 — Competitive Threats:
 ${step20Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
   }
 
   if (stepId === '22') {
