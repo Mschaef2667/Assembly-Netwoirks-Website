@@ -167,9 +167,21 @@ function stripFences(raw: string): string {
 
 function extractFirstJsonObject(raw: string): string | null {
   const start = raw.indexOf('{')
-  const end = raw.lastIndexOf('}')
-  if (start === -1 || end === -1 || end <= start) return null
-  return raw.slice(start, end + 1)
+  if (start === -1) return null
+  let depth = 0
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i]
+    if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) {
+        const extracted = raw.slice(start, i + 1)
+        console.log('[Step22 extract]', 'extracted:', extracted?.slice(0, 50))
+        return extracted
+      }
+    }
+  }
+  return null
 }
 
 function parseCopilotJson(raw: string): Partial<SectionContent> | null {
@@ -187,7 +199,6 @@ function parseCopilotJson(raw: string): Partial<SectionContent> | null {
           matched = true
         }
       }
-      console.log('[Step22 parse] obj keys:', Object.keys(obj), 'matched:', matched)
       if (matched) return result
     } catch { /* try next candidate */ }
   }
@@ -311,7 +322,6 @@ export default function CompetitiveEvaluationEditor({
     setCopilotError(null)
 
     try {
-      console.log('[Step22] starting fetch')
       const res = await fetch('/api/copilot/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -325,7 +335,6 @@ export default function CompetitiveEvaluationEditor({
         }),
       })
 
-      console.log('[Step22] res.ok:', res.ok, 'res.status:', res.status)
       if (!res.ok || !res.body) {
         setCopilotError(copilotErrorMessage(res.status))
         return
@@ -340,14 +349,12 @@ export default function CompetitiveEvaluationEditor({
         accumulated += decoder.decode(value, { stream: true })
       }
 
-      console.log('[Step22] accumulated length:', accumulated.length, 'first 100:', accumulated.slice(0, 100))
       if (accumulated.includes('__STREAM_ERROR__')) {
         const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
         setCopilotError(copilotErrorMessage(match ? match[1] : 0))
         return
       }
 
-      console.log('[Step22] past stream error check')
       const parsed = parseCopilotJson(accumulated)
       if (!parsed) {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
