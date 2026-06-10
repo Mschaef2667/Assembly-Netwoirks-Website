@@ -317,6 +317,7 @@ export default function CompetitiveEvaluationEditor({
   // ── Copilot ────────────────────────────────────────────────────────────────
 
   async function runCopilot() {
+    console.log('[Step22] runCopilot called, stepId:', stepId, 'workspaceId:', workspaceId)
     if (copilotLoading) return
     setCopilotLoading(true)
     setCopilotError(null)
@@ -335,27 +336,20 @@ export default function CompetitiveEvaluationEditor({
         }),
       })
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         setCopilotError(copilotErrorMessage(res.status))
         return
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-      }
+      const text = await res.text()
 
-      if (accumulated.includes('__STREAM_ERROR__')) {
-        const match = accumulated.match(/__STREAM_ERROR__:(\w+)/)
+      if (text.includes('__STREAM_ERROR__')) {
+        const match = text.match(/__STREAM_ERROR__:(\w+)/)
         setCopilotError(copilotErrorMessage(match ? match[1] : 0))
         return
       }
 
-      const parsed = parseCopilotJson(accumulated)
+      const parsed = parseCopilotJson(text)
       if (!parsed) {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
         return
