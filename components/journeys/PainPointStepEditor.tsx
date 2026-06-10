@@ -120,10 +120,43 @@ function safeTitle(raw: unknown): string {
   return s
 }
 
+function toTitleCase(str: string): string {
+  const smallWords = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'up', 'with'])
+  const words = str.toLowerCase().split(/\s+/)
+  return words
+    .map((word, i) => {
+      if (i !== 0 && i !== words.length - 1 && smallWords.has(word)) return word
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    })
+    .join(' ')
+}
+
 function stripMarkdown(text: string): string {
-  let out = text.replace(/\*\*(.*?)\*\*/g, '$1')
+  let out = text.replace(/\\n\\n/g, '\n\n')
+  out = out.replace(/\\n/g, '\n')
+  out = out.replace(/\*\*(.*?)\*\*/g, '$1')
   out = out.replace(/__(.*?)__/g, '$1')
   out = out.replace(/^[ \t]*[*-][ \t]+/gm, '')
+  out = out
+    .split('\n')
+    .map(line => {
+      const numberedMatch = line.match(/^(\s*\d+\.\s+)(.+)$/)
+      if (numberedMatch) {
+        const [, prefix, rest] = numberedMatch
+        const trimmedRest = rest.trim()
+        if (trimmedRest.length > 10 && /[A-Z]/.test(trimmedRest) && trimmedRest === trimmedRest.toUpperCase()) {
+          return `${prefix}${toTitleCase(trimmedRest)}`
+        }
+        return line
+      }
+      const trimmed = line.trim()
+      if (trimmed.length > 10 && /[A-Z]/.test(trimmed) && trimmed === trimmed.toUpperCase()) {
+        const leading = line.match(/^\s*/)?.[0] ?? ''
+        return `${leading}${toTitleCase(trimmed)}`
+      }
+      return line
+    })
+    .join('\n')
   return out
 }
 
@@ -728,7 +761,7 @@ export default function PainPointStepEditor({
 
   function applyDraft() {
     if (!copilotOutput) return
-    setContentMap(prev => ({ ...prev, [activeTab]: copilotOutput!.draft }))
+    setContentMap(prev => ({ ...prev, [activeTab]: stripMarkdown(copilotOutput!.draft) }))
     scheduleSave()
     setCopilotOutput(null)
   }
