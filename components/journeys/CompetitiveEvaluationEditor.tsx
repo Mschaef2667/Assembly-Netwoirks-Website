@@ -185,24 +185,27 @@ function extractFirstJsonObject(raw: string): string | null {
 }
 
 function parseCopilotJson(raw: string): Partial<SectionContent> | null {
-  const candidates = [extractFirstJsonObject(raw) ?? '', stripFences(raw), raw]
-  for (const c of candidates) {
-    if (!c) continue
-    try {
-      const obj = JSON.parse(c) as Record<string, unknown>
-      const result: Partial<SectionContent> = {}
-      let matched = false
-      for (const { key } of SECTIONS) {
-        const v = obj[key]
-        if (typeof v === 'string') {
-          result[key] = v
-          matched = true
-        }
+  try {
+    const start = raw.indexOf('{')
+    const end = raw.lastIndexOf('}')
+    if (start === -1 || end === -1) return null
+    const jsonStr = raw.slice(start, end + 1)
+    const obj = JSON.parse(jsonStr) as Record<string, unknown>
+    const result: Partial<SectionContent> = {}
+    let matched = false
+    for (const { key } of SECTIONS) {
+      const v = obj[key]
+      if (typeof v === 'string') {
+        result[key] = v
+        matched = true
       }
-      if (matched) return result
-    } catch { /* try next candidate */ }
+    }
+    console.log('[Step22] matched:', matched, 'keys found:', Object.keys(result))
+    return matched ? result : null
+  } catch (e) {
+    console.log('[Step22] parse error:', e)
+    return null
   }
-  return null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
