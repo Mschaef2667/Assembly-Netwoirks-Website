@@ -262,6 +262,37 @@ ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
+  if (stepId === '24') {
+    const step17Text = stepText(ctx, '17')
+    const step18Text = stepText(ctx, '18')
+    const step20Text = stepText(ctx, '20')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Write the Competitive Retaliation strategy for this specific competitor. Given what makes them threatening (from Step 20) and our differentiators (from Step 18), identify 3-4 specific actions we can take to minimize this competitor's threat and strengthen our position against them. Each action should be concrete and executable — not generic advice. Format as a numbered list with brief explanation for each action. Focus on neutralizing their strengths and exploiting their vulnerabilities identified in Step 17.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<numbered list of 3-4 specific retaliation actions, each with brief explanation>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the retaliation plan>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 17 — Target Competition (includes each competitor's vulnerability):
+${step17Text}
+
+STEP 18 — Competitive Differentiators:
+${step18Text}
+
+STEP 20 — Competitive Threats:
+${step20Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
   if (stepId === '22') {
     const step3Block = ctx.step3Text && ctx.step3Text !== 'Not yet available.'
       ? ctx.step3Text

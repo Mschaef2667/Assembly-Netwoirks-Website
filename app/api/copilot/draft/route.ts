@@ -49,7 +49,7 @@ function dispatchPrompt(stepId: string, ctx: PromptContext): string {
   if (stepId === '1' || stepId === '2' || stepId === '3') return buildFoundationPrompt(stepId, ctx)
   if (['4', '5', '6', '7', '8', '9', '10'].includes(stepId)) return buildEndemicPrompt(stepId, ctx)
   if (['11', '12', '13', '14', '15', '16'].includes(stepId)) return buildCompanyPrompt(stepId, ctx)
-  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22' || stepId === '23') return buildCompetitivePrompt(stepId, ctx)
+  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22' || stepId === '23' || stepId === '24') return buildCompetitivePrompt(stepId, ctx)
   if (['27', '28', '29', '30'].includes(stepId)) return buildMessagesPrompt(stepId, ctx)
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return buildActionPrompt(stepId, ctx)
   if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording' || stepId === 'survey-builder-interview-probes') {
