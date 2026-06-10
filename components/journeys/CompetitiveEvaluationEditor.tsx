@@ -173,7 +173,7 @@ function extractFirstJsonObject(raw: string): string | null {
 }
 
 function parseCopilotJson(raw: string): Partial<SectionContent> | null {
-  const candidates = [raw, stripFences(raw), extractFirstJsonObject(stripFences(raw)) ?? '']
+  const candidates = [extractFirstJsonObject(raw) ?? '', stripFences(raw), raw]
   for (const c of candidates) {
     if (!c) continue
     try {
@@ -343,7 +343,6 @@ export default function CompetitiveEvaluationEditor({
         return
       }
 
-      console.log('[Step22]', 'accumulated first 300 chars:', accumulated.slice(0, 300))
       const parsed = parseCopilotJson(accumulated)
       if (!parsed) {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
