@@ -345,7 +345,7 @@ export default function CompetitiveEvaluationEditor({
       }
 
       const text = await res.text()
-      console.log('[Step22] text length:', text.length, 'first 200:', text.slice(0, 200))
+      console.log('[Step22] text length:', text.length, 'first 400:', JSON.stringify(text.slice(0, 400)))
 
       if (text.includes('__STREAM_ERROR__')) {
         const match = text.match(/__STREAM_ERROR__:(\w+)/)
