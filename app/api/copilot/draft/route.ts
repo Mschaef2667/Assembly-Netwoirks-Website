@@ -389,7 +389,17 @@ async function handleDraft(req: NextRequest): Promise<Response> {
             }
           }
           if (fullText.length > 0) {
-            controller.enqueue(encoder.encode(stripMarkdownFormatting(fullText)))
+            let streamed = stripMarkdownFormatting(fullText)
+            try {
+              const parsed = JSON.parse(streamed) as Record<string, unknown>
+              if (parsed && typeof parsed === 'object' && typeof parsed.draft === 'string') {
+                parsed.draft = stripMarkdownFormatting(parsed.draft)
+                streamed = JSON.stringify(parsed)
+              }
+            } catch {
+              // Not JSON (or fenced) — fall back to the stripped raw text.
+            }
+            controller.enqueue(encoder.encode(streamed))
           }
           break outer // success
         } catch (err) {
