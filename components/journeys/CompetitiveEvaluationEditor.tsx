@@ -187,6 +187,7 @@ function parseCopilotJson(raw: string): Partial<SectionContent> | null {
           matched = true
         }
       }
+      console.log('[Step22 parse] obj keys:', Object.keys(obj), 'matched:', matched)
       if (matched) return result
     } catch { /* try next candidate */ }
   }
