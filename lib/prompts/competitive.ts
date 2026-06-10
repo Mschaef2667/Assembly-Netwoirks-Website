@@ -330,7 +330,8 @@ STEP 18 — Competitive Differentiators:
 ${step18Text}
 ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.
+FORMATTING: Return plain text only. Do not use markdown formatting like bold asterisks, bullet points with asterisks, or any other markdown syntax. Use numbered lists and plain text only.`
   }
 
   if (stepId === '26') {
@@ -372,7 +373,8 @@ STEP 24 — Competitive Retaliation:
 ${step24Text}
 ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.
+FORMATTING: Return plain text only. Do not use markdown formatting like bold asterisks, bullet points with asterisks, or any other markdown syntax. Use numbered lists and plain text only.`
   }
 
   if (stepId === '22') {
