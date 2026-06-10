@@ -208,7 +208,7 @@ export const BLEND_STEPS = new Set(['27', '28', '29', '30'])
 export const ACTION_PLAN_STEPS = new Set(['31', '32', '33', '34', '35', '36', '37'])
 // Steps where Copilot draft is grounded in DCP buyer research, so auto-apply without
 // the Proposed Draft review panel.
-export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '18', '19', '20', '21', '23', '24', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
+export const AUTO_APPLY_STEPS = new Set(['4', '5', '6', '7', '8', '9', '10', '11', '12', '15', '18', '19', '20', '21', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38'])
 
 export const SEG_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
 
@@ -423,6 +423,8 @@ export function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '22') return ['3', '17']
   if (stepId === '23') return ['2', '3']
   if (stepId === '24') return ['17', '18', '20']
+  if (stepId === '25') return ['8', '17']
+  if (stepId === '26') return ['14', '20', '24']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -528,6 +530,18 @@ export function buildWarningMessage(
   if (stepId === '24') {
     if (!hasPrereq('17') || !hasPrereq('18') || !hasPrereq('20')) {
       return 'Competitive Retaliation requires: Step 17 (Target Competition), Step 18 (Differentiators), and Step 20 (Competitive Threats). For each competitor, identify specific actions to neutralize their threats.'
+    }
+    return null
+  }
+  if (stepId === '25') {
+    if (!hasPrereq('8') || !hasPrereq('17')) {
+      return 'Competitive Opportunities require: Step 8 (Solution Criteria) and Step 17 (Target Competition). For each pain point, identify what buyers want that neither this company nor competitors deliver well.'
+    }
+    return null
+  }
+  if (stepId === '26') {
+    if (!hasPrereq('14') || !hasPrereq('20') || !hasPrereq('24')) {
+      return 'Competitive Strengths and Weaknesses require: Step 14 (Core Competencies), Step 20 (Competitive Threats), and Step 24 (Competitive Retaliation). For each competitor, assess whether the company has the competencies to execute the retaliation plan.'
     }
     return null
   }

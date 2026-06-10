@@ -296,6 +296,85 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
 FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
   }
 
+  if (stepId === '25') {
+    const step8Text = stepText(ctx, '8')
+    const step17Text = stepText(ctx, '17')
+    const step18Text = stepText(ctx, '18')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Identify the Competitive Opportunities for this pain point. Based on the solution criteria buyers need from Step 8 and what target competitors offer from Step 17, identify:
+1) What solutions are buyers asking for that neither this company nor competitors deliver well?
+2) Who if anyone is starting to address this gap?
+3) What is the strategic opportunity here?
+
+Format as plain text numbered points. No markdown. No bold text.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<plain text numbered points covering the three questions above>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the opportunity assessment>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 8 — Solution Criteria:
+${step8Text}
+
+STEP 17 — Target Competition:
+${step17Text}
+
+STEP 18 — Competitive Differentiators:
+${step18Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+  }
+
+  if (stepId === '26') {
+    const step14Text = stepText(ctx, '14')
+    const step17Text = stepText(ctx, '17')
+    const step20Text = stepText(ctx, '20')
+    const step24Text = stepText(ctx, '24')
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Write the Competitive Strengths and Weaknesses assessment for this competitor. Answer:
+1) Does the company have the core competencies to execute the retaliation strategies from Step 24?
+2) What specific strengths support the plan?
+3) What gaps could prevent execution?
+4) What can the company do to overcome these hurdles?
+
+Format as plain text numbered points. No markdown. No bold text.
+
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
+{
+  "draft": "<plain text numbered points covering the four questions above>",
+  "confidence": <integer 0-100>,
+  "sources": ["<sources used>"],
+  "assumptions": ["<assumption made>"],
+  "open_questions": ["<question to sharpen the assessment>"],
+  "verification_checks": ["<factual claim to verify>"]
+}
+
+STEP 14 — Core Competencies:
+${step14Text}
+
+STEP 17 — Target Competition:
+${step17Text}
+
+STEP 20 — Competitive Threats:
+${step20Text}
+
+STEP 24 — Competitive Retaliation:
+${step24Text}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
+FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+  }
+
   if (stepId === '22') {
     const step3Block = ctx.step3Text && ctx.step3Text !== 'Not yet available.'
       ? ctx.step3Text
