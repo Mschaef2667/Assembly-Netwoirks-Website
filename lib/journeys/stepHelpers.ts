@@ -420,6 +420,7 @@ export function prereqIdsForStep(stepId: string): string[] {
   if (stepId === '19') return ['17', '18']
   if (stepId === '20') return ['17', '19']
   if (stepId === '21') return ['3', '14', '17', '20']
+  if (stepId === '22') return ['3', '17']
   if (stepId === '27') return ['4', '5', '6']
   if (stepId === '28') return ['11', '14']
   if (stepId === '29') return ['18']
@@ -510,6 +511,12 @@ export function buildWarningMessage(
     }
     return null
   }
+  if (stepId === '22') {
+    if (!hasPrereq('3') || !hasPrereq('17')) {
+      return 'Competitive Evaluation requires: Step 3 (Decision Makers) and Step 17 (Target Competition). Pull from your DCP Map Stages 4-6 for the most accurate evaluation playbook.'
+    }
+    return null
+  }
   if (stepId === '27') {
     const missing4 = !hasPrereq('4')
     const missing5 = !hasPrereq('5')
@@ -583,6 +590,14 @@ export function hasContentForStep({
       c !== null && typeof c === 'object' &&
       typeof (c as Record<string, unknown>)['name'] === 'string' &&
       ((c as Record<string, unknown>)['name'] as string).trim().length > 2,
+    )
+  }
+  if (stepId === '22') {
+    // CompetitiveEvaluationEditor saves { sections: { introduction, evaluation, … } }
+    const secs = rawContent?.['sections']
+    if (!secs || typeof secs !== 'object') return false
+    return Object.values(secs as Record<string, unknown>).some(
+      v => typeof v === 'string' && (v as string).trim().length > 20,
     )
   }
   if (PAIN_POINT_STEPS.has(stepId)) {

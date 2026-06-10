@@ -15,6 +15,7 @@ import BlendEditor from '@/components/journeys/BlendEditor'
 import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
 import DealScorecard from '@/components/journeys/DealScorecard'
 import AcidTestEditor from '@/components/journeys/AcidTestEditor'
+import CompetitiveEvaluationEditor from '@/components/journeys/CompetitiveEvaluationEditor'
 
 import { Step2Editor } from '@/components/journeys/Step2Editor'
 import { Step3Editor } from '@/components/journeys/Step3Editor'
@@ -880,6 +881,24 @@ export default function StepPage() {
         <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
           {warningBanner}
           <CompetitorStepEditor
+            workspaceId={workspaceId}
+            stepId={stepId}
+            stepTitle={stepTitle}
+            preferredModel={preferredModel}
+          />
+        </div>
+        {navBar}
+      </div>
+    )
+  }
+
+  if (stepId === '22' && workspaceId) {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {header}
+        <div style={{ padding: '28px 32px', maxWidth: '1400px', flex: 1 }}>
+          {warningBanner}
+          <CompetitiveEvaluationEditor
             workspaceId={workspaceId}
             stepId={stepId}
             stepTitle={stepTitle}

@@ -10,11 +10,13 @@ export interface PromptContext {
 
   contextPacket: ContextPacket
 
-  // DCP data (steps 4-9)
+  // DCP data (steps 4-9, 22)
   dcpStage1Summary: string
   dcpStage2Summary: string
   dcpStage3Summary: string
   dcpStage4Summary: string
+  dcpStage5Summary: string
+  dcpStage6Summary: string
 
   // Survey-builder data
   surveyBuilderStep1: string
@@ -26,9 +28,11 @@ export interface PromptContext {
   webSearchResults: string
 
   // Pre-fetched non-dependency step content
+  step3Text: string
   step12Text: string
   step13Text: string
   step14Text: string
+  step17Text: string
   step18Text: string
   step19Text: string
 }

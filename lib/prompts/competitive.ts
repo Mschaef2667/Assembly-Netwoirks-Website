@@ -262,6 +262,51 @@ ${provisionalNote(ctx)}
 ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
+  if (stepId === '22') {
+    const step3Block = ctx.step3Text && ctx.step3Text !== 'Not yet available.'
+      ? ctx.step3Text
+      : stepText(ctx, '3')
+    const step17Block = ctx.step17Text && ctx.step17Text !== 'Not yet available.'
+      ? ctx.step17Text
+      : stepText(ctx, '17')
+    const dcpStage4 = ctx.dcpStage4Summary || 'Not yet available.'
+    const dcpStage5 = ctx.dcpStage5Summary || 'Not yet available.'
+    const dcpStage6 = ctx.dcpStage6Summary || 'Not yet available.'
+
+    return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
+
+Write the Competitive Evaluation playbook for this company. Using the DCP Map intelligence and decision maker data, describe how buyers evaluate GTM strategy partners in each phase of the process. Be specific and actionable — this is a deal playbook, not generic advice.
+
+Return ONLY valid JSON: { introduction: string, evaluation: string, presentation: string, proposal: string, execution: string, length: string, decision_criteria: string, keys_to_winning: string } No markdown no prose.
+
+SECTION GUIDANCE:
+- introduction: how buyers typically enter a competitive evaluation (referral, outreach, RFP, inbound)
+- evaluation: the formal evaluation activities (interviews, demos, trials, scoring rubrics, site visits)
+- presentation: expected pitch format, attendees, length
+- proposal: what a winning proposal contains and the format buyers expect
+- execution: what happens immediately after selection — onboarding, kickoff
+- length: realistic duration from first contact to signed contract
+- decision_criteria: top 3-5 selection criteria with relative weighting
+- keys_to_winning: specific actions, proof points, or behaviors that win these deals
+
+STEP 3 — Decision Makers:
+${step3Block}
+
+STEP 17 — Target Competition:
+${step17Block}
+
+DCP MAP — Stage 4 (Evaluation):
+${dcpStage4}
+
+DCP MAP — Stage 5 (Selection):
+${dcpStage5}
+
+DCP MAP — Stage 6 (Implementation / Post-Selection):
+${dcpStage6}
+${provisionalNote(ctx)}
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
+  }
+
   if (stepId === '19') {
     const step17Text = stepText(ctx, '17')
     const step18Text = stepText(ctx, '18')

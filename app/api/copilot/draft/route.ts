@@ -49,7 +49,7 @@ function dispatchPrompt(stepId: string, ctx: PromptContext): string {
   if (stepId === '1' || stepId === '2' || stepId === '3') return buildFoundationPrompt(stepId, ctx)
   if (['4', '5', '6', '7', '8', '9', '10'].includes(stepId)) return buildEndemicPrompt(stepId, ctx)
   if (['11', '12', '13', '14', '15', '16'].includes(stepId)) return buildCompanyPrompt(stepId, ctx)
-  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21') return buildCompetitivePrompt(stepId, ctx)
+  if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22') return buildCompetitivePrompt(stepId, ctx)
   if (['27', '28', '29', '30'].includes(stepId)) return buildMessagesPrompt(stepId, ctx)
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return buildActionPrompt(stepId, ctx)
   if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording' || stepId === 'survey-builder-interview-probes') {
@@ -133,13 +133,15 @@ async function handleDraft(req: NextRequest): Promise<Response> {
 
   const contextPacket = await resolveContextPacket(stepId, workspaceId, serverFetcher)
 
-  // ── Steps 4-9: fetch DCP stage summaries (lives in dcp_analysis) ──
+  // ── Steps 4-9, 22: fetch DCP stage summaries (lives in dcp_analysis) ──
   let dcpStage1Summary = ''
   let dcpStage2Summary = ''
   let dcpStage3Summary = ''
   let dcpStage4Summary = ''
+  let dcpStage5Summary = ''
+  let dcpStage6Summary = ''
   const ENDEMIC_STEPS = new Set(['4', '5', '6', '7', '8', '9'])
-  if (ENDEMIC_STEPS.has(stepId)) {
+  if (ENDEMIC_STEPS.has(stepId) || stepId === '22') {
     try {
       const { data: dcpRow } = await supabase
         .from('dcp_analysis')
@@ -154,6 +156,8 @@ async function handleDraft(req: NextRequest): Promise<Response> {
         dcpStage2Summary = findStage(2)
         dcpStage3Summary = findStage(3)
         dcpStage4Summary = findStage(4)
+        dcpStage5Summary = findStage(5)
+        dcpStage6Summary = findStage(6)
       }
     } catch { /* non-fatal — proceed with lower confidence */ }
   }
@@ -226,10 +230,12 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     } catch { /* non-fatal — proceed without ICP context */ }
   }
 
-  // ── Pre-fetch non-dependency step content needed by Steps 13, 14, 15, 16, 28-30 ──
+  // ── Pre-fetch non-dependency step content needed by Steps 13, 14, 15, 16, 22, 28-30 ──
+  let step3Text = 'Not yet available.'
   let step12Text = 'Not yet available.'
   let step13Text = 'Not yet available.'
   let step14Text = 'Not yet available.'
+  let step17Text = 'Not yet available.'
   let step18Text = 'Not yet available.'
   let step19Text = 'Not yet available.'
 
@@ -237,13 +243,15 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   const needsStep13 = ['14', '15'].includes(stepId)
   const needsStep14 = ['15', '16', '28', '29', '30'].includes(stepId)
   const needsStep16Extras = stepId === '16' // pulls 13 and 14
+  const needsStep22Extras = stepId === '22' // pulls 3 and 17
   const needsCompetitiveExtras = ['28', '29', '30'].includes(stepId) // pulls 14, 18, 19
 
-  if (needsStep12 || needsStep13 || needsStep14 || needsStep16Extras || needsCompetitiveExtras) {
+  if (needsStep12 || needsStep13 || needsStep14 || needsStep16Extras || needsStep22Extras || needsCompetitiveExtras) {
     const idsToFetch = new Set<string>()
     if (needsStep12 || stepId === '13' || stepId === '14') idsToFetch.add('12')
     if (needsStep13 || stepId === '14' || stepId === '15' || stepId === '16') idsToFetch.add('13')
     if (needsStep14) idsToFetch.add('14')
+    if (needsStep22Extras) { idsToFetch.add('3'); idsToFetch.add('17') }
     if (needsCompetitiveExtras && stepId === '29') idsToFetch.add('18')
     if (needsCompetitiveExtras && stepId === '30') idsToFetch.add('19')
     if (needsCompetitiveExtras) { idsToFetch.add('14'); idsToFetch.add('18'); idsToFetch.add('19') }
@@ -261,9 +269,11 @@ async function handleDraft(req: NextRequest): Promise<Response> {
           if (!seen.has(row.step_id)) {
             seen.add(row.step_id)
             const text = JSON.stringify(row.content, null, 2)
+            if (row.step_id === '3') step3Text = text
             if (row.step_id === '12') step12Text = text
             if (row.step_id === '13') step13Text = text
             if (row.step_id === '14') step14Text = text
+            if (row.step_id === '17') step17Text = text
             if (row.step_id === '18') step18Text = text
             if (row.step_id === '19') step19Text = text
           }
@@ -314,14 +324,18 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     dcpStage2Summary,
     dcpStage3Summary,
     dcpStage4Summary,
+    dcpStage5Summary,
+    dcpStage6Summary,
     surveyBuilderStep1,
     surveyBuilderStep2,
     surveyBuilderStep3,
     surveyBuilderIcpBlock,
     webSearchResults,
+    step3Text,
     step12Text,
     step13Text,
     step14Text,
+    step17Text,
     step18Text,
     step19Text,
   }
