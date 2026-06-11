@@ -959,11 +959,56 @@ export default function ReportPage() {
     )
   }
 
+  function TimeBucketContent({ stepIds }: { stepIds: string[] }) {
+    const entries = stepIds.map(id => {
+      const o = getOutput(id)
+      const s = getStep(id)
+      const title = s?.title ?? `Step ${id}`
+      if (!o || !hasContent(id)) return { id, title, text: '' }
+      const ap = extractActionPlan(o.content)
+      if (ap.summary.trim().length > 0) return { id, title, text: ap.summary }
+      const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
+      return { id, title, text: firstEntry?.content ?? '' }
+    })
+    const allEmpty = entries.every(e => e.text.length === 0)
+    if (allEmpty) {
+      return (
+        <p style={{ color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic', margin: '4px 0 0' }}>
+          Not yet completed
+          <span className="screen-only">
+            {' — '}
+            <Link
+              href={`/dashboard/journeys/step/${entries[0]?.id ?? '31'}`}
+              style={{ color: '#0EA5E9', textDecoration: 'underline' }}
+            >
+              Go to {entries[0]?.title ?? 'Action Plan'}
+            </Link>
+          </span>
+        </p>
+      )
+    }
+    return (
+      <div style={{ marginTop: '4px' }}>
+        {entries.map(e => (
+          <div key={e.id} style={{ marginBottom: '12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+              {e.title}
+            </p>
+            {e.text
+              ? <p style={bodyStyle}>{e.text}</p>
+              : <NotCompleted stepId={e.id} title={e.title} />}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   // Section emptiness — used to set data-empty for PDF onclone hiding
   const COMP_STEP_IDS = ['17','18','20'] as const
   const sec2Empty = COMP_STEP_IDS.every(id => !hasContent(id))
   const sec3Empty = !hasContent('27') && !hasContent('28') && !hasContent('29') && !hasContent('30')
   const sec4Empty = ['31','32','33','34','35','36','37'].every(id => !hasContent(id))
+  const sec5Empty = ['31','32','33','34','35','36'].every(id => !hasContent(id))
 
   const sectionHeadStyle: React.CSSProperties = {
     fontSize: '18px',
@@ -1184,6 +1229,25 @@ export default function ReportPage() {
                     {i < 6 && <div style={dividerStyle} />}
                   </div>
                 ))}
+              </div>
+
+              {/* ── Section 5: 30/60/90 Day Action Plan ── */}
+              <div data-empty={sec5Empty ? 'true' : undefined}>
+                <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                <h2 style={sectionHeadStyle}>5. 30/60/90 Day Action Plan</h2>
+
+                <p style={subheadStyle}>First 30 Days</p>
+                <TimeBucketContent stepIds={['31', '32']} />
+
+                <div style={dividerStyle} />
+
+                <p style={subheadStyle}>Days 31-60</p>
+                <TimeBucketContent stepIds={['33', '34']} />
+
+                <div style={dividerStyle} />
+
+                <p style={subheadStyle}>Days 61-90</p>
+                <TimeBucketContent stepIds={['35', '36']} />
               </div>
 
               {/* Footer */}
