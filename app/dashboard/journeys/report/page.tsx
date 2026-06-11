@@ -20,31 +20,6 @@ interface StepOutput {
   content: Record<string, unknown>
 }
 
-interface IcpRow {
-  id: string
-  name: string
-  segment_name: string | null
-  job_titles: string[] | null
-  industry_verticals: string[] | null
-  company_size_range: string | null
-  decision_making_power: string | null
-  primary_pain_points: string[] | null
-  buying_triggers: string[] | null
-  success_metrics: string[] | null
-  objections: string[] | null
-  buyer_type: string | null
-}
-
-interface OfferRow {
-  id: string
-  icp_id: string
-  name: string
-  description: string | null
-  key_features: string[] | null
-  pricing_model: string | null
-  primary_cta: string | null
-}
-
 interface OrgRow {
   name: string
   logo_url: string | null
@@ -118,20 +93,139 @@ interface KeyDecisionMakerSegment {
   roles: KeyDecisionMakerRole[]
 }
 
-function extractKeyDecisionMakers(output: StepOutput | undefined): KeyDecisionMakerSegment[] {
+const SEGMENT_KEYS = ['segment_1', 'segment_2', 'segment_3'] as const
+
+function extractStep2SegmentNames(output: StepOutput | undefined): string[] {
+  if (!output?.content) return []
+  const segs = output.content['segments']
+  if (!Array.isArray(segs)) return []
+  return (segs as Array<Record<string, unknown>>).map((s) => String(s['name'] ?? '').trim())
+}
+
+function extractKeyDecisionMakers(
+  output: StepOutput | undefined,
+  segmentNames: string[],
+): KeyDecisionMakerSegment[] {
+  if (!output?.content) return []
+  const dms = output.content['decision_makers']
+  if (!dms || typeof dms !== 'object' || Array.isArray(dms)) return []
+  const dmMap = dms as Record<string, unknown>
+  const results: KeyDecisionMakerSegment[] = []
+  SEGMENT_KEYS.forEach((key, idx) => {
+    const arr = dmMap[key]
+    if (!Array.isArray(arr)) return
+    const roles = (arr as Array<Record<string, unknown>>)
+      .map((r) => {
+        const concerns = Array.isArray(r['primary_concerns'])
+          ? (r['primary_concerns'] as unknown[]).map((v) => String(v))
+          : []
+        return {
+          title: String(r['specific_title'] ?? r['title'] ?? '').trim(),
+          influence: String(r['influence'] ?? '').trim(),
+          concern: concerns[0] ?? '',
+        }
+      })
+      .filter((r) => r.title.length > 0)
+    if (roles.length === 0) return
+    const segmentName = (segmentNames[idx] ?? '').trim() || `Segment ${idx + 1}`
+    results.push({ segment: segmentName, roles })
+  })
+  return results
+}
+
+// Competitive section extractor — normalizes each Step 17-26 content shape
+// into a flat list of { label, text } entries the report can render.
+const COMPETITIVE_SECTION_LABELS: Record<string, string> = {
+  introduction: 'Introduction',
+  evaluation: 'Evaluation Process',
+  presentation: 'Presentation',
+  proposal: 'Proposal',
+  execution: 'Execution',
+  length: 'Length of Evaluation',
+  decision_criteria: 'Key Decision Criteria',
+  keys_to_winning: 'Keys to Winning',
+}
+
+function extractCompetitiveContent(
+  output: StepOutput | undefined,
+  painPoints: PainPointItem[],
+  segmentNames: string[],
+): { label: string; text: string }[] {
   if (!output?.content) return []
   const c = output.content
-  if (!Array.isArray(c['segments'])) return []
-  return (c['segments'] as Array<Record<string, unknown>>).map((s) => ({
-    segment: String(s['name'] ?? ''),
-    roles: Array.isArray(s['roles'])
-      ? (s['roles'] as Array<Record<string, unknown>>).map((r) => ({
-          title: String(r['title'] ?? ''),
-          influence: String(r['influence'] ?? ''),
-          concern: String(r['concern'] ?? ''),
-        }))
-      : [],
-  }))
+
+  // CompetitorStepEditor (Step 17): { competitors: [{ name, keyPromise, vulnerability, ... }] }
+  if (Array.isArray(c['competitors'])) {
+    return (c['competitors'] as Array<Record<string, unknown>>)
+      .filter((x) => typeof x['name'] === 'string' && (x['name'] as string).trim().length > 0)
+      .map((x) => {
+        const name = String(x['name']).trim()
+        const promise = typeof x['keyPromise'] === 'string' ? (x['keyPromise'] as string).trim() : ''
+        const vuln = typeof x['vulnerability'] === 'string' ? (x['vulnerability'] as string).trim() : ''
+        const parts: string[] = []
+        if (promise) parts.push(`Key promise: ${promise}`)
+        if (vuln) parts.push(`Vulnerability: ${vuln}`)
+        return { label: name, text: parts.join(' · ') }
+      })
+  }
+
+  // DecisionProcessEditor (Step 23): { segments: { segment_1: { ranking, pattern } } }
+  if (c['segments'] && typeof c['segments'] === 'object' && !Array.isArray(c['segments'])) {
+    const segs = c['segments'] as Record<string, unknown>
+    const results: { label: string; text: string }[] = []
+    SEGMENT_KEYS.forEach((key, idx) => {
+      const v = segs[key]
+      if (!v || typeof v !== 'object') return
+      const obj = v as Record<string, unknown>
+      const pattern = typeof obj['pattern'] === 'string' ? obj['pattern'].trim() : ''
+      const ranking = Array.isArray(obj['ranking'])
+        ? (obj['ranking'] as unknown[]).map((r) => String(r)).filter((r) => r.length > 0)
+        : []
+      if (!pattern && ranking.length === 0) return
+      const label = (segmentNames[idx] ?? '').trim() || `Segment ${idx + 1}`
+      const parts: string[] = []
+      if (ranking.length > 0) parts.push(`Ranking: ${ranking.join(' → ')}`)
+      if (pattern) parts.push(pattern)
+      results.push({ label, text: parts.join(' · ') })
+    })
+    return results
+  }
+
+  // CompetitiveEvaluationEditor (Step 22): { sections: { introduction, evaluation, ... } }
+  if (c['sections'] && typeof c['sections'] === 'object' && !Array.isArray(c['sections'])) {
+    const secs = c['sections'] as Record<string, unknown>
+    return Object.entries(secs)
+      .filter(([, v]) => typeof v === 'string' && (v as string).trim().length > 0)
+      .map(([k, v]) => ({
+        label: COMPETITIVE_SECTION_LABELS[k] ?? k,
+        text: (v as string).trim(),
+      }))
+  }
+
+  // AcidTestEditor matrix array
+  if (Array.isArray(c['matrix'])) {
+    return (c['matrix'] as Array<Record<string, unknown>>)
+      .filter((row) => row && typeof row === 'object')
+      .map((row, i) => {
+        const label = String(row['competitor'] ?? row['name'] ?? row['label'] ?? `Row ${i + 1}`).trim()
+        const text = typeof row['content'] === 'string'
+          ? row['content'].trim()
+          : typeof row['notes'] === 'string'
+            ? (row['notes'] as string).trim()
+            : extractReadableContent(row)
+        return { label: label || `Row ${i + 1}`, text }
+      })
+      .filter((e) => e.label.length > 0 || e.text.length > 0)
+  }
+
+  // PainPointStepEditor (Steps 18, 19, 20, 21, 24, 25, 26): { by_pain_point: [...] }
+  if (Array.isArray(c['by_pain_point'])) {
+    return extractByPainPoint(output, painPoints)
+  }
+
+  // Fallback — flatten any string values
+  const fallback = extractReadableContent(c)
+  return fallback.length > 0 ? [{ label: '', text: fallback }] : []
 }
 
 function extractPainPoints(content: Record<string, unknown>): PainPointItem[] {
@@ -238,8 +332,6 @@ export default function ReportPage() {
   const [org, setOrg] = useState<OrgRow | null>(null)
   const [stepDefs, setStepDefs] = useState<StepDef[]>([])
   const [outputs, setOutputs] = useState<Map<string, StepOutput>>(new Map())
-  const [icps, setIcps] = useState<IcpRow[]>([])
-  const [offers, setOffers] = useState<OfferRow[]>([])
   const [exporting, setExporting] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const reportRef = useRef<HTMLDivElement>(null)
@@ -269,14 +361,10 @@ export default function ReportPage() {
         { data: orgData },
         { data: defsData },
         { data: outputsData },
-        { data: icpData },
-        { data: offerData },
       ] = await Promise.all([
         supabase.from('organizations').select('name, logo_url').eq('id', orgId).single(),
         supabase.from('step_definition').select('id, title, section, phase').order('id'),
         supabase.from('step_output').select('step_id, version, status, content').eq('workspace_id', orgId),
-        supabase.from('icp_definition').select('*').eq('org_id', orgId),
-        supabase.from('offer_definition').select('*').eq('org_id', orgId),
       ])
 
       setOrg(orgData ?? { name: 'Your Company', logo_url: null })
@@ -289,9 +377,6 @@ export default function ReportPage() {
         if (!existing || row.version > existing.version) outMap.set(row.step_id, row)
       }
       setOutputs(outMap)
-
-      setIcps((icpData ?? []) as IcpRow[])
-      setOffers((offerData ?? []) as OfferRow[])
     } catch (e) {
       setError(String(e))
     } finally {
@@ -307,26 +392,65 @@ export default function ReportPage() {
     if (!o) return false
     const c = o.content
     if (!c) return false
-    if (Array.isArray(c['segments'])) {
-      return (c['segments'] as Array<Record<string, unknown>>).some(
-        (s) => typeof s['name'] === 'string' && (s['name'] as string).trim().length > 0
+    // Step 3: { decision_makers: { segment_1: [...] } }
+    if (c['decision_makers'] && typeof c['decision_makers'] === 'object' && !Array.isArray(c['decision_makers'])) {
+      const dms = c['decision_makers'] as Record<string, unknown>
+      const anyRole = Object.values(dms).some((arr) =>
+        Array.isArray(arr) &&
+        (arr as Array<Record<string, unknown>>).some(
+          (r) => typeof r['specific_title'] === 'string' && (r['specific_title'] as string).trim().length > 0
+        )
       )
+      if (anyRole) return true
+    }
+    // Step 2: { segments: [{ name, ... }] } (array)
+    if (Array.isArray(c['segments'])) {
+      if ((c['segments'] as Array<Record<string, unknown>>).some(
+        (s) => typeof s['name'] === 'string' && (s['name'] as string).trim().length > 0
+      )) return true
+    }
+    // Step 23 DecisionProcessEditor: { segments: { segment_1: { pattern, ranking } } } (object)
+    if (c['segments'] && typeof c['segments'] === 'object' && !Array.isArray(c['segments'])) {
+      const segs = c['segments'] as Record<string, unknown>
+      const anyPattern = Object.values(segs).some((v) => {
+        if (!v || typeof v !== 'object') return false
+        const obj = v as Record<string, unknown>
+        const pattern = typeof obj['pattern'] === 'string' ? obj['pattern'] : ''
+        return pattern.trim().length > 0
+      })
+      if (anyPattern) return true
+    }
+    // Step 17 CompetitorStepEditor: { competitors: [{ name, ... }] }
+    if (Array.isArray(c['competitors'])) {
+      if ((c['competitors'] as Array<Record<string, unknown>>).some(
+        (x) => typeof x['name'] === 'string' && (x['name'] as string).trim().length > 0
+      )) return true
+    }
+    // Step 22 CompetitiveEvaluationEditor: { sections: { introduction, ... } }
+    if (c['sections'] && typeof c['sections'] === 'object' && !Array.isArray(c['sections'])) {
+      const secs = c['sections'] as Record<string, unknown>
+      if (Object.values(secs).some((v) => typeof v === 'string' && (v as string).trim().length > 0)) return true
+    }
+    // AcidTestEditor matrix array
+    if (Array.isArray(c['matrix'])) {
+      if ((c['matrix'] as Array<Record<string, unknown>>).length > 0) return true
     }
     if (Array.isArray(c['by_pain_point'])) {
-      return (c['by_pain_point'] as Array<Record<string, unknown>>).some(
+      if ((c['by_pain_point'] as Array<Record<string, unknown>>).some(
         (p) => typeof p['content'] === 'string' && (p['content'] as string).trim().length > 0
-      )
+      )) return true
     }
     if (typeof c['blended'] === 'string' && c['blended'].trim().length > 0) return true
+    if (typeof c['summary'] === 'string' && c['summary'].trim().length > 0) return true
     if (Array.isArray(c['per_pain_point'])) {
-      return (c['per_pain_point'] as Array<Record<string, unknown>>).some(
+      if ((c['per_pain_point'] as Array<Record<string, unknown>>).some(
         (p) => typeof p['content'] === 'string' && (p['content'] as string).trim().length > 0
-      )
+      )) return true
     }
     if (Array.isArray(c['pain_points'])) {
-      return (c['pain_points'] as Array<Record<string, unknown>>).some(
+      if ((c['pain_points'] as Array<Record<string, unknown>>).some(
         (p) => typeof p['title'] === 'string' && (p['title'] as string).trim().length > 0
-      )
+      )) return true
     }
     if (typeof c['text'] === 'string' && c['text'].trim().length > 0) return true
     return Object.values(c).some((v) => typeof v === 'string' && v.trim().length > 0)
@@ -378,6 +502,7 @@ export default function ReportPage() {
 
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       const step4PainPoints = (() => { const o = getOutput('4'); return o ? extractPainPoints(o.content) : [] })()
+      const step2SegmentNames = extractStep2SegmentNames(getOutput('2') ?? undefined)
       type SectionOptions = NonNullable<ConstructorParameters<typeof Document>[0]['sections']>[number]
       const sections: SectionOptions[] = []
 
@@ -408,87 +533,48 @@ export default function ReportPage() {
         const o = getOutput('3'); const s = getStep('3')
         children.push(subheading(lib, `1b. ${s?.title ?? 'Key Decision Makers'}`))
         if (o && hasContent('3')) {
-          extractKeyDecisionMakers(o).forEach(seg => {
-            children.push(new Paragraph({
-              children: [new TextRun({ text: seg.segment, bold: true, size: 22, color: '0EA5E9' })],
-              spacing: { before: 160, after: 80 },
-            }))
-            seg.roles.forEach(r => {
-              const influence = r.influence.charAt(0).toUpperCase() + r.influence.slice(1)
-              children.push(para(lib, `${r.title} — ${influence} influence — ${r.concern}`, false, true))
-            })
-          })
-        } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
-        blank()
-      }
-
-      // 1c Step 4 — Pain Points
-      {
-        const o = getOutput('4'); const s = getStep('4')
-        children.push(subheading(lib, `1c. ${s?.title ?? 'Pain Points'}`))
-        if (o && hasContent('4')) {
-          const pts = extractPainPoints(o.content).filter(p => p.title || p.description)
-          if (pts.length > 0) {
-            pts.forEach((p, i) => {
-              const label = p.title || `Pain Point ${i + 1}`
-              const text = p.description ? `${label} — ${p.description}` : label
-              children.push(para(lib, `${i + 1}. ${text}`, false, true))
-            })
-          } else {
+          const segs = extractKeyDecisionMakers(o, step2SegmentNames)
+          if (segs.length === 0) {
             children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+          } else {
+            segs.forEach(seg => {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: seg.segment, bold: true, size: 22, color: '0EA5E9' })],
+                spacing: { before: 160, after: 80 },
+              }))
+              seg.roles.forEach(r => {
+                const parts = [r.title]
+                if (r.influence) parts.push(`${r.influence.charAt(0).toUpperCase() + r.influence.slice(1)} influence`)
+                if (r.concern) parts.push(r.concern)
+                children.push(para(lib, parts.join(' — '), false, true))
+              })
+            })
           }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
 
-      // 1d ICPs
-      children.push(subheading(lib, '1d. Ideal Customer Profiles'))
-      if (icps.length === 0) {
-        children.push(new Paragraph({ children: [new TextRun({ text: 'No ICPs defined yet', italics: true, color: '9CA3AF' })] }))
-      } else {
-        icps.forEach(icp => {
-          children.push(new Paragraph({ children: [new TextRun({ text: icp.name, bold: true, size: 24 })], spacing: { before: 200, after: 80 } }))
-          if (icp.company_size_range) children.push(para(lib, `Company size: ${icp.company_size_range}`, false, true))
-          if (icp.industry_verticals?.length) children.push(para(lib, `Industries: ${icp.industry_verticals.join(', ')}`, false, true))
-          if (icp.job_titles?.length) children.push(para(lib, `Job titles: ${icp.job_titles.join(', ')}`, false, true))
-          if (icp.primary_pain_points?.length) {
-            children.push(para(lib, 'Pain points:', false, true))
-            icp.primary_pain_points.forEach(p => children.push(para(lib, `• ${p}`, false, true)))
-          }
-        })
-      }
-      blank()
-
-      // 1e Offers
-      children.push(subheading(lib, '1e. Offers'))
-      if (offers.length === 0) {
-        children.push(new Paragraph({ children: [new TextRun({ text: 'No offers defined yet', italics: true, color: '9CA3AF' })] }))
-      } else {
-        offers.forEach(offer => {
-          children.push(new Paragraph({ children: [new TextRun({ text: offer.name, bold: true, size: 24 })], spacing: { before: 200, after: 80 } }))
-          if (offer.description) children.push(para(lib, offer.description, false, true))
-          if (offer.key_features?.length) children.push(para(lib, `Key features: ${offer.key_features.join(', ')}`, false, true))
-          if (offer.pricing_model) children.push(para(lib, `Pricing: ${offer.pricing_model}`, false, true))
-        })
-      }
-      blank()
-
-      // 1f Step 11 CVPs
+      // 1c Step 11 — Compelling Value Propositions
       {
-        const o = getOutput('11'); const s = getStep('11')
-        children.push(subheading(lib, `1f. ${s?.title ?? 'Core Value Propositions'}`))
+        const o = getOutput('11')
+        children.push(subheading(lib, '1c. Compelling Value Propositions'))
         if (o && hasContent('11')) {
-          extractByPainPoint(o, step4PainPoints).forEach(e =>
-            children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
-          )
+          const entries = extractByPainPoint(o, step4PainPoints)
+          if (entries.length === 0) {
+            children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+          } else {
+            entries.forEach(e =>
+              children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
+            )
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       }
 
-      // 1g Step 15 KSPs
+      // 1d Step 15 KSPs
       {
         const o = getOutput('15'); const s = getStep('15')
-        children.push(subheading(lib, `1g. ${s?.title ?? 'Key Selling Points'}`))
+        children.push(subheading(lib, `1d. ${s?.title ?? 'Key Selling Points'}`))
         if (o && hasContent('15')) {
           extractByPainPoint(o, step4PainPoints).forEach(e =>
             children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
@@ -499,14 +585,24 @@ export default function ReportPage() {
 
       // Section 2 — Competitive Environment
       children.push(new Paragraph({ text: '2. Competitive Environment', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
-      ;(['17', '19', '20'] as const).forEach((sid, i) => {
+      ;(['17', '18', '19', '20', '21', '22', '23', '24', '25', '26'] as const).forEach((sid, i) => {
         const o = getOutput(sid); const s = getStep(sid)
-        const label = ['2a', '2b', '2c'][i]
+        const label = `2${String.fromCharCode(97 + i)}`
         children.push(subheading(lib, `${label}. ${s?.title ?? `Step ${sid}`}`))
         if (o && hasContent(sid)) {
-          extractByPainPoint(o, step4PainPoints).forEach(e =>
-            children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
-          )
+          const entries = extractCompetitiveContent(o, step4PainPoints, step2SegmentNames)
+          if (entries.length === 0) {
+            children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+          } else {
+            entries.forEach(e => {
+              const line = e.label && e.text
+                ? `• ${e.label} — ${e.text}`
+                : e.label
+                  ? `• ${e.label}`
+                  : `• ${e.text}`
+              children.push(para(lib, line, false, true))
+            })
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
@@ -518,25 +614,32 @@ export default function ReportPage() {
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
         if (o && hasContent(sid)) {
           const b = extractBlend(o.content)
-          if (b.mode === 'blended' && b.blended) children.push(para(lib, b.blended))
-          else b.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          if (b.mode === 'blended' && b.blended) {
+            children.push(para(lib, b.blended))
+          } else {
+            b.entries
+              .filter(e => e.content.trim().length > 0)
+              .forEach(e => {
+                const pp = step4PainPoints.find(p => p.index === e.index)
+                const label = pp?.title || `Pain Point ${e.index}`
+                children.push(para(lib, `• ${label} — ${e.content}`, false, true))
+              })
+          }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
 
-      // Section 4 — Strategic Plan
+      // Section 4 — Strategic Plan (summary-only)
       children.push(new Paragraph({ text: '4. Strategic Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
       ;(['31', '32', '33', '34', '35', '36', '37'] as const).forEach((sid) => {
         const o = getOutput(sid); const s = getStep(sid)
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
         if (o && hasContent(sid)) {
           const ap = extractActionPlan(o.content)
-          if (ap.summary || ap.entries.length > 0) {
-            if (ap.summary) children.push(para(lib, ap.summary))
-            ap.entries.forEach(e => children.push(para(lib, `• ${e.content}`, false, true)))
+          if (ap.summary.trim().length > 0) {
+            children.push(para(lib, ap.summary))
           } else {
-            const fallback = extractReadableContent(o.content)
-            children.push(para(lib, fallback || ''))
+            children.push(new Paragraph({ children: [new TextRun({ text: 'Summary not yet written', italics: true, color: '9CA3AF' })] }))
           }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
@@ -617,54 +720,18 @@ export default function ReportPage() {
     return null
   }
 
-  function BlendContent({ id }: { id: string }) {
-    const o = getOutput(id)
-    const s = getStep(id)
-    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-    const b = extractBlend(o.content)
-    if (b.mode === 'blended' && b.blended) return <p style={bodyStyle}>{b.blended}</p>
-    if (b.entries.length) return (
-      <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-        {b.entries.map(e => <li key={e.index} style={bodyStyle}>{e.content}</li>)}
-      </ul>
-    )
-    const fallback = extractReadableContent(o.content)
-    if (fallback) return <p style={bodyStyle}>{fallback}</p>
-    return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-  }
-
-  function ActionPlanContent({ id }: { id: string }) {
-    const o = getOutput(id)
-    const s = getStep(id)
-    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-    const ap = extractActionPlan(o.content)
-    if (ap.summary || ap.entries.length > 0) {
-      return (
-        <>
-          {ap.summary && <p style={bodyStyle}>{ap.summary}</p>}
-          {ap.entries.length > 0 && (
-            <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-              {ap.entries.map(e => <li key={e.index} style={bodyStyle}>{e.content}</li>)}
-            </ul>
-          )}
-        </>
-      )
-    }
-    const fallback = extractReadableContent(o.content)
-    if (fallback) return <p style={bodyStyle}>{fallback}</p>
-    return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-  }
-
   const step4PainPoints = (() => {
     const o = getOutput('4')
     return o ? extractPainPoints(o.content) : []
   })()
 
+  const step2SegmentNames = extractStep2SegmentNames(getOutput('2') ?? undefined)
+
   function KeyDecisionMakersContent({ id }: { id: string }) {
     const o = getOutput(id)
     const s = getStep(id)
     if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
-    const segments = extractKeyDecisionMakers(o)
+    const segments = extractKeyDecisionMakers(o, step2SegmentNames)
     if (segments.length === 0) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
     return (
       <div style={{ marginTop: '4px' }}>
@@ -674,11 +741,16 @@ export default function ReportPage() {
               {seg.segment}
             </p>
             <ul style={{ paddingLeft: '20px', margin: 0 }}>
-              {seg.roles.map((r, j) => (
-                <li key={j} style={bodyStyle}>
-                  {r.title} — {r.influence.charAt(0).toUpperCase() + r.influence.slice(1)} influence — {r.concern}
-                </li>
-              ))}
+              {seg.roles.map((r, j) => {
+                const parts: string[] = []
+                if (r.influence) parts.push(`${r.influence.charAt(0).toUpperCase() + r.influence.slice(1)} influence`)
+                if (r.concern) parts.push(r.concern)
+                return (
+                  <li key={j} style={bodyStyle}>
+                    {r.title}{parts.length ? ` — ${parts.join(' — ')}` : ''}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}
@@ -703,8 +775,64 @@ export default function ReportPage() {
     )
   }
 
+  function CompetitiveContent({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const entries = extractCompetitiveContent(o, step4PainPoints, step2SegmentNames)
+    if (entries.length === 0) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    return (
+      <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
+        {entries.map((e, i) => (
+          <li key={i} style={bodyStyle}>
+            {e.label && <strong>{e.label}</strong>}
+            {e.label && e.text ? ' — ' : ''}
+            {e.text}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  function StrategicMessageContent({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const b = extractBlend(o.content)
+    if (b.mode === 'blended' && b.blended) return <p style={bodyStyle}>{b.blended}</p>
+    const nonEmpty = b.entries.filter(e => e.content.trim().length > 0)
+    if (nonEmpty.length > 0) return (
+      <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
+        {nonEmpty.map(e => {
+          const pp = step4PainPoints.find(p => p.index === e.index)
+          const label = pp?.title || `Pain Point ${e.index}`
+          return (
+            <li key={e.index} style={bodyStyle}>
+              <strong>{label}</strong> — {e.content}
+            </li>
+          )
+        })}
+      </ul>
+    )
+    const fallback = extractReadableContent(o.content)
+    if (fallback) return <p style={bodyStyle}>{fallback}</p>
+    return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+  }
+
+  function ActionPlanSummary({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const ap = extractActionPlan(o.content)
+    if (ap.summary.trim().length > 0) return <p style={bodyStyle}>{ap.summary}</p>
+    return (
+      <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>Summary not yet written</p>
+    )
+  }
+
   // Section emptiness — used to set data-empty for PDF onclone hiding
-  const sec2Empty = !hasContent('17') && !hasContent('19') && !hasContent('20')
+  const COMP_STEP_IDS = ['17','18','19','20','21','22','23','24','25','26'] as const
+  const sec2Empty = COMP_STEP_IDS.every(id => !hasContent(id))
   const sec3Empty = !hasContent('27') && !hasContent('28') && !hasContent('29') && !hasContent('30')
   const sec4Empty = ['31','32','33','34','35','36','37'].every(id => !hasContent(id))
   const sec5Empty = !hasContent('26')
@@ -883,83 +1011,23 @@ export default function ReportPage() {
 
               <div style={dividerStyle} />
 
-              <p style={subheadStyle}>1c. {getStep('4')?.title ?? 'Pain Points'}</p>
-              {(() => {
-                const o = getOutput('4')
-                const s = getStep('4')
-                if (!o || !hasContent('4')) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
-                const pts = extractPainPoints(o.content).filter(p => p.title || p.description)
-                if (pts.length === 0) return <NotCompleted stepId="4" title={s?.title ?? 'Step 4'} />
-                return (
-                  <ol style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-                    {pts.map((p, i) => (
-                      <li key={p.index} style={bodyStyle}>
-                        <strong>{p.title || `Pain Point ${i + 1}`}</strong>
-                        {p.description ? ` — ${p.description}` : ''}
-                      </li>
-                    ))}
-                  </ol>
-                )
-              })()}
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1d. Ideal Customer Profiles</p>
-              {icps.length === 0
-                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No ICPs defined yet<span className="screen-only"> — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define ICPs</Link></span></p>
-                : icps.map(icp => (
-                  <div key={icp.id} style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#F9FAFB', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#0A1628', margin: '0 0 6px' }}>{icp.name}</p>
-                    {icp.segment_name && <p style={bodyStyle}>Segment: {icp.segment_name}</p>}
-                    {icp.company_size_range && <p style={bodyStyle}>Company size: {icp.company_size_range}</p>}
-                    {icp.industry_verticals?.length ? <p style={bodyStyle}>Industries: {icp.industry_verticals.join(', ')}</p> : null}
-                    {icp.job_titles?.length ? <p style={bodyStyle}>Job titles: {icp.job_titles.join(', ')}</p> : null}
-                    {icp.primary_pain_points?.length ? (
-                      <>
-                        <p style={{ ...bodyStyle, fontWeight: 600, marginTop: '8px' }}>Pain points:</p>
-                        <ul style={{ paddingLeft: '18px', margin: '2px 0 0' }}>
-                          {icp.primary_pain_points.map((p, i) => <li key={i} style={bodyStyle}>{p}</li>)}
-                        </ul>
-                      </>
-                    ) : null}
-                  </div>
-                ))
-              }
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1e. Offers</p>
-              {offers.length === 0
-                ? <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No offers defined yet<span className="screen-only"> — <Link href="/dashboard/target-markets" style={{ color: '#0EA5E9' }}>Define Offers</Link></span></p>
-                : offers.map(offer => (
-                  <div key={offer.id} style={{ marginBottom: '12px', padding: '12px 16px', backgroundColor: '#F9FAFB', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
-                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#0A1628', margin: '0 0 4px' }}>{offer.name}</p>
-                    {offer.description && <p style={bodyStyle}>{offer.description}</p>}
-                    {offer.key_features?.length ? <p style={bodyStyle}>Features: {offer.key_features.join(', ')}</p> : null}
-                    {offer.pricing_model && <p style={bodyStyle}>Pricing: {offer.pricing_model}</p>}
-                  </div>
-                ))
-              }
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1f. {getStep('11')?.title ?? 'Core Value Propositions'}</p>
+              <p style={subheadStyle}>1c. Compelling Value Propositions</p>
               <ByPainPointContent id="11" />
 
               <div style={dividerStyle} />
 
-              <p style={subheadStyle}>1g. {getStep('15')?.title ?? 'Key Selling Points'}</p>
+              <p style={subheadStyle}>1d. {getStep('15')?.title ?? 'Key Selling Points'}</p>
               <ByPainPointContent id="15" />
 
               {/* ── Section 2: Competitive Environment ── */}
               <div data-empty={sec2Empty ? 'true' : undefined}>
                 <div style={{ ...dividerStyle, margin: '40px 0' }} />
                 <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
-                {(['17', '19', '20'] as const).map((sid, i) => (
+                {COMP_STEP_IDS.map((sid, i) => (
                   <div key={sid}>
-                    <p style={subheadStyle}>{['2a', '2b', '2c'][i]}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <ByPainPointContent id={sid} />
-                    {i < 2 && <div style={dividerStyle} />}
+                    <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
+                    <CompetitiveContent id={sid} />
+                    {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
                   </div>
                 ))}
               </div>
@@ -971,7 +1039,7 @@ export default function ReportPage() {
                 {(['27', '28', '29', '30'] as const).map((sid, i) => (
                   <div key={sid}>
                     <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <BlendContent id={sid} />
+                    <StrategicMessageContent id={sid} />
                     {i < 3 && <div style={dividerStyle} />}
                   </div>
                 ))}
@@ -984,7 +1052,7 @@ export default function ReportPage() {
                 {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
                   <div key={sid}>
                     <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <ActionPlanContent id={sid} />
+                    <ActionPlanSummary id={sid} />
                     {i < 6 && <div style={dividerStyle} />}
                   </div>
                 ))}
