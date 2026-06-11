@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import TipsPanel, { type Tip } from '@/components/ui/TipsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ export interface ActionPlanEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  tips?: Tip[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -157,6 +159,7 @@ export default function ActionPlanEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  tips,
 }: ActionPlanEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -755,6 +758,8 @@ export default function ActionPlanEditor({
             )}
           </div>
         )}
+
+        {tips && tips.length > 0 && <TipsPanel tips={tips} />}
       </div>
     </div>
   )

@@ -994,6 +994,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            tips={STEP_TIPS[stepId]}
           />
         </div>
         {navBar}

@@ -52,6 +52,12 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'Connect Step 19 advantage to Step 6 effect', body: 'Tie your Competitive Advantage (Step 19) directly to the Effect (Step 6) so the fix lands as safest.' },
     { headline: 'Make it safe to move forward', body: 'A strong Clean-Up removes the last barrier to yes.' },
   ],
+  '31': [
+    { headline: 'Instruction', body: 'What 3-4 actions can the company take to raise awareness of the causes and effects of the pain points in order to trigger a search for a solution by the decision makers?' },
+    { headline: 'Focus on surfacing the problem -- not selling the solution', body: 'Buyers need to feel the pain before they search.' },
+    { headline: 'Use the realization triggers from Step 7', body: 'Those are the exact moments to target.' },
+    { headline: 'Target the decision makers from Step 3', body: 'Different roles need different awareness tactics.' },
+  ],
   'survey-builder': [
     { headline: 'Keep it under 15 questions', body: 'Surveys over 15 questions see significantly lower completion rates. Prioritize the questions that reveal buying behavior, not product feedback.' },
     { headline: 'Mix question types for richer data', body: 'Open-ended questions reveal the why. Scale questions reveal intensity. Use both for a complete picture.' },
