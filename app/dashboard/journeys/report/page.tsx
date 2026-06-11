@@ -61,6 +61,39 @@ function extractActionPlan(content: Record<string, unknown>): { entries: PainPoi
   return { entries, summary }
 }
 
+// Extracts Steps 27-30 strategic message entries saved by PainPointStepEditor
+// in { by_pain_point: [{ index, content }, ...] } format.
+function extractStrategicMessageByPainPoint(content: Record<string, unknown>): PainPointEntry[] {
+  const raw = content['by_pain_point']
+  if (!Array.isArray(raw)) return []
+  return (raw as unknown[])
+    .map((e) => {
+      const obj = e as Record<string, unknown>
+      return { index: Number(obj['index'] ?? 0), content: extractDraftText(obj['content']) }
+    })
+    .filter((e) => e.content.trim().length > 0)
+}
+
+interface CompetitorEntry {
+  name: string
+  whyBuyersChooseThem: string
+  keyPromise: string
+  vulnerability: string
+}
+
+function extractCompetitors(content: Record<string, unknown>): CompetitorEntry[] {
+  const raw = content['competitors']
+  if (!Array.isArray(raw)) return []
+  return (raw as Array<Record<string, unknown>>)
+    .map((c) => ({
+      name: String(c['name'] ?? '').trim(),
+      whyBuyersChooseThem: String(c['whyBuyersChooseThem'] ?? c['why_buyers_choose'] ?? '').trim(),
+      keyPromise: String(c['keyPromise'] ?? c['key_promise'] ?? '').trim(),
+      vulnerability: String(c['vulnerability'] ?? '').trim(),
+    }))
+    .filter((c) => c.name.length > 0)
+}
+
 function extractByPainPoint(
   output: StepOutput | undefined,
   painPoints: PainPointItem[]
@@ -585,23 +618,39 @@ export default function ReportPage() {
 
       // Section 2 — Competitive Environment
       children.push(new Paragraph({ text: '2. Competitive Environment', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
-      ;(['17', '18', '19', '20', '21', '22', '23', '24', '25', '26'] as const).forEach((sid, i) => {
+      ;(['17', '18', '20'] as const).forEach((sid, i) => {
         const o = getOutput(sid); const s = getStep(sid)
         const label = `2${String.fromCharCode(97 + i)}`
         children.push(subheading(lib, `${label}. ${s?.title ?? `Step ${sid}`}`))
         if (o && hasContent(sid)) {
-          const entries = extractCompetitiveContent(o, step4PainPoints, step2SegmentNames)
-          if (entries.length === 0) {
-            children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+          if (sid === '17') {
+            const competitors = extractCompetitors(o.content)
+            if (competitors.length === 0) {
+              children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+            } else {
+              competitors.forEach(c => {
+                children.push(new Paragraph({
+                  children: [new TextRun({ text: c.name, bold: true, size: 24 })],
+                  spacing: { before: 160, after: 80 },
+                }))
+                if (c.whyBuyersChooseThem) children.push(para(lib, `Why Buyers Choose Them: ${c.whyBuyersChooseThem}`, false, true))
+                if (c.keyPromise) children.push(para(lib, `Their Key Promise: ${c.keyPromise}`, false, true))
+                if (c.vulnerability) children.push(para(lib, `Their Vulnerability: ${c.vulnerability}`, false, true))
+              })
+            }
           } else {
-            entries.forEach(e => {
-              const line = e.label && e.text
-                ? `• ${e.label} — ${e.text}`
-                : e.label
-                  ? `• ${e.label}`
-                  : `• ${e.text}`
-              children.push(para(lib, line, false, true))
-            })
+            const entries = extractByPainPoint(o, step4PainPoints)
+            if (entries.length === 0) {
+              children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+            } else {
+              entries.forEach((e, idx) => {
+                children.push(new Paragraph({
+                  children: [new TextRun({ text: `Pain Point ${idx + 1}: ${e.label}`, bold: true, size: 22 })],
+                  spacing: { before: 140, after: 60 },
+                }))
+                if (e.text) children.push(para(lib, e.text, false, true))
+              })
+            }
           }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
@@ -613,24 +662,37 @@ export default function ReportPage() {
         const o = getOutput(sid); const s = getStep(sid)
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
         if (o && hasContent(sid)) {
-          const b = extractBlend(o.content)
-          if (b.mode === 'blended' && b.blended) {
-            children.push(para(lib, b.blended))
+          const byPainPoint = extractStrategicMessageByPainPoint(o.content)
+          if (byPainPoint.length > 0) {
+            byPainPoint.forEach((e, idx) => {
+              children.push(new Paragraph({
+                children: [new TextRun({ text: `Pain Point ${e.index || idx + 1}`, bold: true, size: 22 })],
+                spacing: { before: 140, after: 60 },
+              }))
+              children.push(para(lib, e.content, false, true))
+            })
           } else {
-            b.entries
-              .filter(e => e.content.trim().length > 0)
-              .forEach(e => {
-                const pp = step4PainPoints.find(p => p.index === e.index)
-                const label = pp?.title || `Pain Point ${e.index}`
-                children.push(para(lib, `• ${label} — ${e.content}`, false, true))
-              })
+            const b = extractBlend(o.content)
+            if (b.mode === 'blended' && b.blended) {
+              children.push(para(lib, b.blended))
+            } else {
+              b.entries
+                .filter(e => e.content.trim().length > 0)
+                .forEach(e => {
+                  children.push(new Paragraph({
+                    children: [new TextRun({ text: `Pain Point ${e.index}`, bold: true, size: 22 })],
+                    spacing: { before: 140, after: 60 },
+                  }))
+                  children.push(para(lib, e.content, false, true))
+                })
+            }
           }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
 
-      // Section 4 — Strategic Plan (summary-only)
-      children.push(new Paragraph({ text: '4. Strategic Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      // Section 4 — Action Plan (summary-only, falls back to first action tab)
+      children.push(new Paragraph({ text: '4. Action Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
       ;(['31', '32', '33', '34', '35', '36', '37'] as const).forEach((sid) => {
         const o = getOutput(sid); const s = getStep(sid)
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
@@ -639,23 +701,16 @@ export default function ReportPage() {
           if (ap.summary.trim().length > 0) {
             children.push(para(lib, ap.summary))
           } else {
-            children.push(new Paragraph({ children: [new TextRun({ text: 'Summary not yet written', italics: true, color: '9CA3AF' })] }))
+            const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
+            if (firstEntry) {
+              children.push(para(lib, firstEntry.content))
+            } else {
+              children.push(new Paragraph({ children: [new TextRun({ text: 'Summary not yet written', italics: true, color: '9CA3AF' })] }))
+            }
           }
         } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
         blank()
       })
-
-      // Section 5 — Development & Partnership
-      children.push(new Paragraph({ text: '5. Development & Partnership', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
-      {
-        const o = getOutput('26'); const s = getStep('26')
-        children.push(subheading(lib, s?.title ?? 'Step 26'))
-        if (o && hasContent('26')) {
-          extractByPainPoint(o, step4PainPoints).forEach(e =>
-            children.push(para(lib, `• ${e.label} — ${e.text}`, false, true))
-          )
-        } else children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
-      }
 
       sections.push({ children })
 
@@ -794,25 +849,97 @@ export default function ReportPage() {
     )
   }
 
+  function Step17CompetitorContent({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const competitors = extractCompetitors(o.content)
+    if (competitors.length === 0) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    return (
+      <div style={{ marginTop: '4px' }}>
+        {competitors.map((c, i) => (
+          <div key={i} style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 6px' }}>
+              {c.name}
+            </p>
+            {c.whyBuyersChooseThem && (
+              <p style={bodyStyle}>
+                <strong>Why Buyers Choose Them:</strong> {c.whyBuyersChooseThem}
+              </p>
+            )}
+            {c.keyPromise && (
+              <p style={bodyStyle}>
+                <strong>Their Key Promise:</strong> {c.keyPromise}
+              </p>
+            )}
+            {c.vulnerability && (
+              <p style={bodyStyle}>
+                <strong>Their Vulnerability:</strong> {c.vulnerability}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function PainPointLabeledContent({ id }: { id: string }) {
+    const o = getOutput(id)
+    const s = getStep(id)
+    if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    const entries = extractByPainPoint(o, step4PainPoints)
+    if (entries.length === 0) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+    return (
+      <div style={{ marginTop: '4px' }}>
+        {entries.map((e, i) => (
+          <div key={i} style={{ marginBottom: '12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+              Pain Point {i + 1}: {e.label}
+            </p>
+            {e.text && <p style={bodyStyle}>{e.text}</p>}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   function StrategicMessageContent({ id }: { id: string }) {
     const o = getOutput(id)
     const s = getStep(id)
     if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
+
+    // Prefer by_pain_point format (PainPointStepEditor saves)
+    const byPainPoint = extractStrategicMessageByPainPoint(o.content)
+    if (byPainPoint.length > 0) {
+      return (
+        <div style={{ marginTop: '4px' }}>
+          {byPainPoint.map((e, i) => (
+            <div key={i} style={{ marginBottom: '12px' }}>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+                Pain Point {e.index || i + 1}
+              </p>
+              <p style={bodyStyle}>{e.content}</p>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    // Fallback to BlendEditor format (mode + per_pain_point + blended)
     const b = extractBlend(o.content)
     if (b.mode === 'blended' && b.blended) return <p style={bodyStyle}>{b.blended}</p>
     const nonEmpty = b.entries.filter(e => e.content.trim().length > 0)
     if (nonEmpty.length > 0) return (
-      <ul style={{ paddingLeft: '20px', margin: '4px 0 0' }}>
-        {nonEmpty.map(e => {
-          const pp = step4PainPoints.find(p => p.index === e.index)
-          const label = pp?.title || `Pain Point ${e.index}`
-          return (
-            <li key={e.index} style={bodyStyle}>
-              <strong>{label}</strong> — {e.content}
-            </li>
-          )
-        })}
-      </ul>
+      <div style={{ marginTop: '4px' }}>
+        {nonEmpty.map(e => (
+          <div key={e.index} style={{ marginBottom: '12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+              Pain Point {e.index}
+            </p>
+            <p style={bodyStyle}>{e.content}</p>
+          </div>
+        ))}
+      </div>
     )
     const fallback = extractReadableContent(o.content)
     if (fallback) return <p style={bodyStyle}>{fallback}</p>
@@ -825,17 +952,18 @@ export default function ReportPage() {
     if (!o || !hasContent(id)) return <NotCompleted stepId={id} title={s?.title ?? `Step ${id}`} />
     const ap = extractActionPlan(o.content)
     if (ap.summary.trim().length > 0) return <p style={bodyStyle}>{ap.summary}</p>
+    const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
+    if (firstEntry) return <p style={bodyStyle}>{firstEntry.content}</p>
     return (
       <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>Summary not yet written</p>
     )
   }
 
   // Section emptiness — used to set data-empty for PDF onclone hiding
-  const COMP_STEP_IDS = ['17','18','19','20','21','22','23','24','25','26'] as const
+  const COMP_STEP_IDS = ['17','18','20'] as const
   const sec2Empty = COMP_STEP_IDS.every(id => !hasContent(id))
   const sec3Empty = !hasContent('27') && !hasContent('28') && !hasContent('29') && !hasContent('30')
   const sec4Empty = ['31','32','33','34','35','36','37'].every(id => !hasContent(id))
-  const sec5Empty = !hasContent('26')
 
   const sectionHeadStyle: React.CSSProperties = {
     fontSize: '18px',
@@ -1026,7 +1154,7 @@ export default function ReportPage() {
                 {COMP_STEP_IDS.map((sid, i) => (
                   <div key={sid}>
                     <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <CompetitiveContent id={sid} />
+                    {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
                     {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
                   </div>
                 ))}
@@ -1045,10 +1173,10 @@ export default function ReportPage() {
                 ))}
               </div>
 
-              {/* ── Section 4: Strategic Plan ── */}
+              {/* ── Section 4: Action Plan ── */}
               <div data-empty={sec4Empty ? 'true' : undefined}>
                 <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>4. Strategic Plan</h2>
+                <h2 style={sectionHeadStyle}>4. Action Plan</h2>
                 {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
                   <div key={sid}>
                     <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
@@ -1056,14 +1184,6 @@ export default function ReportPage() {
                     {i < 6 && <div style={dividerStyle} />}
                   </div>
                 ))}
-              </div>
-
-              {/* ── Section 5: Development & Partnership ── */}
-              <div data-empty={sec5Empty ? 'true' : undefined} style={{ pageBreakInside: 'avoid' }}>
-                <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>5. Development &amp; Partnership</h2>
-                <p style={subheadStyle}>{getStep('26')?.title ?? 'Step 26'}</p>
-                <ByPainPointContent id="26" />
               </div>
 
               {/* Footer */}
