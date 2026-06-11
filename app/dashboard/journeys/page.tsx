@@ -450,7 +450,8 @@ export default function JourneysPage() {
   }
 
   // Steps 3.5 and 4.5 are excluded from phase counts — they will be consolidated into Step 1.
-  const phaseCountedSteps = steps.filter(s => s.id !== '3.5' && s.id !== '4.5')
+  // Step 38 is excluded — it will move to the Lead Generation module.
+  const phaseCountedSteps = steps.filter(s => s.id !== '3.5' && s.id !== '4.5' && s.id !== '38')
 
   const stepsByPhase = new Map<number, StepDef[]>()
   for (const step of phaseCountedSteps) {
