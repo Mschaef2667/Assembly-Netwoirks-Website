@@ -321,17 +321,10 @@ export default function CompetitiveEvaluationEditor({
     setCopilotError(null)
 
     try {
-      const res = await fetch('/api/copilot/draft', {
+      const res = await fetch('/api/intelligence/competitive-evaluation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stepId,
-          workspaceId,
-          stepTitle,
-          stepDescription: 'Competitive Evaluation playbook — how buyers evaluate GTM strategy partners.',
-          currentContent: JSON.stringify(sectionsRef.current),
-          preferredModel,
-        }),
+        body: JSON.stringify({}),
       })
 
       if (!res.ok) {
@@ -339,25 +332,26 @@ export default function CompetitiveEvaluationEditor({
         return
       }
 
-      const text = await res.text()
-
-      if (text.includes('__STREAM_ERROR__')) {
-        const match = text.match(/__STREAM_ERROR__:(\w+)/)
-        setCopilotError(copilotErrorMessage(match ? match[1] : 0))
-        return
-      }
-
-      const parsed = parseCopilotJson(text)
-      if (!parsed) {
+      const parsed = (await res.json()) as Partial<SectionContent>
+      if (!parsed || typeof parsed !== 'object') {
         setCopilotError('Copilot returned an unexpected response. Please try again.')
         return
       }
 
       const merged: SectionContent = { ...sectionsRef.current }
+      let matched = false
       for (const { key } of SECTIONS) {
         const v = parsed[key]
-        if (typeof v === 'string' && v.trim()) merged[key] = v
+        if (typeof v === 'string' && v.trim()) {
+          merged[key] = v
+          matched = true
+        }
       }
+      if (!matched) {
+        setCopilotError('Copilot returned an unexpected response. Please try again.')
+        return
+      }
+
       sectionsRef.current = merged
       setSections(merged)
       void persist(merged)
