@@ -332,9 +332,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
 PURPOSE: Specific sales enablement assets needed to execute this GTM strategy.
 
 INSTRUCTIONS:
-Write 3-4 specific Resources and Tools needed to execute this GTM strategy. These are the sales enablement assets, templates, tools, and frameworks that the sales and marketing teams need to deliver the strategic messages and close deals. Each resource should connect to a specific step in the C3 Method and explain how it will be used in the field.
-
-Format the draft as a plain numbered list. No headers. No bold. No markdown. Maximum 200 words.
+Write a specific sales enablement tool or asset for this slot. Describe: 1) What the asset is (name and format -- one-pager, deck, script, scorecard, etc.), 2) Which action steps it supports (31-36), 3) Who uses it (sales, marketing, or both), 4) What problem it solves in the sales process. Plain numbered list. No headers. No bold. Max 150 words.
 
 CONFIDENCE SCORING:
 - 71-100: Steps 11, 15, 27, 28, 29, 30 all present and approved

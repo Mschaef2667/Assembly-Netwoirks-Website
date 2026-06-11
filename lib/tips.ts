@@ -89,10 +89,10 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'A changed circumstance at the buyer is often your best re-entry point', body: 'Leadership change, funding event, or new pain are natural reasons to re-engage.' },
   ],
   '37': [
-    { headline: 'Instruction', body: 'What resources and tools does the team need to execute this GTM strategy effectively?' },
-    { headline: 'Every strategic message needs a delivery vehicle -- content, deck, one-pager, or script', body: 'Messages without an asset never reach the field.' },
-    { headline: 'Build assets that sales will actually use, not just marketing will produce', body: 'Ask reps what they would open before you build it.' },
-    { headline: 'Connect each asset to a specific stage in the buyer journey', body: 'Map assets to buyer stages so reps know when to use each one.' },
+    { headline: 'Instruction', body: 'What specific tools and assets does the team need to execute the action plan from Steps 31-36?' },
+    { headline: 'Each tool should connect to at least one action step', body: 'Map every asset back to a specific Step 31-36 action it enables.' },
+    { headline: 'Build assets that sales will actually use in the field', body: 'Ask reps what they would open before you build it.' },
+    { headline: 'Prioritize tools that address the most common objections and barriers in your evaluation process', body: 'The highest-leverage assets remove friction at the points where deals stall.' },
   ],
   '38': [
     { headline: 'Instruction', body: 'What criteria should the team use to qualify and score opportunities against the ideal customer profile?' },

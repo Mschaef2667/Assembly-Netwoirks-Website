@@ -995,6 +995,7 @@ export default function StepPage() {
             stepTitle={stepTitle}
             preferredModel={preferredModel}
             tips={STEP_TIPS[stepId]}
+            {...(stepId === '37' ? { tabLabel: 'Tool' } : {})}
           />
         </div>
         {navBar}

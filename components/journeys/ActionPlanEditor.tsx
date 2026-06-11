@@ -56,6 +56,7 @@ export interface ActionPlanEditorProps {
   stepTitle: string
   preferredModel?: string
   tips?: Tip[]
+  tabLabel?: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -160,6 +161,7 @@ export default function ActionPlanEditor({
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
   tips,
+  tabLabel = 'Action',
 }: ActionPlanEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -598,7 +600,7 @@ export default function ActionPlanEditor({
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {activePainPoints.map(pp => {
             const fullLabel = pp.title?.trim() || `Pain Point ${pp.index}`
-            const displayLabel = `Action ${pp.index}`
+            const displayLabel = `${tabLabel} ${pp.index}`
             return (
               <button
                 key={pp.index}
