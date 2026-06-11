@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Wand2, AlertTriangle, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import TipsPanel, { type Tip } from '@/components/ui/TipsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ export interface PainPointStepEditorProps {
   tabLabel?: string
   showUpstreamContext?: boolean
   onContentChange?: (hasNonEmptyContent: boolean) => void
+  tips?: Tip[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -289,6 +291,7 @@ export default function PainPointStepEditor({
   tabLabel,
   showUpstreamContext = false,
   onContentChange,
+  tips,
 }: PainPointStepEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -1355,6 +1358,8 @@ export default function PainPointStepEditor({
 
           </>
         )}
+
+        {tips && tips.length > 0 && <TipsPanel tips={tips} />}
       </div>
     </div>
     </>

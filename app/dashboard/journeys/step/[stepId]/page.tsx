@@ -954,6 +954,7 @@ export default function StepPage() {
             tabLabel={stepId === '12' ? 'CVP' : stepId === '15' ? 'KSP' : stepId === '17' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '24' || stepId === '26' ? 'Comp' : undefined}
             showUpstreamContext={stepId === '12'}
             onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
+            tips={STEP_TIPS[stepId]}
           />
         </div>
         {navBar}
