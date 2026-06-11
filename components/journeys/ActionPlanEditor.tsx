@@ -583,7 +583,7 @@ export default function ActionPlanEditor({
     ? 'Summary'
     : (painPoints.find(pp => pp.index === activeTab)?.title?.trim() || `Pain Point ${activeTab}`)
   const currentValue = activeTab === 'summary' ? summaryContent : (perPPContent[activeTab as number] ?? '')
-  const copilotButtonLabel = activeTab === 'summary' ? 'Generate Summary Action Plan' : `Draft for ${currentLabel}`
+  const copilotButtonLabel = activeTab === 'summary' ? 'Generate Summary Action Plan' : `Draft Action ${activeTab}`
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
@@ -593,7 +593,7 @@ export default function ActionPlanEditor({
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {activePainPoints.map(pp => {
             const fullLabel = pp.title?.trim() || `Pain Point ${pp.index}`
-            const displayLabel = fullLabel.length > 20 ? fullLabel.slice(0, 20) + '…' : fullLabel
+            const displayLabel = `Action ${pp.index}`
             return (
               <button
                 key={pp.index}
