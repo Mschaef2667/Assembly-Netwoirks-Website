@@ -189,18 +189,13 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Your task: Write the Competitive Threat for this specific competitor. A competitive threat identifies what makes THIS competitor's approach BETTER than ours in specific situations.
+Write the Competitive Threat for this specific competitor. Cover: 1) what they do better than us and when, 2) classification (Exclusive, Relative, or First-Mover), 3) the buyer types or deal situations where this threat is most dangerous.
 
-Structure:
-1) The threat statement (what they do better and when)
-2) Classification: Exclusive, Relative, or First-Mover
-3) Which buyer types or deal situations where this threat is most dangerous
-
-Maximum 3 sentences. Be honest — understanding real threats is how you prepare to counter them.
+Output must be 200 words or less. No headers. No bold. No ALL CAPS. Plain numbered paragraphs only.
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<the 3-sentence threat covering statement, classification, and where it's most dangerous>",
+  "draft": "<plain numbered paragraphs 1. 2. 3., 200 words or less, no headers, no bold, no ALL CAPS>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -217,8 +212,7 @@ ${step18Text}
 STEP 19 — Competitive Advantages:
 ${step19Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
   if (stepId === '21') {
@@ -229,18 +223,13 @@ FORMATTING: Return plain text only. Do not use markdown formatting like **bold**
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Your task: Write the Competitive Acid Test for this competitor. The acid test asks: Does this competitor have the core competencies to implement their critical success formulas? And do the key decision makers in Step 3 believe this competitor can deliver?
+Write the Competitive Acid Test for this competitor. Cover: 1) competency assessment (does this competitor have the core competencies to implement their critical success formulas?), 2) what the key decision makers in Step 3 likely believe about this competitor's capability to deliver, 3) the key vulnerability this reveals.
 
-Structure:
-1) Assessment of competitor's competency (do they have what it takes?)
-2) What decision makers likely believe about this competitor's capability
-3) The key vulnerability this reveals
-
-Maximum 3 sentences. Be analytical and honest.
+Output must be 200 words or less. No headers. No bold. No ALL CAPS. Plain numbered paragraphs only.
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<the 3-sentence acid test covering competency assessment, decision-maker belief, and key vulnerability>",
+  "draft": "<plain numbered paragraphs 1. 2. 3., 200 words or less, no headers, no bold, no ALL CAPS>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -260,8 +249,7 @@ ${step17Text}
 STEP 20 — Competitive Threats:
 ${step20Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
   if (stepId === '24') {
@@ -271,11 +259,13 @@ FORMATTING: Return plain text only. Do not use markdown formatting like **bold**
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Write the Competitive Retaliation strategy for this specific competitor. Given what makes them threatening (from Step 20) and our differentiators (from Step 18), identify 3-4 specific actions we can take to minimize this competitor's threat and strengthen our position against them. Each action should be concrete and executable — not generic advice. Format as a numbered list with brief explanation for each action. Focus on neutralizing their strengths and exploiting their vulnerabilities identified in Step 17.
+Write the Competitive Retaliation strategy for this specific competitor. Given what makes them threatening (Step 20) and our differentiators (Step 18), list 3-4 concrete, executable actions to neutralize their strengths and exploit their vulnerabilities from Step 17. Each numbered point is one action with a one-sentence explanation — no generic advice.
+
+Output must be 200 words or less. No headers. No bold. No ALL CAPS. Plain numbered paragraphs only.
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<numbered list of 3-4 specific retaliation actions, each with brief explanation>",
+  "draft": "<plain numbered paragraphs 1. 2. 3. 4., 200 words or less, no headers, no bold, no ALL CAPS>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -292,8 +282,7 @@ ${step18Text}
 STEP 20 — Competitive Threats:
 ${step20Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
   if (stepId === '25') {
@@ -303,16 +292,13 @@ FORMATTING: Return plain text only. Do not use markdown formatting like **bold**
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Identify the Competitive Opportunities for this pain point. Based on the solution criteria buyers need from Step 8 and what target competitors offer from Step 17, identify:
-1) What solutions are buyers asking for that neither this company nor competitors deliver well?
-2) Who if anyone is starting to address this gap?
-3) What is the strategic opportunity here?
+Identify the Competitive Opportunities for this pain point. Using solution criteria from Step 8 and what target competitors offer from Step 17, answer: 1) what solutions buyers are asking for that neither this company nor competitors deliver well, 2) who (if anyone) is starting to address this gap, 3) what the strategic opportunity is.
 
-Format as plain text numbered points. No markdown. No bold text.
+Output must be 200 words or less. No headers. No bold. No ALL CAPS. Plain numbered paragraphs only.
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<plain text numbered points covering the three questions above>",
+  "draft": "<plain numbered paragraphs 1. 2. 3., 200 words or less, no headers, no bold, no ALL CAPS>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -329,9 +315,7 @@ ${step17Text}
 STEP 18 — Competitive Differentiators:
 ${step18Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.
-FORMATTING: Return plain text only. Do not use markdown formatting like bold asterisks, bullet points with asterisks, or any other markdown syntax. Use numbered lists and plain text only.`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
   if (stepId === '26') {
@@ -342,17 +326,13 @@ FORMATTING: Return plain text only. Do not use markdown formatting like bold ast
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Write the Competitive Strengths and Weaknesses assessment for this competitor. Answer:
-1) Does the company have the core competencies to execute the retaliation strategies from Step 24?
-2) What specific strengths support the plan?
-3) What gaps could prevent execution?
-4) What can the company do to overcome these hurdles?
+Write the Competitive Strengths and Weaknesses assessment for this competitor. Answer: 1) does the company have the core competencies to execute the retaliation strategies from Step 24, 2) what specific strengths support the plan, 3) what gaps could prevent execution, 4) what the company can do to overcome these hurdles.
 
-Format as plain text numbered points. No markdown. No bold text.
+Output must be 200 words or less. No headers. No bold. No ALL CAPS. Plain numbered paragraphs only.
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<plain text numbered points covering the four questions above>",
+  "draft": "<plain numbered paragraphs 1. 2. 3. 4., 200 words or less, no headers, no bold, no ALL CAPS>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -372,9 +352,7 @@ ${step20Text}
 STEP 24 — Competitive Retaliation:
 ${step24Text}
 ${provisionalNote(ctx)}
-${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}
-FORMATTING: Return plain text only. Do not use markdown formatting like **bold**, bullet points with *, or any other markdown syntax. Use numbered lists (1. 2. 3.) and plain text only.
-FORMATTING: Return plain text only. Do not use markdown formatting like bold asterisks, bullet points with asterisks, or any other markdown syntax. Use numbered lists and plain text only.`
+${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
   }
 
   if (stepId === '22') {
