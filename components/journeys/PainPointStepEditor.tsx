@@ -157,6 +157,7 @@ function stripMarkdown(text: string): string {
       return line
     })
     .join('\n')
+  out = out.replace(/\n(\d+\.)/g, '\n\n$1')
   return out
 }
 
