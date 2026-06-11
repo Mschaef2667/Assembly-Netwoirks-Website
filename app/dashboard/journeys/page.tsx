@@ -449,14 +449,17 @@ export default function JourneysPage() {
     )
   }
 
+  // Step 3.5 is excluded from phase counts — it will be consolidated into Step 1.
+  const phaseCountedSteps = steps.filter(s => s.id !== '3.5')
+
   const stepsByPhase = new Map<number, StepDef[]>()
-  for (const step of steps) {
+  for (const step of phaseCountedSteps) {
     const arr = stepsByPhase.get(step.phase) ?? []
     arr.push(step)
     stepsByPhase.set(step.phase, arr)
   }
 
-  const phaseSteps = steps.filter(s => s.phase >= 1 && s.phase <= 6)
+  const phaseSteps = phaseCountedSteps.filter(s => s.phase >= 1 && s.phase <= 6)
   const totalSteps = phaseSteps.length
   const totalApproved = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
   const hasAnyProgress = outputMap.size > 0

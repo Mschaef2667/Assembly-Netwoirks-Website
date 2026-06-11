@@ -30,6 +30,7 @@ export interface DecisionProcessEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export default function DecisionProcessEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: DecisionProcessEditorProps) {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<SegmentKey>('segment_1')
@@ -295,6 +297,16 @@ export default function DecisionProcessEditor({
     void load()
     return () => { cancelled = true }
   }, [workspaceId, stepId])
+
+  // Notify parent whenever any segment pattern has content so its hasContent
+  // gate can re-evaluate (parent's cached rawContent does not see in-progress edits).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasNonEmpty = Object.values(state).some(
+      seg => (seg.pattern ?? '').trim().length > 0,
+    )
+    onContentChange(hasNonEmpty)
+  }, [state, onContentChange])
 
   // ── Save ───────────────────────────────────────────────────────────────────
 

@@ -41,6 +41,7 @@ export interface AcidTestEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ export default function AcidTestEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: AcidTestEditorProps) {
   const [loading, setLoading] = useState(true)
 
@@ -282,6 +284,19 @@ export default function AcidTestEditor({
     void load()
     return () => { cancelled = true }
   }, [workspaceId])
+
+  // Notify parent whenever ratings, evidence, or strengthen has any content so
+  // the parent's hasContent gate can re-evaluate (its cached rawContent does
+  // not see in-progress edits).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasRating = Object.values(ratings).some(
+      row => row && Object.values(row).some(v => !!v),
+    )
+    const hasEvidence = Object.values(evidence).some(v => (v ?? '').trim().length > 0)
+    const hasStrengthen = Object.values(strengthen).some(v => (v ?? '').trim().length > 0)
+    onContentChange(hasRating || hasEvidence || hasStrengthen)
+  }, [ratings, evidence, strengthen, onContentChange])
 
   // ── Save ────────────────────────────────────────────────────────────────────
 

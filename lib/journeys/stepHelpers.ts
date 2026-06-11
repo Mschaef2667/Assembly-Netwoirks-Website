@@ -605,7 +605,8 @@ export function hasContentForStep({
   }
   if (stepId === '16') {
     const r = rawContent?.['ratings']
-    return r !== null && typeof r === 'object' && Object.keys(r as Record<string, unknown>).length > 0
+    const savedHasContent = r !== null && typeof r === 'object' && Object.keys(r as Record<string, unknown>).length > 0
+    return savedHasContent || rawContentUpdated
   }
   if (stepId === '17') {
     // CompetitorStepEditor saves either an array of competitors or { competitors: [...] }
@@ -623,20 +624,20 @@ export function hasContentForStep({
   if (stepId === '22') {
     // CompetitiveEvaluationEditor saves { sections: { introduction, evaluation, … } }
     const secs = rawContent?.['sections']
-    if (!secs || typeof secs !== 'object') return false
-    return Object.values(secs as Record<string, unknown>).some(
+    const savedHasContent = !!secs && typeof secs === 'object' && Object.values(secs as Record<string, unknown>).some(
       v => typeof v === 'string' && (v as string).trim().length > 20,
     )
+    return savedHasContent || rawContentUpdated
   }
   if (stepId === '23') {
     // DecisionProcessEditor saves { segments: { segment_1: { ranking, pattern }, … } }
     const segs = rawContent?.['segments']
-    if (!segs || typeof segs !== 'object') return false
-    return Object.values(segs as Record<string, unknown>).some(entry => {
+    const savedHasContent = !!segs && typeof segs === 'object' && Object.values(segs as Record<string, unknown>).some(entry => {
       if (!entry || typeof entry !== 'object') return false
       const pattern = (entry as Record<string, unknown>)['pattern']
       return typeof pattern === 'string' && pattern.trim().length > 20
     })
+    return savedHasContent || rawContentUpdated
   }
   if (PAIN_POINT_STEPS.has(stepId)) {
     // Pain point editor saves { by_pain_point: [{ index, content }, …] }

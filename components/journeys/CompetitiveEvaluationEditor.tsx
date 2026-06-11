@@ -25,6 +25,7 @@ export interface CompetitiveEvaluationEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export default function CompetitiveEvaluationEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: CompetitiveEvaluationEditorProps) {
   const [loading, setLoading] = useState(true)
   const [sections, setSections] = useState<SectionContent>({ ...EMPTY_CONTENT })
@@ -254,6 +256,14 @@ export default function CompetitiveEvaluationEditor({
     void load()
     return () => { cancelled = true }
   }, [workspaceId, stepId])
+
+  // Notify parent whenever any section has content so its hasContent gate can
+  // re-evaluate (parent's cached rawContent does not see in-progress edits).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasNonEmpty = Object.values(sections).some(v => (v ?? '').trim().length > 0)
+    onContentChange(hasNonEmpty)
+  }, [sections, onContentChange])
 
   // ── Save ───────────────────────────────────────────────────────────────────
 

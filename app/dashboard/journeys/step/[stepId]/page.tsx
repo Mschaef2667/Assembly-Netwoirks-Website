@@ -794,6 +794,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -904,6 +905,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -922,6 +924,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
