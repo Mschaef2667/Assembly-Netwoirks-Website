@@ -712,6 +712,42 @@ export default function ReportPage() {
         blank()
       })
 
+      // Section 5 — 30/60/90 Day Action Plan
+      children.push(new Paragraph({ text: '5. 30/60/90 Day Action Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      ;([
+        { label: 'First 30 Days', stepIds: ['31', '32'] as const },
+        { label: 'Days 31-60', stepIds: ['33', '34'] as const },
+        { label: 'Days 61-90', stepIds: ['35', '36'] as const },
+      ]).forEach((bucket) => {
+        children.push(subheading(lib, bucket.label))
+        const entries = bucket.stepIds.map((sid) => {
+          const o = getOutput(sid); const s = getStep(sid)
+          const title = s?.title ?? `Step ${sid}`
+          if (!o || !hasContent(sid)) return { id: sid, title, text: '' }
+          const ap = extractActionPlan(o.content)
+          if (ap.summary.trim().length > 0) return { id: sid, title, text: ap.summary }
+          const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
+          return { id: sid, title, text: firstEntry?.content ?? '' }
+        })
+        const allEmpty = entries.every(e => e.text.length === 0)
+        if (allEmpty) {
+          children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+        } else {
+          entries.forEach((e) => {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: e.title, bold: true, size: 22 })],
+              spacing: { before: 140, after: 60 },
+            }))
+            if (e.text) {
+              children.push(para(lib, e.text, false, true))
+            } else {
+              children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
+            }
+          })
+        }
+        blank()
+      })
+
       sections.push({ children })
 
       const doc = new Document({
