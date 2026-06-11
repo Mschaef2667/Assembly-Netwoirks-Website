@@ -179,8 +179,8 @@ export default function ActionPlanEditor({
 
   const [copilotLoading, setCopilotLoading] = useState(false)
   const [streamBuffer, setStreamBuffer] = useState('')
-  const [copilotOutput, setCopilotOutput] = useState<CopilotResult | null>(null)
   const [copilotError, setCopilotError] = useState<string | null>(null)
+  const [showAppliedFlash, setShowAppliedFlash] = useState(false)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef<() => Promise<void>>(() => Promise.resolve())
@@ -382,7 +382,6 @@ export default function ActionPlanEditor({
 
   function handleTabChange(tab: ActiveTab) {
     setActiveTab(tab)
-    setCopilotOutput(null)
     setCopilotError(null)
     setStreamBuffer('')
   }
@@ -406,7 +405,6 @@ export default function ActionPlanEditor({
   async function runCopilot() {
     if (copilotLoading) return
     setCopilotLoading(true)
-    setCopilotOutput(null)
     setCopilotError(null)
     setStreamBuffer('')
 
@@ -518,12 +516,17 @@ export default function ActionPlanEditor({
         return
       }
 
+      let draftText: string
       try {
         const parsed = JSON.parse(accumulated) as CopilotResult
-        setCopilotOutput({ ...parsed, draft: extractDraft(parsed.draft) })
+        draftText = extractDraft(parsed.draft)
       } catch {
-        setCopilotOutput({ draft: extractDraft(accumulated), confidence: 0, sources: [], assumptions: [], open_questions: [], verification_checks: [] })
+        draftText = extractDraft(accumulated)
       }
+      if (activeTab === 'summary') handleSummaryChange(draftText)
+      else handlePerPPChange(activeTab as number, draftText)
+      setShowAppliedFlash(true)
+      setTimeout(() => setShowAppliedFlash(false), 2000)
       setStreamBuffer('')
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
@@ -535,13 +538,6 @@ export default function ActionPlanEditor({
     } finally {
       setCopilotLoading(false)
     }
-  }
-
-  function applyDraft() {
-    if (!copilotOutput) return
-    if (activeTab === 'summary') handleSummaryChange(copilotOutput.draft)
-    else handlePerPPChange(activeTab as number, copilotOutput.draft)
-    setCopilotOutput(null)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -590,6 +586,15 @@ export default function ActionPlanEditor({
 
       {/* ── Left: tabs + textarea ─────────────────────────────────────────── */}
       <div>
+        {showAppliedFlash && (
+          <div style={{
+            padding: '8px 12px', backgroundColor: '#DCFCE7',
+            border: '1px solid #86EFAC', borderRadius: '6px', marginBottom: '12px',
+            fontSize: '13px', fontWeight: 600, color: '#16A34A',
+          }}>
+            Applied to editor ✓
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {activePainPoints.map(pp => {
             const fullLabel = pp.title?.trim() || `Pain Point ${pp.index}`
@@ -708,54 +713,6 @@ export default function ActionPlanEditor({
               style={{ fontSize: '12px', color: '#991B1B', textDecoration: 'underline' }}>
               Check AI Status ↗
             </a>
-          </div>
-        )}
-
-        {copilotOutput && !copilotLoading && (
-          <div style={CARD}>
-            {copilotOutput.confidence > 0 && (
-              <div style={{ marginBottom: '10px' }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  padding: '3px 10px', borderRadius: '999px',
-                  backgroundColor: copilotOutput.confidence >= 71 ? '#DCFCE7' : copilotOutput.confidence >= 41 ? '#FEF3C7' : '#FEE2E2',
-                  color: copilotOutput.confidence >= 71 ? '#16A34A' : copilotOutput.confidence >= 41 ? '#D97706' : '#DC2626',
-                  fontSize: '12px', fontWeight: 700,
-                }}>
-                  {copilotOutput.confidence >= 71 ? 'High' : copilotOutput.confidence >= 41 ? 'Medium' : 'Low'} confidence — {copilotOutput.confidence}/100
-                </span>
-              </div>
-            )}
-            <span style={{ ...LABEL_STYLE, marginBottom: '6px' }}>Proposed draft</span>
-            <div style={{
-              fontSize: '13px', color: '#0D0D0D', lineHeight: '1.6',
-              backgroundColor: '#F8F6F1', borderRadius: '8px', padding: '12px',
-              marginBottom: '12px', whiteSpace: 'pre-wrap',
-              maxHeight: '260px', overflowY: 'auto',
-            }}>
-              {copilotOutput.draft}
-            </div>
-            <button
-              onClick={applyDraft}
-              style={{
-                width: '100%', minHeight: '44px',
-                backgroundColor: '#E8520A', color: '#FFFFFF',
-                border: 'none', borderRadius: '8px',
-                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              Apply to editor
-            </button>
-            {copilotOutput.assumptions.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                <span style={{ ...LABEL_STYLE, marginBottom: '4px' }}>Assumptions</span>
-                <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                  {copilotOutput.assumptions.map((a, i) => (
-                    <li key={i} style={{ fontSize: '12px', color: '#6B7280', marginBottom: '2px' }}>{a}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
 
