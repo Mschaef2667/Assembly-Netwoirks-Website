@@ -776,6 +776,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -887,6 +888,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -996,6 +998,7 @@ export default function StepPage() {
             preferredModel={preferredModel}
             tips={STEP_TIPS[stepId]}
             {...(stepId === '37' ? { tabLabel: 'Tool' } : {})}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}

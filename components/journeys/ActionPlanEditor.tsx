@@ -57,6 +57,7 @@ export interface ActionPlanEditorProps {
   preferredModel?: string
   tips?: Tip[]
   tabLabel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -162,6 +163,7 @@ export default function ActionPlanEditor({
   preferredModel = 'claude-sonnet-4-5',
   tips,
   tabLabel = 'Action',
+  onContentChange,
 }: ActionPlanEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -256,6 +258,7 @@ export default function ActionPlanEditor({
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
+          let loadedHasContent = false
           if (c) {
             const bpp = c['by_pain_point']
             if (Array.isArray(bpp)) {
@@ -266,12 +269,15 @@ export default function ActionPlanEditor({
               }
               setPerPPContent(map)
               perPPRef.current = map
+              if (Object.values(map).some(v => v.trim().length > 0)) loadedHasContent = true
             }
             if (typeof c['summary'] === 'string') {
               setSummaryContent(c['summary'])
               summaryRef.current = c['summary']
+              if (c['summary'].trim().length > 0) loadedHasContent = true
             }
           }
+          if (loadedHasContent) onContentChange?.(true)
         }
 
         // ICP

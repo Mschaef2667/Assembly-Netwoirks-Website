@@ -47,6 +47,7 @@ export interface CompetitorStepEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ export default function CompetitorStepEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: CompetitorStepEditorProps) {
   void stepTitle
 
@@ -288,7 +290,13 @@ export default function CompetitorStepEditor({
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
           if (c) {
-            if (Array.isArray(c['competitors'])) setCompetitors(parseSavedCompetitors(c['competitors']))
+            if (Array.isArray(c['competitors'])) {
+              const parsed = parseSavedCompetitors(c['competitors'])
+              setCompetitors(parsed)
+              if (parsed.some(comp => comp.name.trim().length > 0)) {
+                onContentChange?.(true)
+              }
+            }
             if (Array.isArray(c['discoveredList'])) setDiscoveredList(parseSavedDiscovered(c['discoveredList']))
             if (c['statusQuoActive'] === true) setStatusQuoActive(true)
           }

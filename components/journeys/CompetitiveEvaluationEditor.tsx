@@ -246,7 +246,11 @@ export default function CompetitiveEvaluationEditor({
           const row = data[0] as Record<string, unknown>
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
-          setSections(parseSavedContent(row['content']))
+          const parsed = parseSavedContent(row['content'])
+          setSections(parsed)
+          if (Object.values(parsed).some(v => (v ?? '').trim().length > 0)) {
+            onContentChange?.(true)
+          }
         }
       } catch { /* non-fatal */ }
       finally {

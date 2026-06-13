@@ -25,6 +25,7 @@ export interface AssessmentStepEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -232,6 +233,7 @@ export default function AssessmentStepEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: AssessmentStepEditorProps) {
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<AssessmentItem[]>([])
@@ -276,6 +278,7 @@ export default function AssessmentStepEditor({
             if (norm) loaded.push(norm)
           }
           setItems(loaded)
+          if (loaded.length > 0) onContentChange?.(true)
         }
       } catch {
         /* non-fatal */

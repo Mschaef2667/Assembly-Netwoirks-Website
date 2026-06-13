@@ -276,6 +276,9 @@ export default function DecisionProcessEditor({
           const parsed = parseSavedContent(row['content'])
           setState(parsed)
           stateRef.current = parsed
+          if (Object.values(parsed).some(seg => (seg.pattern ?? '').trim().length > 0)) {
+            onContentChange?.(true)
+          }
         }
 
         if (step2Res.data && step2Res.data.length > 0) {

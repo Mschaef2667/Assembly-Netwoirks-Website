@@ -274,6 +274,11 @@ export default function AcidTestEditor({
           if (savedSegKey && segs.some(s => s.key === savedSegKey)) {
             setSelectedSegmentKey(savedSegKey)
           }
+          const hasMatrix =
+            Object.values(savedRatings).some(row => row && Object.values(row).some(v => !!v)) ||
+            Object.values(savedEvidence).some(v => (v ?? '').trim().length > 0) ||
+            Object.values(savedStrengthen).some(v => (v ?? '').trim().length > 0)
+          if (hasMatrix) onContentChange?.(true)
         }
       } catch {
         /* non-fatal */

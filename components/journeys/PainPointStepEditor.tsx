@@ -393,6 +393,9 @@ export default function PainPointStepEditor({
               if (idx >= 1 && idx <= 4) map[idx] = String(entry['content'] ?? '')
             }
             setContentMap(map)
+            if (Object.values(map).some(v => v.trim().length > 0)) {
+              onContentChange?.(true)
+            }
           }
         }
 
