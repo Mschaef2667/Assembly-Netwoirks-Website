@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 
 const navItems = [
   { label: 'Onboarding',      href: '/dashboard/onboarding',         icon: BookOpen  },
@@ -50,6 +51,7 @@ export default function Sidebar() {
   const [orgName, setOrgName] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -218,6 +220,22 @@ export default function Sidebar() {
           </p>
         )}
         <button
+          type="button"
+          onClick={() => setShowChangePassword(true)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '2px 12px 4px',
+            color: '#0EA5E9',
+            fontSize: '11px',
+            cursor: 'pointer',
+            textAlign: 'left',
+            display: 'block',
+          }}
+        >
+          Change Password
+        </button>
+        <button
           onClick={handleLogout}
           style={{
             minHeight: '44px', minWidth: '44px', width: '100%',
@@ -232,6 +250,10 @@ export default function Sidebar() {
           Sign out
         </button>
       </div>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </aside>
   )
 }
