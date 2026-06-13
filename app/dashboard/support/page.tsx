@@ -150,11 +150,16 @@ function AICopilotCard() {
         return
       }
 
-      let answer = accumulated.trim()
+      const stripped = accumulated
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim()
+      let answer = stripped
       try {
-        const parsed = JSON.parse(answer) as Record<string, unknown>
+        const parsed = JSON.parse(stripped) as Record<string, unknown>
         if (typeof parsed['draft'] === 'string') answer = parsed['draft'] as string
-      } catch { /* keep raw */ }
+      } catch { /* keep stripped raw */ }
 
       setMessages(prev => [...prev, { role: 'assistant', text: answer }])
     } catch {
