@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, X } from 'lucide-react'
@@ -66,7 +66,7 @@ export default function StepPage() {
 
   const ctx = useStepContext(stepId)
   const {
-    loading, workspaceId, preferredModel, stepDef,
+    loading, contentLoaded, workspaceId, preferredModel, stepDef,
     outputId, setOutputId, outputVersion, rawContent,
     content, setContent,
     painPoints, setPainPoints,
@@ -662,9 +662,15 @@ export default function StepPage() {
   const prevStep = stepIndex > 0 ? allSteps[stepIndex - 1] : null
   const nextStep = stepIndex >= 0 && stepIndex < allSteps.length - 1 ? allSteps[stepIndex + 1] : null
 
-  const hasContent = hasContentForStep({
-    stepId, content, painPoints, activeCount, outputId, rawContent, rawContentUpdated,
-  })
+  // contentLoaded is included so this recomputes once the initial step_output
+  // fetch settles — fixes the Next button showing disabled on first paint when
+  // saved content exists.
+  const hasContent = useMemo(
+    () => hasContentForStep({
+      stepId, content, painPoints, activeCount, outputId, rawContent, rawContentUpdated,
+    }),
+    [stepId, content, painPoints, activeCount, outputId, rawContent, rawContentUpdated, contentLoaded],
+  )
 
   const warningMessage = buildWarningMessage(stepId, prereqContent)
   const warningBanner = (warningMessage && !warningDismissed) ? (
@@ -776,6 +782,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -887,6 +894,7 @@ export default function StepPage() {
             stepId={stepId}
             stepTitle={stepTitle}
             preferredModel={preferredModel}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
           />
         </div>
         {navBar}
@@ -995,6 +1003,7 @@ export default function StepPage() {
             stepTitle={stepTitle}
             preferredModel={preferredModel}
             tips={STEP_TIPS[stepId]}
+            onContentChange={hasNonEmptyContent => setRawContentUpdated(hasNonEmptyContent)}
             {...(stepId === '37' ? { tabLabel: 'Tool' } : {})}
           />
         </div>

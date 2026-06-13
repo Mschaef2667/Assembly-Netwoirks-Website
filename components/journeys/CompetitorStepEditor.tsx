@@ -47,6 +47,7 @@ export interface CompetitorStepEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ export default function CompetitorStepEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: CompetitorStepEditorProps) {
   void stepTitle
 
@@ -288,9 +290,21 @@ export default function CompetitorStepEditor({
           setOutputVersion(Number(row['version'] ?? 1))
           const c = row['content'] as Record<string, unknown> | null
           if (c) {
-            if (Array.isArray(c['competitors'])) setCompetitors(parseSavedCompetitors(c['competitors']))
+            let parsedCompetitors: CompetitorData[] | null = null
+            if (Array.isArray(c['competitors'])) {
+              parsedCompetitors = parseSavedCompetitors(c['competitors'])
+              setCompetitors(parsedCompetitors)
+            }
             if (Array.isArray(c['discoveredList'])) setDiscoveredList(parseSavedDiscovered(c['discoveredList']))
             if (c['statusQuoActive'] === true) setStatusQuoActive(true)
+            // Signal saved content presence synchronously so parent's Next-button
+            // gate doesn't wait for a state useEffect's first render cycle.
+            if (onContentChange && parsedCompetitors) {
+              const hasNonEmpty = parsedCompetitors.some(
+                comp => (comp.name ?? '').trim().length > 2,
+              )
+              onContentChange(hasNonEmpty)
+            }
           }
         }
 
@@ -314,6 +328,16 @@ export default function CompetitorStepEditor({
     }
     void load()
   }, [workspaceId, stepId])
+
+  // Notify parent whenever competitors have content so the parent's hasContent
+  // gate can re-evaluate (cached rawContent does not see in-progress edits).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasNonEmpty = competitors.some(
+      comp => (comp.name ?? '').trim().length > 2,
+    )
+    onContentChange(hasNonEmpty)
+  }, [competitors, onContentChange])
 
   // ── Save ────────────────────────────────────────────────────────────────────
 

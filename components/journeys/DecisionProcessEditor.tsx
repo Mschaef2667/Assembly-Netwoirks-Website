@@ -276,6 +276,14 @@ export default function DecisionProcessEditor({
           const parsed = parseSavedContent(row['content'])
           setState(parsed)
           stateRef.current = parsed
+          // Signal saved content presence synchronously so parent's Next-button
+          // gate doesn't wait for the state useEffect's first render cycle.
+          if (onContentChange) {
+            const hasNonEmpty = Object.values(parsed).some(
+              seg => (seg.pattern ?? '').trim().length > 0,
+            )
+            onContentChange(hasNonEmpty)
+          }
         }
 
         if (step2Res.data && step2Res.data.length > 0) {

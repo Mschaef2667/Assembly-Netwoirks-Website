@@ -27,6 +27,10 @@ import {
 
 export interface StepContext {
   loading: boolean
+  // True once the step_output fetch in load() has completed (regardless of
+  // whether a row existed). Lets consumers re-evaluate derived state like
+  // hasContent after the initial data fetch settles, not just after user input.
+  contentLoaded: boolean
   workspaceId: string | null
   preferredModel: string
   stepDef: StepDef | null
@@ -87,6 +91,7 @@ export function useStepContext(stepId: string): StepContext {
   const [outputId, setOutputId] = useState<string | null>(null)
   const [outputVersion, setOutputVersion] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [contentLoaded, setContentLoaded] = useState(false)
 
   const [step9Data, setStep9Data] = useState<Step9State | null>(null)
   const [hasDcpAnalysis, setHasDcpAnalysis] = useState(false)
@@ -393,6 +398,7 @@ export function useStepContext(stepId: string): StepContext {
         // non-fatal
       } finally {
         setLoading(false)
+        setContentLoaded(true)
       }
     }
     void load()
@@ -400,6 +406,7 @@ export function useStepContext(stepId: string): StepContext {
 
   return {
     loading,
+    contentLoaded,
     workspaceId,
     preferredModel,
     stepDef,

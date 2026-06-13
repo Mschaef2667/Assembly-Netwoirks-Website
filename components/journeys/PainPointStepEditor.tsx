@@ -393,6 +393,11 @@ export default function PainPointStepEditor({
               if (idx >= 1 && idx <= 4) map[idx] = String(entry['content'] ?? '')
             }
             setContentMap(map)
+            // Signal saved content presence synchronously so parent's Next-button
+            // gate doesn't wait for the contentMap useEffect's first render cycle.
+            if (onContentChange) {
+              onContentChange(Object.values(map).some(v => (v ?? '').trim().length > 0))
+            }
           }
         }
 

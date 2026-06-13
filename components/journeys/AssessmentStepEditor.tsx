@@ -25,6 +25,7 @@ export interface AssessmentStepEditorProps {
   stepId: string
   stepTitle: string
   preferredModel?: string
+  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -232,6 +233,7 @@ export default function AssessmentStepEditor({
   stepId,
   stepTitle,
   preferredModel = 'claude-sonnet-4-5',
+  onContentChange,
 }: AssessmentStepEditorProps) {
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<AssessmentItem[]>([])
@@ -276,6 +278,14 @@ export default function AssessmentStepEditor({
             if (norm) loaded.push(norm)
           }
           setItems(loaded)
+          // Signal saved content presence synchronously so parent's Next-button
+          // gate doesn't wait for a state useEffect's first render cycle.
+          if (onContentChange) {
+            const hasNonEmpty = loaded.some(
+              it => (it.label ?? '').trim().length > 0 || (it.description ?? '').trim().length > 0,
+            )
+            onContentChange(hasNonEmpty)
+          }
         }
       } catch {
         /* non-fatal */
@@ -286,6 +296,16 @@ export default function AssessmentStepEditor({
     void load()
     return () => { cancelled = true }
   }, [workspaceId, stepId])
+
+  // Notify parent whenever items have content so the parent's hasContent gate
+  // can re-evaluate (cached rawContent does not see in-progress edits).
+  useEffect(() => {
+    if (!onContentChange) return
+    const hasNonEmpty = items.some(
+      it => (it.label ?? '').trim().length > 0 || (it.description ?? '').trim().length > 0,
+    )
+    onContentChange(hasNonEmpty)
+  }, [items, onContentChange])
 
   // ── Save ────────────────────────────────────────────────────────────────────
 
