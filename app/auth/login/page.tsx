@@ -172,6 +172,16 @@ export default function LoginPage() {
           </a>
         </p>
       </div>
+
+      <div style={{ marginTop: '24px', display: 'flex', gap: '16px', fontSize: '12px' }}>
+        <Link href="/tos" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>
+          Terms of Service
+        </Link>
+        <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span>
+        <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>
+          Privacy Policy
+        </Link>
+      </div>
     </div>
   )
 }

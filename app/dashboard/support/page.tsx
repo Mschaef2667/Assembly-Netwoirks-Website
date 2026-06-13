@@ -630,6 +630,42 @@ export default function SupportPage() {
         <VideoTutorialsCard />
         <WhatsNewCard />
       </div>
+
+      {/* Legal */}
+      <div style={{
+        marginTop: '40px',
+        paddingTop: '24px',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <h2 style={{
+          color: '#6B7280',
+          fontSize: '10px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          margin: '0 0 12px',
+        }}>
+          Legal
+        </h2>
+        <div style={{ display: 'flex', gap: '20px', fontSize: '13px' }}>
+          <a
+            href="/tos"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#0EA5E9', textDecoration: 'none', fontWeight: 500 }}
+          >
+            Terms of Service
+          </a>
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#0EA5E9', textDecoration: 'none', fontWeight: 500 }}
+          >
+            Privacy Policy
+          </a>
+        </div>
+      </div>
     </main>
   )
 }

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_PREFIXES = ['/auth/', '/survey/', '/api/survey/']
+const PUBLIC_PREFIXES = ['/auth/', '/survey/', '/api/survey/', '/tos', '/tos/', '/privacy', '/privacy/']
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
