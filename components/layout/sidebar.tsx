@@ -17,6 +17,7 @@ import {
   Settings,
   LifeBuoy,
   LogOut,
+  ShieldCheck,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -47,6 +48,7 @@ export default function Sidebar() {
   const [userInitial, setUserInitial] = useState<string>('')
   const [orgName, setOrgName] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -55,7 +57,7 @@ export default function Sidebar() {
         if (!user) return
         const { data } = await supabase
           .from('users')
-          .select('first_name, last_name, role, org_id')
+          .select('first_name, last_name, role, org_id, is_super_admin')
           .eq('id', user.id)
           .single()
         if (data) {
@@ -66,6 +68,7 @@ export default function Sidebar() {
           setUserName(full || null)
           setUserInitial(first ? first[0].toUpperCase() : (user.email?.[0]?.toUpperCase() ?? '?'))
           setUserRole(String(row['role'] ?? ''))
+          setIsSuperAdmin(Boolean(row['is_super_admin']))
 
           const orgId = String(row['org_id'] ?? '')
           if (orgId) {
@@ -122,7 +125,12 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-        {navItems.map(({ label, href, icon: Icon, id }) => {
+        {[
+          ...navItems,
+          ...(isSuperAdmin
+            ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck, id: 'nav-admin' as const }]
+            : []),
+        ].map(({ label, href, icon: Icon, id }) => {
           const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname === href || pathname.startsWith(href + '/')
           const isOnboarding = href === '/dashboard/onboarding'
           return (
