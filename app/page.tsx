@@ -549,7 +549,7 @@ export default function LandingPage() {
     <div style={PAGE}>
       <nav style={NAV}>
         <div style={NAV_INNER}>
-          <Logo size={28} />
+          <Logo size={48} />
           <div style={NAV_LINKS} className="landing-nav-links">
             <a href="#how-it-works" style={NAV_LINK}>
               How It Works
