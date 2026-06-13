@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_PREFIXES = ['/auth/', '/auth/update-password', '/survey/', '/api/survey/', '/tos', '/tos/', '/privacy', '/privacy/']
+const PUBLIC_PREFIXES = ['/', '/auth/', '/auth/update-password', '/survey/', '/api/survey/', '/tos', '/tos/', '/privacy', '/privacy/']
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-  const isPublic = PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
+  const isPublic = PUBLIC_PREFIXES.some(p => p === '/' ? pathname === '/' : pathname.startsWith(p))
 
   if (!session && !isPublic) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
