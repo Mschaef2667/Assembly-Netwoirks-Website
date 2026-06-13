@@ -451,7 +451,6 @@ function Logo({ size = 28 }: { size?: number }) {
         style={{ borderRadius: 6, objectFit: 'contain' }}
         priority
       />
-      <span style={LOGO_TEXT}>Assembly AI</span>
     </Link>
   )
 }
