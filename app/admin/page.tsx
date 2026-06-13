@@ -130,7 +130,6 @@ export default function SuperAdminPage() {
     async function check() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('[Admin] user:', user?.id, user?.email)
         if (!user) {
           router.replace('/auth/login')
           return
@@ -141,14 +140,12 @@ export default function SuperAdminPage() {
           .eq('id', user.id)
           .maybeSingle()
         const isSuper = !!(row && (row as { is_super_admin?: boolean }).is_super_admin)
-        console.log('[Admin] row:', row, 'isSuper:', isSuper)
         if (!isSuper) {
           router.replace('/dashboard')
           return
         }
         setAuthChecking(false)
-      } catch (e) {
-        console.log('[Admin] catch error:', e)
+      } catch {
         router.replace('/dashboard')
       }
     }
