@@ -57,7 +57,6 @@ export interface ActionPlanEditorProps {
   preferredModel?: string
   tips?: Tip[]
   tabLabel?: string
-  onContentChange?: (hasNonEmptyContent: boolean) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -163,7 +162,6 @@ export default function ActionPlanEditor({
   preferredModel = 'claude-sonnet-4-5',
   tips,
   tabLabel = 'Action',
-  onContentChange,
 }: ActionPlanEditorProps) {
   const [loading, setLoading] = useState(true)
   const [step4Found, setStep4Found] = useState(false)
@@ -273,13 +271,6 @@ export default function ActionPlanEditor({
               setSummaryContent(c['summary'])
               summaryRef.current = c['summary']
             }
-            // Signal saved content presence synchronously so parent's Next-button
-            // gate doesn't wait for the state useEffect's first render cycle.
-            if (onContentChange) {
-              const hasPP = Object.values(perPPRef.current).some(v => (v ?? '').trim().length > 0)
-              const hasSummary = (summaryRef.current ?? '').trim().length > 0
-              onContentChange(hasPP || hasSummary)
-            }
           }
         }
 
@@ -321,16 +312,6 @@ export default function ActionPlanEditor({
     }
     void load()
   }, [workspaceId, stepId])
-
-  // Notify parent whenever per-pain-point content or summary changes so the
-  // parent's hasContent gate can re-evaluate (cached rawContent does not see
-  // in-progress edits).
-  useEffect(() => {
-    if (!onContentChange) return
-    const hasPP = Object.values(perPPContent).some(v => (v ?? '').trim().length > 0)
-    const hasSummary = (summaryContent ?? '').trim().length > 0
-    onContentChange(hasPP || hasSummary)
-  }, [perPPContent, summaryContent, onContentChange])
 
   // ── Save ──────────────────────────────────────────────────────────────────
 

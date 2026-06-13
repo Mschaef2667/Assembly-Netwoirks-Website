@@ -274,16 +274,6 @@ export default function AcidTestEditor({
           if (savedSegKey && segs.some(s => s.key === savedSegKey)) {
             setSelectedSegmentKey(savedSegKey)
           }
-          // Signal saved content presence synchronously so parent's Next-button
-          // gate doesn't wait for the state useEffect's first render cycle.
-          if (onContentChange) {
-            const hasRating = Object.values(savedRatings).some(
-              row => row && Object.values(row).some(v => !!v),
-            )
-            const hasEvidence = Object.values(savedEvidence).some(v => (v ?? '').trim().length > 0)
-            const hasStrengthen = Object.values(savedStrengthen).some(v => (v ?? '').trim().length > 0)
-            onContentChange(hasRating || hasEvidence || hasStrengthen)
-          }
         }
       } catch {
         /* non-fatal */

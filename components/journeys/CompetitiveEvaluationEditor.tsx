@@ -246,16 +246,7 @@ export default function CompetitiveEvaluationEditor({
           const row = data[0] as Record<string, unknown>
           setOutputId(String(row['id'] ?? ''))
           setOutputVersion(Number(row['version'] ?? 1))
-          const parsedSections = parseSavedContent(row['content'])
-          setSections(parsedSections)
-          // Signal saved content presence synchronously so parent's Next-button
-          // gate doesn't wait for the sections useEffect's first render cycle.
-          if (onContentChange) {
-            const hasNonEmpty = Object.values(parsedSections).some(
-              v => (v ?? '').trim().length > 0,
-            )
-            onContentChange(hasNonEmpty)
-          }
+          setSections(parseSavedContent(row['content']))
         }
       } catch { /* non-fatal */ }
       finally {
