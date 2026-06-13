@@ -46,6 +46,7 @@ export default function Sidebar() {
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userInitial, setUserInitial] = useState<string>('')
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [orgName, setOrgName] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
@@ -55,6 +56,7 @@ export default function Sidebar() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        setUserEmail(user.email ?? null)
         const { data } = await supabase
           .from('users')
           .select('first_name, last_name, role, org_id, is_super_admin')
@@ -200,6 +202,21 @@ export default function Sidebar() {
         )}
 
         <p className="px-3 text-xs" style={{ color: '#6B7280' }}>{orgName ?? 'C3 Method OS'}</p>
+        {userEmail && (
+          <p
+            className="px-3"
+            style={{
+              color: 'rgba(107,114,128,0.85)',
+              fontSize: '10px',
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {userEmail}
+          </p>
+        )}
         <button
           onClick={handleLogout}
           style={{

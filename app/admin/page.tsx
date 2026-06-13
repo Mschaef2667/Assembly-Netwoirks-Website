@@ -2,8 +2,9 @@
 
 import type { CSSProperties } from 'react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight, CheckCircle2, Copy, Check, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type {
   AdminDataResponse,
@@ -125,6 +126,7 @@ export default function SuperAdminPage() {
   const [data, setData] = useState<AdminDataResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('clients')
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
 
   useEffect(() => {
     async function check() {
@@ -134,6 +136,7 @@ export default function SuperAdminPage() {
           router.replace('/auth/login')
           return
         }
+        setSessionEmail(user.email ?? null)
         const { data: row } = await supabase
           .from('users')
           .select('is_super_admin')
@@ -190,6 +193,11 @@ export default function SuperAdminPage() {
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', margin: '6px 0 0' }}>
           Cross-workspace operations console.
         </p>
+        {sessionEmail && (
+          <p style={{ color: '#6B7280', fontSize: '11px', margin: '8px 0 0' }}>
+            Logged in as: {sessionEmail}
+          </p>
+        )}
       </header>
 
       <nav style={TAB_BAR}>
@@ -247,6 +255,17 @@ export default function SuperAdminPage() {
 
 function ClientsTab({ orgs, users }: { orgs: AdminOrg[]; users: AdminOrgUser[] }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [copiedOrgId, setCopiedOrgId] = useState<string | null>(null)
+
+  async function copyOrgId(orgId: string) {
+    try {
+      await navigator.clipboard.writeText(orgId)
+      setCopiedOrgId(orgId)
+      setTimeout(() => setCopiedOrgId(prev => (prev === orgId ? null : prev)), 1500)
+    } catch (err) {
+      console.error('[admin] copy failed', err)
+    }
+  }
 
   const usersByOrg = useMemo(() => {
     const m = new Map<string, AdminOrgUser[]>()
@@ -281,6 +300,8 @@ function ClientsTab({ orgs, users }: { orgs: AdminOrg[]; users: AdminOrgUser[] }
             <th style={TH}>Journey Progress</th>
             <th style={TH}>Last Active</th>
             <th style={TH}>Created</th>
+            <th style={TH}>Workspace ID</th>
+            <th style={TH}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -325,11 +346,75 @@ function ClientsTab({ orgs, users }: { orgs: AdminOrg[]; users: AdminOrgUser[] }
                   </td>
                   <td style={SUBTLE}>{formatRelative(o.last_active_at)}</td>
                   <td style={SUBTLE}>{formatDate(o.created_at)}</td>
+                  <td style={SUBTLE} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <code style={{
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                        fontSize: '11px',
+                        color: 'rgba(255,255,255,0.7)',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        maxWidth: '140px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-block',
+                      }} title={o.id}>
+                        {o.id}
+                      </code>
+                      <button
+                        onClick={() => copyOrgId(o.id)}
+                        title="Copy Workspace ID"
+                        style={{
+                          minHeight: '28px',
+                          minWidth: '28px',
+                          padding: '0 6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          backgroundColor: 'transparent',
+                          color: copiedOrgId === o.id ? '#86EFAC' : 'rgba(255,255,255,0.65)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {copiedOrgId === o.id ? <Check size={12} /> : <Copy size={12} />}
+                        {copiedOrgId === o.id ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </td>
+                  <td style={TD} onClick={e => e.stopPropagation()}>
+                    <Link
+                      href={`/dashboard/journeys?org=${o.id}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        minHeight: '28px',
+                        padding: '0 10px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(14,165,233,0.4)',
+                        backgroundColor: 'rgba(14,165,233,0.12)',
+                        color: '#7DD3FC',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <ExternalLink size={11} />
+                      Open journey
+                    </Link>
+                  </td>
                 </tr>
                 {isOpen && (
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                     <td />
-                    <td colSpan={5} style={{ padding: '14px 16px' }}>
+                    <td colSpan={7} style={{ padding: '14px 16px' }}>
                       {orgUsers.length === 0 ? (
                         <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px' }}>No users.</span>
                       ) : (
