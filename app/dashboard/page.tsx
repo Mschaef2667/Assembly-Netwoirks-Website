@@ -31,6 +31,15 @@ interface AudienceCount {
   count: number
 }
 
+type GapLevel = 'none' | 'low' | 'medium' | 'high' | 'critical'
+
+interface CapabilityGap {
+  stepId: '13' | '14'
+  label: string
+  description: string
+  gapLevel: Extract<GapLevel, 'critical' | 'high'>
+}
+
 interface ScoreBreakdown {
   total: number
   stepPts: number
@@ -208,6 +217,7 @@ export default function DashboardPage() {
   const [dcpRow, setDcpRow] = useState<DcpRow | null>(null)
   const [icpRows, setIcpRows] = useState<Array<Record<string, unknown>>>([])
   const [audienceCounts, setAudienceCounts] = useState<AudienceCount[]>([])
+  const [capabilityGaps, setCapabilityGaps] = useState<CapabilityGap[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
@@ -225,7 +235,7 @@ export default function DashboardPage() {
         if (!userRow) throw new Error('User not found')
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes] = await Promise.all([
+        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes, capRes] = await Promise.all([
           supabase.from('step_definition').select('id,title,section,phase'),
           supabase.from('step_output')
             .select('step_id,version,status,original_confidence')
@@ -237,6 +247,10 @@ export default function DashboardPage() {
             .maybeSingle(),
           supabase.from('icp_definition').select('*').eq('org_id', orgId),
           supabase.from('survey_link_responses').select('audience').eq('org_id', orgId),
+          supabase.from('step_output')
+            .select('step_id,version,content')
+            .eq('workspace_id', orgId)
+            .in('step_id', ['13', '14']),
         ])
 
         // Latest version per step_id
@@ -264,12 +278,37 @@ export default function DashboardPage() {
           'internal', 'current', 'lost', 'potential',
         ].map(a => ({ audience: a, count: countMap.get(a) ?? 0 }))
 
+        // Latest content per step for steps 13/14 → critical/high gap items
+        const capLatest = new Map<string, { version: number; items: unknown[] }>()
+        for (const r of (capRes.data ?? []) as Array<{ step_id: string; version: number; content: unknown }>) {
+          const c = r.content && typeof r.content === 'object' ? r.content as Record<string, unknown> : null
+          const items = c && Array.isArray(c['items']) ? (c['items'] as unknown[]) : []
+          const ex = capLatest.get(r.step_id)
+          if (!ex || r.version > ex.version) capLatest.set(r.step_id, { version: r.version, items })
+        }
+        const gaps: CapabilityGap[] = []
+        for (const stepId of ['13', '14'] as const) {
+          for (const raw of capLatest.get(stepId)?.items ?? []) {
+            if (typeof raw !== 'object' || raw === null) continue
+            const o = raw as Record<string, unknown>
+            const gl = typeof o['gapLevel'] === 'string' ? o['gapLevel'] : ''
+            if (gl !== 'critical' && gl !== 'high') continue
+            gaps.push({
+              stepId,
+              label: typeof o['label'] === 'string' ? o['label'] : '',
+              description: typeof o['description'] === 'string' ? o['description'] : '',
+              gapLevel: gl,
+            })
+          }
+        }
+
         setStepDefs((defsRes.data ?? []) as StepDef[])
         setLatestOutputs(outMap)
         setDepsMap(dm)
         setDcpRow(dcpRes.data as DcpRow | null)
         setIcpRows((icpRes.data ?? []) as Array<Record<string, unknown>>)
         setAudienceCounts(counts)
+        setCapabilityGaps(gaps)
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
@@ -698,6 +737,90 @@ export default function DashboardPage() {
                   </span>
                 </div>
               </div>
+            </div>
+          )
+        })()}
+
+        {/* ── Widget 6: Capability Gaps (full width) ─────────────────────── */}
+        {(() => {
+          const critical = capabilityGaps.filter(g => g.gapLevel === 'critical')
+          const high = capabilityGaps.filter(g => g.gapLevel === 'high')
+          const topGaps = [...critical, ...high].slice(0, 3)
+          const hasGaps = topGaps.length > 0
+          const borderColor = critical.length > 0 ? '#EF4444' : high.length > 0 ? '#F59E0B' : '#10B981'
+
+          const countParts: string[] = []
+          if (critical.length > 0) countParts.push(`${critical.length} Critical`)
+          if (high.length > 0) countParts.push(`${high.length} High`)
+
+          return (
+            <div id="widget-capability-gaps" style={{ ...CARD, borderLeft: `3px solid ${borderColor}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: hasGaps ? '16px' : '0' }}>
+                <p style={{ ...CARD_HDR, margin: 0 }}>Capability Gaps</p>
+                {hasGaps && (
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                    {countParts.join(', ')} gaps identified
+                  </span>
+                )}
+              </div>
+
+              {!hasGaps ? (
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+                  Complete Steps 13 and 14 to see your capability gap analysis.
+                </p>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                    {topGaps.map((gap, idx) => {
+                      const isCritical = gap.gapLevel === 'critical'
+                      const badgeBg = isCritical ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'
+                      const badgeColor = isCritical ? '#EF4444' : '#F59E0B'
+                      return (
+                        <div key={idx} style={{
+                          display: 'flex', alignItems: 'flex-start', gap: '12px',
+                          padding: '12px 14px', borderRadius: '8px',
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.07)',
+                        }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700, color: badgeColor,
+                            backgroundColor: badgeBg, padding: '4px 8px', borderRadius: '4px',
+                            textTransform: 'uppercase', letterSpacing: '0.06em',
+                            flexShrink: 0, minWidth: '60px', textAlign: 'center',
+                          }}>
+                            {isCritical ? 'Critical' : 'High'}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>
+                              {gap.label || 'Untitled item'}
+                            </p>
+                            {gap.description && (
+                              <p style={{
+                                fontSize: '12px', color: 'rgba(255,255,255,0.55)',
+                                margin: '4px 0 0', lineHeight: '1.45',
+                              }}>
+                                {gap.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <Link
+                    href="/dashboard/journeys/step/13"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      minHeight: '36px', padding: '0 16px', borderRadius: '7px',
+                      backgroundColor: '#0EA5E9', color: '#FFFFFF',
+                      textDecoration: 'none', fontSize: '12px', fontWeight: 600,
+                    }}
+                  >
+                    Review Gaps
+                    <ChevronRight size={13} />
+                  </Link>
+                </>
+              )}
             </div>
           )
         })()}
