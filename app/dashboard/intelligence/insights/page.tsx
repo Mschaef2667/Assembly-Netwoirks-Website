@@ -367,6 +367,8 @@ export default function InsightsPage() {
         setTextColor(GREY)
         doc.text(`Assembly AI Confidential — ${company}`, margin, pageH - 8)
         doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 8, { align: 'right' })
+        setTextColor('#9CA3AF')
+        doc.text('Proprietary and Confidential — Assembly AI', pageW / 2, pageH - 8, { align: 'center' })
       }
 
       const slug = company.toLowerCase().replace(/\s+/g, '-')

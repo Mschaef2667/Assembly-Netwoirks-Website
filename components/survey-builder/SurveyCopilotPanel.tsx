@@ -376,6 +376,8 @@ export default function SurveyCopilotPanel({
         setTextColor('#999999')
         doc.text(`Assembly AI Confidential — ${company}`, margin, footerY)
         doc.text(`Page ${i} of ${totalPages}`, pageW - margin, footerY, { align: 'right' })
+        setTextColor('#9CA3AF')
+        doc.text('Proprietary and Confidential — Assembly AI', pageW / 2, footerY, { align: 'center' })
       }
 
       const slug = `${company.replace(/\s+/g, '-')}-interview-guide-${segmentName.replace(/\s+/g, '-')}`

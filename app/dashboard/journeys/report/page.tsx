@@ -497,7 +497,18 @@ export default function ReportPage() {
     try {
       const html2pdf = (await import('html2pdf.js')).default
       const companySlug = (org?.name ?? 'strategic-plan').replace(/\s+/g, '-')
-      await html2pdf()
+      type PdfHandle = {
+        internal: {
+          getNumberOfPages: () => number
+          pageSize: { getWidth: () => number; getHeight: () => number }
+        }
+        setPage: (page: number) => void
+        setFont: (font: string, style: string) => void
+        setFontSize: (size: number) => void
+        setTextColor: (r: number, g: number, b: number) => void
+        text: (text: string, x: number, y: number, options?: { align?: string }) => void
+      }
+      const worker = html2pdf()
         .set({
           margin: [15, 15, 15, 15] as [number, number, number, number],
           filename: `C3-Strategic-Plan-${companySlug}.pdf`,
@@ -517,7 +528,21 @@ export default function ReportPage() {
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
         })
         .from(reportRef.current)
-        .save()
+        .toPdf()
+        .get('pdf')
+        .then((pdf: PdfHandle) => {
+          const totalPages = pdf.internal.getNumberOfPages()
+          const pageW = pdf.internal.pageSize.getWidth()
+          const pageH = pdf.internal.pageSize.getHeight()
+          for (let i = 1; i <= totalPages; i++) {
+            pdf.setPage(i)
+            pdf.setFont('helvetica', 'normal')
+            pdf.setFontSize(8)
+            pdf.setTextColor(156, 163, 175)
+            pdf.text('Proprietary and Confidential — Assembly AI', pageW / 2, pageH - 5, { align: 'center' })
+          }
+        }) as unknown as { save: () => Promise<void> }
+      await worker.save()
     } catch (e) {
       console.error('PDF export failed:', e)
     } finally {

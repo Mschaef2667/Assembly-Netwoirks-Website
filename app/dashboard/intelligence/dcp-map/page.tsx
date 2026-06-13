@@ -453,7 +453,9 @@ export default function DcpMapPage() {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8)
         setTextColor(GREY)
-        doc.text(`Assembly AI Confidential — ${company}`, pageW / 2, pageH - 8, { align: 'center' })
+        doc.text(`Assembly AI Confidential — ${company}`, pageW / 2, pageH - 16, { align: 'center' })
+        setTextColor('#9CA3AF')
+        doc.text('Proprietary and Confidential — Assembly AI', pageW / 2, pageH - 6, { align: 'center' })
       }
 
       const slug = company.toLowerCase().replace(/\s+/g, '-')
