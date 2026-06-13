@@ -1,5 +1,6 @@
 import Sidebar from '@/components/layout/sidebar'
 import BetaFeedbackWidget from '@/components/ui/BetaFeedbackWidget'
+import BetaAgreementGate from '@/components/ui/BetaAgreementGate'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <BetaFeedbackWidget />
+      <BetaAgreementGate />
     </div>
   )
 }

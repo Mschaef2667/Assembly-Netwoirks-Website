@@ -378,6 +378,16 @@ export default function TermsOfServicePage() {
           verifying outputs and for all business decisions made in reliance on the Services.
         </p>
 
+        <h2 style={H2}>13A) AI-Generated Outputs</h2>
+        <p style={P}>
+          The Services use artificial intelligence to generate content, analysis, messaging, and strategic
+          recommendations. AI-generated outputs are provided for informational and planning purposes only
+          and do not constitute professional advice of any kind, including legal, financial, marketing, or
+          business strategy advice. Customer is solely responsible for reviewing, validating, and making
+          all business decisions based on outputs. Company makes no warranty that outputs will be accurate,
+          complete, or suitable for any specific purpose.
+        </p>
+
         <h2 style={H2}>14) Limitation of Liability</h2>
         <p style={P}>TO THE MAXIMUM EXTENT PERMITTED BY LAW:</p>
         <p style={P}>
@@ -387,7 +397,8 @@ export default function TermsOfServicePage() {
         </p>
         <p style={P}>
           <strong>14.2 Liability Cap.</strong> COMPANY&rsquo;S TOTAL LIABILITY ARISING OUT OF OR RELATED TO THE
-          SERVICES OR THESE TERMS WILL NOT EXCEED THE GREATER OF $100 OR THE AMOUNTS PAID BY CUSTOMER TO
+          SERVICES OR THESE TERMS WILL NOT EXCEED THE GREATER OF (A) $500 OR ONE MONTH OF FEES PAID BY
+          CUSTOMER TO COMPANY FOR THE SERVICES, WHICHEVER IS GREATER, OR (B) THE AMOUNTS PAID BY CUSTOMER TO
           COMPANY FOR THE SERVICES IN THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM.
         </p>
         <p style={P}>
