@@ -1,4 +1,5 @@
 import Sidebar from '@/components/layout/sidebar'
+import BetaFeedbackWidget from '@/components/ui/BetaFeedbackWidget'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,6 +8,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="ml-64 flex-1 min-h-screen" style={{ backgroundColor: '#F8F6F1' }}>
         {children}
       </main>
+      <BetaFeedbackWidget />
     </div>
   )
 }
