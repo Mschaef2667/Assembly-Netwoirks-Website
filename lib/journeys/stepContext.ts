@@ -261,24 +261,6 @@ export function useStepContext(stepId: string): StepContext {
           }
           const decayed = calculateDecayedConfidence(decayInput)
           setDecayedConfidence(decayed)
-
-          // Log to confidence_decay_log only when decay was applied
-          if (decayed !== null && decayed !== decayInput.original_confidence) {
-            const refDate = decayInput.last_reviewed_at ?? decayInput.created_at
-            const decayDays = Math.max(0, Math.floor(
-              (Date.now() - Date.parse(refDate)) / (1000 * 60 * 60 * 24),
-            ))
-            try {
-              await supabase.from('confidence_decay_log').insert({
-                workspace_id: wsId,
-                step_id: stepId,
-                original_confidence: decayInput.original_confidence,
-                decayed_confidence: decayed,
-                decay_days: decayDays,
-                logged_at: new Date().toISOString(),
-              })
-            } catch { /* non-fatal — logging must never break the UI */ }
-          }
         }
 
         // Load Step 2 segment names — always needed for multi-segment pill; also for Steps 3/3.5 editor tabs

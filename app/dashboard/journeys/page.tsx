@@ -387,31 +387,6 @@ export default function JourneysPage() {
         }
         setOutputMap(om)
 
-        // Compute and log confidence decay — fire-and-forget, non-blocking
-        for (const [sid, row] of om.entries()) {
-          if (row.status !== 'approved' && row.status !== 'draft') continue
-          const decayed = calculateDecayedConfidence({
-            status: row.status,
-            original_confidence: row.original_confidence,
-            last_reviewed_at: row.last_reviewed_at,
-            created_at: row.created_at,
-          })
-          if (decayed !== null && decayed !== row.original_confidence) {
-            const refDate = row.last_reviewed_at ?? row.created_at
-            const decayDays = Math.max(0, Math.floor(
-              (Date.now() - Date.parse(refDate)) / (1000 * 60 * 60 * 24),
-            ))
-            supabase.from('confidence_decay_log').insert({
-              workspace_id: wsId,
-              step_id: sid,
-              original_confidence: row.original_confidence,
-              decayed_confidence: decayed,
-              decay_days: decayDays,
-              logged_at: new Date().toISOString(),
-            }).then(() => {}, () => {})
-          }
-        }
-
         setContinueStepId(getContinueStepId(parsedSteps, dm, om))
 
         // Fetch Step 2 segments for multi-segment banner
