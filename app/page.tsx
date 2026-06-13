@@ -384,9 +384,9 @@ const LOGO_WRAP: CSSProperties = {
 
 const LOGO_TEXT: CSSProperties = {
   color: WHITE,
-  fontWeight: 700,
-  fontSize: 16,
-  letterSpacing: -0.2,
+  fontWeight: 800,
+  fontSize: 28,
+  letterSpacing: -0.4,
 }
 
 const PROBLEMS = [
@@ -549,7 +549,7 @@ export default function LandingPage() {
     <div style={PAGE}>
       <nav style={NAV}>
         <div style={NAV_INNER}>
-          <Logo size={48} />
+          <Logo size={200} />
           <div style={NAV_LINKS} className="landing-nav-links">
             <a href="#how-it-works" style={NAV_LINK}>
               How It Works
@@ -683,7 +683,7 @@ export default function LandingPage() {
 
       <footer style={FOOTER}>
         <div style={FOOTER_INNER}>
-          <Logo size={24} />
+          <Logo size={180} />
           <div style={FOOTER_LINKS}>
             <Link href="/tos" style={FOOTER_LINK}>
               Terms of Service
