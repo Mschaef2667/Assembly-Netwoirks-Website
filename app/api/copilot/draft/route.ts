@@ -12,6 +12,7 @@ import { buildPrompt as buildActionPrompt } from '@/lib/prompts/action'
 import { buildPrompt as buildIntelligencePrompt } from '@/lib/prompts/intelligence'
 import { buildPrompt as buildFoundationPrompt } from '@/lib/prompts/foundation'
 import { buildGenericPrompt, buildImprovePrompt } from '@/lib/prompts/generic'
+import { buildSupportAssistantPrompt } from '@/lib/prompts/support'
 import type { PromptContext } from '@/lib/prompts/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 }
 
 function dispatchPrompt(stepId: string, ctx: PromptContext): string {
+  if (stepId === 'support-assistant') return buildSupportAssistantPrompt(ctx)
   if (ctx.isImprove) return buildImprovePrompt(ctx)
   if (stepId === '1' || stepId === '2' || stepId === '3') return buildFoundationPrompt(stepId, ctx)
   if (['4', '5', '6', '7', '8', '9', '10'].includes(stepId)) return buildEndemicPrompt(stepId, ctx)
@@ -359,6 +361,8 @@ async function handleDraft(req: NextRequest): Promise<Response> {
     ? `SEARCH RESULTS:\n${webSearchResults || '(no results found)'}\n\nGenerate the JSON now.`
     : stepId === 'survey-builder'
     ? 'Respond with only the JSON object. Start your response with { immediately.'
+    : stepId === 'support-assistant'
+    ? 'Answer the user question now. Respond with only the JSON object.'
     : 'Generate the draft now.'
 
   let fullText = ''

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   MessageCircle,
   BookOpen,
@@ -10,6 +10,7 @@ import {
   Sparkles,
   Send,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: '#0F2140',
@@ -76,39 +77,208 @@ function CardHeader({ icon: Icon, title, badge }: {
 }
 
 // ── 1. AI Copilot Assistant ──────────────────────────────────────────────────
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  text: string
+}
+
 function AICopilotCard() {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const threadRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    async function loadWs() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('org_id')
+          .eq('id', user.id)
+          .single()
+        if (!userRow) return
+        setWorkspaceId((userRow as Record<string, unknown>)['org_id'] as string)
+      } catch { /* non-fatal */ }
+    }
+    void loadWs()
+  }, [])
+
+  useEffect(() => {
+    const el = threadRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, loading])
+
+  async function handleSend() {
+    const question = input.trim()
+    if (!question || loading || !workspaceId) return
+    setMessages(prev => [...prev, { role: 'user', text: question }])
+    setInput('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/copilot/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId: 'support-assistant',
+          workspaceId,
+          stepTitle: 'Support Assistant',
+          stepDescription: '',
+          currentContent: '',
+          extraContext: question,
+        }),
+      })
+
+      if (!res.ok || !res.body) {
+        setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, something went wrong. Please try again.' }])
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+
+      if (accumulated.includes('__STREAM_ERROR__')) {
+        setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, something went wrong. Please try again.' }])
+        return
+      }
+
+      let answer = accumulated.trim()
+      try {
+        const parsed = JSON.parse(answer) as Record<string, unknown>
+        if (typeof parsed['draft'] === 'string') answer = parsed['draft'] as string
+      } catch { /* keep raw */ }
+
+      setMessages(prev => [...prev, { role: 'assistant', text: answer }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, something went wrong. Please try again.' }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const canSend = !loading && !!input.trim() && !!workspaceId
+
   return (
     <div style={cardStyle}>
-      <CardHeader icon={MessageCircle} title="AI Copilot Assistant" badge={<ComingSoonBadge />} />
-      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
+      <style>{`@keyframes support-typing-bounce { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.4 } 40% { transform: scale(1); opacity: 1 } }`}</style>
+      <CardHeader icon={MessageCircle} title="AI Copilot Assistant" badge={<LiveBadge />} />
+      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>
         Ask anything about Assembly AI and the C3 Method. Get instant answers powered by AI.
       </p>
-      <div style={{ display: 'flex', gap: '8px', opacity: 0.35, pointerEvents: 'none' }}>
+
+      <div
+        ref={threadRef}
+        style={{
+          height: '240px',
+          overflowY: 'auto',
+          backgroundColor: 'rgba(10,22,40,0.5)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '8px',
+          padding: '12px',
+          marginBottom: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}
+      >
+        {messages.length === 0 && !loading && (
+          <p style={{ color: '#6B7280', fontSize: '12px', margin: 0, textAlign: 'center', paddingTop: '40px' }}>
+            Try asking: &quot;What is the DCP?&quot; or &quot;How do I write a strong CVP?&quot;
+          </p>
+        )}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+              maxWidth: '85%',
+              backgroundColor: m.role === 'user' ? '#E8520A' : '#0A1628',
+              color: '#FFFFFF',
+              padding: '8px 12px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
+            {m.text}
+          </div>
+        ))}
+        {loading && (
+          <div style={{
+            alignSelf: 'flex-start',
+            backgroundColor: '#0A1628',
+            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '10px 14px',
+            borderRadius: '12px',
+            display: 'flex',
+            gap: '4px',
+            alignItems: 'center',
+          }}>
+            {[0, 0.16, 0.32].map((delay, i) => (
+              <span
+                key={i}
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#6B7280',
+                  display: 'inline-block',
+                  animation: `support-typing-bounce 1.4s infinite ease-in-out both`,
+                  animationDelay: `${delay}s`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px' }}>
         <input
-          disabled
-          placeholder="Ask a question…"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              void handleSend()
+            }
+          }}
+          disabled={loading || !workspaceId}
+          placeholder={workspaceId ? 'Ask a question…' : 'Loading…'}
           style={{
             flex: 1,
-            backgroundColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: '#FFFFFF',
             border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: '8px',
             padding: '10px 14px',
-            color: '#6B7280',
+            color: '#0D0D0D',
             fontSize: '13px',
             outline: 'none',
+            minHeight: '44px',
           }}
         />
         <button
-          disabled
+          onClick={() => void handleSend()}
+          disabled={!canSend}
           style={{
-            width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            width: '44px', height: '44px', borderRadius: '8px', flexShrink: 0,
+            backgroundColor: '#E8520A',
+            border: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'default',
+            cursor: canSend ? 'pointer' : 'default',
+            opacity: canSend ? 1 : 0.4,
           }}
         >
-          <Send size={16} color="#6B7280" strokeWidth={1.8} />
+          <Send size={16} color="#FFFFFF" strokeWidth={1.8} />
         </button>
       </div>
     </div>
@@ -116,28 +286,152 @@ function AICopilotCard() {
 }
 
 // ── 2. Tips and Tricks Library ───────────────────────────────────────────────
+interface Tip { title: string; body: string }
+interface TipCategory { name: string; tips: Tip[] }
+
+const tipCategories: TipCategory[] = [
+  {
+    name: 'Getting Started',
+    tips: [
+      {
+        title: 'Complete Phase 1 before anything else',
+        body: 'Steps 1–3.5 (Company Profile, Target Markets, Decision Makers, Buying Center) feed every downstream Copilot prompt. The richer your Phase 1 inputs, the better every Phase 2 output will be.',
+      },
+      {
+        title: 'Treat Intelligence as the foundation, not a side task',
+        body: 'The Decision Clarity Profile is the buyer-research backbone for the entire methodology. Steps 4–9 (Endemic Problems) are populated directly from DCP stage data.',
+      },
+      {
+        title: 'Approve Gate 1 to unlock ICP Development and Journeys',
+        body: 'Without Gate 1 approval on the DCP Map, Target Markets & Offers and Phase 2 steps stay locked. Submit the DCP Map for approval once the stage summaries feel solid.',
+      },
+    ],
+  },
+  {
+    name: 'Survey Best Practices',
+    tips: [
+      {
+        title: 'Keep the stage prefixes on every question',
+        body: 'Exported CSVs prefix each question with [Stage X — Stage Name]. Leave these intact so response imports auto-map answers back to the correct DCP stage.',
+      },
+      {
+        title: 'Aim for at least 3 substantive responses per stage',
+        body: 'Stages with thin coverage produce weak DCP summaries and unreliable Step 4–9 drafts. If a stage has fewer than 3 responses, push for more before generating the DCP Map.',
+      },
+      {
+        title: 'Mix customer types when sampling respondents',
+        body: 'Won deals, lost deals, churned customers, and existing customers each surface different stages of the decision journey. A balanced sample produces a richer DCP Map.',
+      },
+    ],
+  },
+  {
+    name: 'Strategic Messages (Steps 27–30)',
+    tips: [
+      {
+        title: 'The Set-Up (Step 27) opens in buyer language',
+        body: 'Pulls from Steps 4, 5, 6. Format: "Does your company experience [Effect] because of [Cause]?" Use the exact words buyers used in DCP responses, not internal jargon.',
+      },
+      {
+        title: 'The Jab (Step 28) is your value claim',
+        body: 'Format: "Our solution will [CVP] because of our commitment to [Core Competency]." If the Step 11 CVPs feel generic, fix them before tightening Step 28.',
+      },
+      {
+        title: 'Knock-Out and Clean-Up are where you win',
+        body: 'Step 29 (Knock-Out) hinges on Step 18 (Differentiators). Step 30 (Clean-Up) hinges on Steps 6 (Effect) and 19 (Competitive Advantages). Weak upstream content cascades — edit upstream first.',
+      },
+    ],
+  },
+  {
+    name: 'Action Plan (Steps 31–38)',
+    tips: [
+      {
+        title: 'Use the Strategic Plan PDF as your client deliverable',
+        body: 'Generate the Strategic Plan PDF from the Journeys page. It compiles every approved step into one branded document ready for stakeholder review.',
+      },
+      {
+        title: 'Revisit Steps 13–14 if the Action Plan feels thin',
+        body: 'Steps 31–38 build on Critical Success Formulas (Step 13) and Core Competencies (Step 14). If those are weak, the Action Plan will feel generic no matter how it is written.',
+      },
+    ],
+  },
+]
+
 function TipsCard() {
-  const placeholders = [
-    'Complete your Company Profile first to unlock…',
-    'Use stage labels on your survey to automatically…',
-    'Approve Gate 1 to unlock the full Journeys…',
-  ]
+  const [openKey, setOpenKey] = useState<string | null>(null)
+
   return (
     <div style={cardStyle}>
-      <CardHeader icon={BookOpen} title="Tips and Tricks Library" badge={<ComingSoonBadge />} />
-      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
-        Community-sourced tips to help you get the most out of Assembly AI.
+      <CardHeader icon={BookOpen} title="Tips and Tricks Library" badge={<LiveBadge />} />
+      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>
+        Practical guidance to help you get the most out of Assembly AI.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', opacity: 0.35, pointerEvents: 'none' }}>
-        {placeholders.map((text, i) => (
-          <div key={i} style={{
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '8px',
-            padding: '12px 14px',
-          }}>
-            <div style={{ height: '10px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '4px', marginBottom: '6px', width: '60%' }} />
-            <p style={{ color: '#6B7280', fontSize: '12px', margin: 0 }}>{text}</p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        maxHeight: '320px',
+        overflowY: 'auto',
+        paddingRight: '4px',
+      }}>
+        {tipCategories.map(cat => (
+          <div key={cat.name}>
+            <h3 style={{
+              color: '#0EA5E9',
+              fontSize: '10px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              margin: '0 0 8px',
+            }}>
+              {cat.name}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {cat.tips.map((tip, i) => {
+                const key = `${cat.name}-${i}`
+                const open = openKey === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setOpenKey(open ? null : key)}
+                    style={{
+                      textAlign: 'left',
+                      backgroundColor: open ? 'rgba(14,165,233,0.08)' : 'rgba(255,255,255,0.05)',
+                      border: open ? '1px solid rgba(14,165,233,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      color: '#FFFFFF',
+                      width: '100%',
+                      font: 'inherit',
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.4 }}>
+                        {tip.title}
+                      </span>
+                      <span style={{ color: '#6B7280', fontSize: '16px', flexShrink: 0, lineHeight: 1 }}>
+                        {open ? '−' : '+'}
+                      </span>
+                    </div>
+                    {open && (
+                      <p style={{
+                        color: 'rgba(255,255,255,0.75)',
+                        fontSize: '12px',
+                        margin: '8px 0 0',
+                        lineHeight: 1.6,
+                      }}>
+                        {tip.body}
+                      </p>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         ))}
       </div>
