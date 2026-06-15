@@ -13,6 +13,7 @@ interface IcpGenerateBody {
   companyContext: string
   dcpContext: string
   journeyContext: string
+  buyerType?: 'economic_buyer' | 'champion'
 }
 
 // ── Route config ──────────────────────────────────────────────────────────────
@@ -61,10 +62,15 @@ async function handleIcpGenerate(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { segmentName, segmentIndex, workspaceId, preferredModel, companyContext, dcpContext, journeyContext } = body
+  const { segmentName, segmentIndex, workspaceId, preferredModel, companyContext, dcpContext, journeyContext, buyerType } = body
   if (!segmentName || !workspaceId) {
     return NextResponse.json({ error: 'segmentName and workspaceId are required' }, { status: 400 })
   }
+
+  const resolvedBuyerType: 'economic_buyer' | 'champion' = buyerType === 'champion' ? 'champion' : 'economic_buyer'
+  const buyerTypeDescription = resolvedBuyerType === 'champion'
+    ? 'a Champion buyer — the internal advocate who identifies the need, evaluates options day-to-day, builds the business case, and drives the purchase forward inside the buying organization. Champions are typically practitioners, managers, or directors with deep operational pain but limited final budget authority.'
+    : 'an Economic Buyer — the executive with final budget authority and accountability for ROI. Economic buyers approve the purchase, own the business outcome, and care most about strategic impact, risk, and measurable return.'
 
   const model = preferredModel ?? 'claude-sonnet-4-5'
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -74,10 +80,14 @@ async function handleIcpGenerate(req: NextRequest): Promise<Response> {
 
   const systemPrompt = `You are an expert B2B ICP researcher. Based on the following company and market intelligence, generate a detailed ICP for the "${segmentName}" target market segment (Segment ${segmentIndex}).
 
+Generate the ICP specifically for ${buyerTypeDescription}
+
+Every field below — job titles, decision-making power, budget range, buying motion, primary challenges, success metrics, buyer values, etc. — must reflect the perspective, authority level, and concerns of this buyer type. Do not generate a generic ICP.
+
 Return ONLY a valid JSON object. No markdown, no backticks, no explanation text before or after. Start your response with { and end with }.
 
 The JSON object must contain these fields:
-- buyer_type (string, exactly "economic_buyer" or "champion")
+- buyer_type (string, must be exactly "${resolvedBuyerType}")
 - job_titles (array of strings)
 - company_size_range (string, e.g. "50-500 employees")
 - industry_verticals (array of strings)

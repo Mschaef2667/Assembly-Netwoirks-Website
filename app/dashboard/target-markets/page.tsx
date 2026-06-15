@@ -719,6 +719,7 @@ export default function TargetMarketsPage() {
           companyContext: companyLines.join('\n\n'),
           dcpContext,
           journeyContext: journeyLines.join('\n\n'),
+          buyerType: activeBuyerType[i],
         }),
       })
 
@@ -746,8 +747,7 @@ export default function TargetMarketsPage() {
   function applyCopilotPreview(i: number) {
     const preview = copilotPreviews[i]
     if (!preview) return
-    const bt = preview.buyer_type
-    setActiveBuyerType(prev => setAt(prev, i, bt))
+    const bt = activeBuyerType[i]
     setIcpForms(prev => {
       const updated = setAt(prev, i, { ...prev[i], [bt]: { ...prev[i][bt], ...preview, buyer_type: bt } })
       icpFormsRef.current = updated
