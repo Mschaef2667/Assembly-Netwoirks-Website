@@ -12,10 +12,16 @@ interface SurveyQuestion {
 
 interface SurveyLinkRow {
   token: string
+  org_id: string
   segment_name: string
   audience: string
   questions: SurveyQuestion[] | null
   is_active: boolean
+}
+
+interface OrgBrandRow {
+  name: string | null
+  logo_url: string | null
 }
 
 export const dynamic = 'force-dynamic'
@@ -30,13 +36,25 @@ export default async function SurveyPage({ params }: { params: Promise<{ token: 
 
   const { data, error } = await serviceRole
     .from('survey_links')
-    .select('token, segment_name, audience, questions, is_active')
+    .select('token, org_id, segment_name, audience, questions, is_active')
     .eq('token', token)
     .single()
 
   if (error || !data) return notFound()
 
   const link = data as SurveyLinkRow
+
+  const { data: orgData } = await serviceRole
+    .from('organizations')
+    .select('name, logo_url')
+    .eq('id', link.org_id)
+    .single()
+
+  const org = (orgData ?? null) as OrgBrandRow | null
+  const orgBrand = {
+    name: org?.name ?? null,
+    logoUrl: org?.logo_url ?? null,
+  }
 
   if (!link.is_active) {
     return (
@@ -70,6 +88,7 @@ export default async function SurveyPage({ params }: { params: Promise<{ token: 
         audience: link.audience,
         questions,
       }}
+      orgBrand={orgBrand}
     />
   )
 }

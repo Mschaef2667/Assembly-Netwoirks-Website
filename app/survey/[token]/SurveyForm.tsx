@@ -18,8 +18,14 @@ interface SurveyLinkData {
   questions: SurveyQuestion[]
 }
 
+interface OrgBrand {
+  name: string | null
+  logoUrl: string | null
+}
+
 interface Props {
   link: SurveyLinkData
+  orgBrand?: OrgBrand
 }
 
 const COMPANY_SIZES = [
@@ -67,7 +73,10 @@ function groupByStage(questions: SurveyQuestion[]): Map<number, { stageName: str
   return map
 }
 
-export default function SurveyForm({ link }: Props) {
+export default function SurveyForm({ link, orgBrand }: Props) {
+  const brandName = orgBrand?.name ?? 'Assembly AI'
+  const brandLogoUrl = orgBrand?.logoUrl ?? null
+  const brandInitial = (brandName.trim()[0] ?? 'A').toUpperCase()
   const [respondentName,    setRespondentName]    = useState('')
   const [respondentTitle,   setRespondentTitle]   = useState('')
   const [respondentCompany, setRespondentCompany] = useState('')
@@ -157,15 +166,31 @@ export default function SurveyForm({ link }: Props) {
         padding: '20px 24px',
       }}>
         <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '8px',
-            backgroundColor: '#E8520A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: '14px', color: '#FFFFFF', letterSpacing: '-0.5px',
-          }}>
-            A
-          </div>
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brandLogoUrl}
+              alt={brandName}
+              style={{
+                maxWidth: '120px',
+                maxHeight: '40px',
+                objectFit: 'contain',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '6px',
+                padding: '4px',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '8px',
+              backgroundColor: '#E8520A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 800, fontSize: '14px', color: '#FFFFFF', letterSpacing: '-0.5px',
+            }}>
+              {brandInitial}
+            </div>
+          )}
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>Assembly AI</div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>{brandName}</div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>Decision Clarity Survey</div>
           </div>
         </div>

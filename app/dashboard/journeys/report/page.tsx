@@ -566,7 +566,39 @@ export default function ReportPage() {
 
       const children: InstanceType<typeof Paragraph>[] = []
 
-      // Cover
+      // Cover — logo (if present) then company name
+      if (org?.logo_url) {
+        try {
+          const res = await fetch(org.logo_url)
+          if (res.ok) {
+            const buf = await res.arrayBuffer()
+            const bytes = new Uint8Array(buf)
+            const ct = (res.headers.get('content-type') ?? '').toLowerCase()
+            const urlLower = org.logo_url.toLowerCase()
+            const isPng = ct.includes('png') || urlLower.includes('.png')
+            const isJpg = ct.includes('jpeg') || ct.includes('jpg') || urlLower.match(/\.(jpe?g)/i)
+            const isSvg = ct.includes('svg') || urlLower.includes('.svg')
+            const imgType: 'png' | 'jpg' | 'svg' | null = isPng ? 'png' : isJpg ? 'jpg' : isSvg ? 'svg' : null
+            if (imgType) {
+              const { ImageRun } = lib as unknown as { ImageRun: new (opts: Record<string, unknown>) => unknown }
+              const imageOpts: Record<string, unknown> = {
+                data: bytes,
+                transformation: { width: 120, height: 60 },
+                type: imgType,
+              }
+              if (imgType === 'svg') {
+                imageOpts['fallback'] = { type: 'png', data: bytes }
+              }
+              children.push(new Paragraph({
+                children: [new ImageRun(imageOpts) as unknown as InstanceType<typeof TextRun>],
+                spacing: { after: 240 },
+              }))
+            }
+          }
+        } catch (err) {
+          console.warn('[report] failed to embed logo in DOCX =>', err)
+        }
+      }
       children.push(new Paragraph({ text: org?.name ?? 'Your Company', heading: HeadingLevel.TITLE, spacing: { after: 200 } }))
       children.push(new Paragraph({ children: [new TextRun({ text: 'C3 Method Strategic Plan', bold: true, size: 36 })], spacing: { after: 200 } }))
       children.push(new Paragraph({ children: [new TextRun({ text: today, size: 24, color: '6B7280' })], spacing: { after: 600 } }))

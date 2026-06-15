@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AssemblyUser } from '@/lib/supabase/client'
+import LogoUpload from '@/components/ui/LogoUpload'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface WorkspaceSettings {
   name: string
   website: string
   preferred_model: string
+  logo_url: string | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -142,7 +144,7 @@ export default function AdministrationPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>('')
   const [users, setUsers] = useState<WorkspaceUser[]>([])
   const [settings, setSettings] = useState<WorkspaceSettings>({
-    name: '', website: '', preferred_model: 'claude-sonnet-4-5',
+    name: '', website: '', preferred_model: 'claude-sonnet-4-5', logo_url: null,
   })
   const [userSave, setUserSave] = useState<SaveState>('idle')
   const [settingsSave, setSettingsSave] = useState<SaveState>('idle')
@@ -187,17 +189,19 @@ export default function AdministrationPage() {
 
         const { data: ws, error: wsError } = await supabase
           .from('organizations')
-          .select('name, website, preferred_model')
+          .select('name, website, preferred_model, logo_url')
           .eq('id', me.org_id)
           .single()
         if (wsError) console.error('[admin] init organizations fetch =>', JSON.stringify(wsError, null, 2))
 
         if (ws) {
           const wsRow = ws as Record<string, unknown>
+          const rawLogo = wsRow['logo_url']
           setSettings({
             name: String(wsRow['name'] ?? ''),
             website: String(wsRow['website'] ?? ''),
             preferred_model: String(wsRow['preferred_model'] ?? 'claude-sonnet-4-5'),
+            logo_url: typeof rawLogo === 'string' && rawLogo ? rawLogo : null,
           })
         }
       } catch {
@@ -384,7 +388,21 @@ export default function AdministrationPage() {
         {/* ── Company Settings ─────────────────────────────────────────────── */}
         <section>
           <h2 style={SECTION_HEADING}>Company Settings</h2>
-          <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={LABEL}>Company Logo</label>
+              {workspaceId ? (
+                <LogoUpload
+                  orgId={workspaceId}
+                  initialLogoUrl={settings.logo_url}
+                  onChange={(url) => setSettings(prev => ({ ...prev, logo_url: url }))}
+                />
+              ) : (
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+                  Loading workspace…
+                </p>
+              )}
+            </div>
             <div>
               <label style={LABEL}>Company Name</label>
               <input
