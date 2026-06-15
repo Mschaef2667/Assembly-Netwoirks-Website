@@ -121,36 +121,23 @@ ${journeyContext || 'Not yet available.'}`
   const anthropic = new Anthropic({ apiKey })
   let fullText = ''
   let claudeError: string | null = null
-  const maxAttempts = 3
 
-  outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    fullText = ''
-    try {
-      const claudeStream = anthropic.messages.stream({
-        model,
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: 'Generate the ICP now.' }],
-        system: systemPrompt,
-      })
+  try {
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: 'Generate the ICP now.' }],
+      system: systemPrompt,
+    })
 
-      for await (const chunk of claudeStream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          fullText += chunk.delta.text
-        }
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        fullText += block.text
       }
-      break outer
-    } catch (err) {
-      const status =
-        typeof err === 'object' && err !== null && 'status' in err
-          ? Number((err as { status: unknown }).status) || 0 : 0
-      claudeError = err instanceof Error ? err.message : String(err)
-      console.error(`[copilot/icp-generate] Claude error attempt ${attempt}/${maxAttempts}:`, claudeError)
-      if (status >= 500 && status < 600 && attempt < maxAttempts) {
-        await new Promise<void>(resolve => setTimeout(resolve, 1000))
-        continue outer
-      }
-      break outer
     }
+  } catch (err) {
+    claudeError = err instanceof Error ? err.message : String(err)
+    console.error('[copilot/icp-generate] Claude error:', claudeError)
   }
 
   console.log(`[copilot/icp-generate] raw response (${fullText.length} chars):`, fullText)
