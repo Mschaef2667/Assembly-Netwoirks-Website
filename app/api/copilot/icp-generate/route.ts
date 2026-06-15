@@ -76,34 +76,29 @@ async function handleIcpGenerate(req: NextRequest): Promise<Response> {
 
 Return ONLY a valid JSON object. No markdown, no backticks, no explanation text before or after. Start your response with { and end with }.
 
-The JSON must match this exact structure:
-{
-  "buyer_type": "economic_buyer",
-  "job_titles": ["<title1>", "<title2>", "<title3>"],
-  "company_size_range": "<e.g. 50-500 employees>",
-  "industry_verticals": ["<vertical1>", "<vertical2>"],
-  "decision_making_power": "<description of authority and budget control>",
-  "budget_range": "<e.g. $50k-$250k annual>",
-  "buying_motion": "<description of how they buy>",
-  "buying_urgency_trigger": "<event that causes them to start looking now>",
-  "primary_challenges": ["<challenge1>", "<challenge2>", "<challenge3>"],
-  "barriers_to_success": ["<barrier1>", "<barrier2>"],
-  "the_big_win": "<the single transformational outcome they want>",
-  "success_metrics": ["<metric1>", "<metric2>", "<metric3>"],
-  "buying_triggers": ["<trigger1>", "<trigger2>", "<trigger3>"],
-  "information_sources": ["<source1>", "<source2>", "<source3>"],
-  "preferred_communication": "<preferred channels and cadence>",
-  "purchase_criteria": ["<criterion1>", "<criterion2>", "<criterion3>"],
-  "buyer_values": "<what they value culturally and professionally>",
-  "common_objections": [
-    {"objection": "<objection>", "overcomes": "<what overcomes it>"}
-  ],
-  "risk_sensitivities": "<what risks concern them most>",
-  "tech_stack": "<typical tools and integration expectations>"
-}
+The JSON object must contain these fields:
+- buyer_type (string, exactly "economic_buyer" or "champion")
+- job_titles (array of strings)
+- company_size_range (string, e.g. "50-500 employees")
+- industry_verticals (array of strings)
+- decision_making_power (string describing authority and budget control)
+- budget_range (string, e.g. "$50k-$250k annual")
+- buying_motion (string describing how they buy)
+- buying_urgency_trigger (string describing the event that causes them to start looking now)
+- primary_challenges (array of strings)
+- barriers_to_success (array of strings)
+- the_big_win (string describing the single transformational outcome they want)
+- success_metrics (array of strings)
+- buying_triggers (array of strings)
+- information_sources (array of strings)
+- preferred_communication (string describing channels and cadence)
+- purchase_criteria (array of strings)
+- buyer_values (string describing what they value culturally and professionally)
+- common_objections (array of objects, each with "objection" and "overcomes" string fields)
+- risk_sensitivities (string describing what risks concern them most)
+- tech_stack (string describing typical tools and integration expectations)
 
 RULES:
-- buyer_type must be exactly "economic_buyer" or "champion"
 - Arrays should have 3-5 items where applicable
 - Be specific to the industry, company size, and buyer roles evident in the context
 - Draw directly from the DCP intelligence and journey pain point data where available
