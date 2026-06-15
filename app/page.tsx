@@ -581,7 +581,7 @@ export default function LandingPage() {
           </p>
           <div style={HERO_CTAS}>
             <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
-              Request Beta Access
+              Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
               Download White Paper
@@ -675,11 +675,11 @@ export default function LandingPage() {
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <h2 style={H2}>Ready to build a strategy your buyers actually respond to?</h2>
           <p style={{ ...SECTION_SUB, marginBottom: 32 }}>
-            Join the beta and get early access to Assembly AI.
+            Request a Demo and get early access to Assembly AI.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
-              Request Beta Access
+              Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
               Download White Paper
