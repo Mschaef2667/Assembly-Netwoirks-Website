@@ -62,6 +62,29 @@ interface InsightsContent {
   }
 }
 
+interface FutureStateGapItem extends AssessmentItem {
+  source: string
+}
+
+interface FutureStateData {
+  company: string
+  generatedAt: string
+  dcpConf: number
+  insightsConf: number
+  gapItems: FutureStateGapItem[]
+  opportunities: { label: string; text: string }[]
+  threats: { label: string; text: string }[]
+  retaliations: { label: string; text: string }[]
+  threatPairCount: number
+  internalExternalInsights: string[]
+  brandPerceptionInsights: string[]
+  months1to3: string[]
+  months4to6: string[]
+  months7to12: string[]
+  months13to18: string[]
+  metrics: string[]
+}
+
 // ─── Content extractors ──────────────────────────────────────────────────────
 
 function extractText(content: Record<string, unknown>): string {
@@ -431,6 +454,8 @@ export default function ReportPage() {
   const [generatingFutureState, setGeneratingFutureState] = useState(false)
   const [exportingFutureStateDocx, setExportingFutureStateDocx] = useState(false)
   const [futureStateLastGenerated, setFutureStateLastGenerated] = useState<string | null>(null)
+  const [futureStateData, setFutureStateData] = useState<FutureStateData | null>(null)
+  const [refreshingPreview, setRefreshingPreview] = useState(false)
   const [dcpStatus, setDcpStatus] = useState<string | null>(null)
   const [dcpOverallConfidence, setDcpOverallConfidence] = useState<number | null>(null)
   const [dcpStageSummaries, setDcpStageSummaries] = useState<DcpStageSummary[]>([])
@@ -451,6 +476,15 @@ export default function ReportPage() {
     if (!orgId || typeof window === 'undefined') return
     setFutureStateLastGenerated(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
   }, [orgId])
+
+  useEffect(() => {
+    if (futureStateData) return
+    if (!futureStateLastGenerated) return
+    if (dcpStatus !== 'approved' || !insightsContent) return
+    const data = buildFutureStateData()
+    if (data) setFutureStateData(data)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [futureStateLastGenerated, dcpStatus, insightsContent, outputs, dcpStageSummaries, dcpOverallConfidence, org])
 
   function formatApprovalDate(iso: string): string {
     try {
@@ -482,6 +516,15 @@ export default function ReportPage() {
   function handleRevokeFutureState() {
     localStorage.removeItem('report_future_state_approved')
     setFutureStateApproved(null)
+  }
+
+  async function handleRefreshActionPlan() {
+    setRefreshingPreview(true)
+    try {
+      await loadData()
+    } finally {
+      setRefreshingPreview(false)
+    }
   }
 
   async function loadData() {
@@ -974,9 +1017,96 @@ export default function ReportPage() {
 
   const canGenerateFutureState = dcpStatus === 'approved' && insightsContent !== null
 
+  function buildFutureStateData(): FutureStateData | null {
+    if (!insightsContent) return null
+
+    const company = org?.name ?? 'Your Company'
+    const dcpConf = dcpOverallConfidence ?? 0
+    const insightsConf = insightsContent.overall_confidence ?? 0
+
+    const step4Out = getOutput('4')
+    const painPoints = step4Out ? extractPainPoints(step4Out.content) : []
+
+    const step13Items = extractAssessmentItems(getOutput('13')?.content)
+    const step14Items = extractAssessmentItems(getOutput('14')?.content)
+    const gapItems: FutureStateGapItem[] = [
+      ...step13Items.map((i) => ({ source: 'Critical Success Formula', ...i })),
+      ...step14Items.map((i) => ({ source: 'Core Competency', ...i })),
+    ].filter((i) => i.gapLevel === 'critical' || i.gapLevel === 'high')
+
+    const step25Out = getOutput('25')
+    const opportunities = step25Out ? extractByPainPoint(step25Out, painPoints) : []
+    const step20Out = getOutput('20')
+    const step24Out = getOutput('24')
+    const threats = step20Out ? extractByPainPoint(step20Out, painPoints) : []
+    const retaliations = step24Out ? extractByPainPoint(step24Out, painPoints) : []
+    const threatPairCount = Math.max(threats.length, retaliations.length)
+
+    const brandPerception = insightsContent.categories?.brand_perception
+    const internalExternal = insightsContent.categories?.internal_external_gap
+    const productGaps = insightsContent.categories?.product_gaps?.insights ?? []
+    const step26Out = getOutput('26')
+    const swEntries = step26Out ? extractByPainPoint(step26Out, painPoints) : []
+
+    const stage7 = dcpStageSummaries.find((s) => s.stage_number === 7)
+    const stage7Signals = Array.isArray(stage7?.key_signals) ? (stage7!.key_signals as string[]) : []
+    const decisionSignals = insightsContent.categories?.decision_signals?.insights ?? []
+
+    const criticalCount = gapItems.filter((g) => g.gapLevel === 'critical').length
+    const highCount = gapItems.filter((g) => g.gapLevel === 'high').length
+
+    const months1to3: string[] = []
+    months1to3.push('Close all Critical capability gaps from Section 2 — decide build/hire/partner for each within 30 days.')
+    if (criticalCount > 0) months1to3.push(`${criticalCount} Critical gap${criticalCount === 1 ? '' : 's'} require immediate ownership and a documented closure plan.`)
+    if (opportunities.length > 0) months1to3.push('Launch the highest-leverage market opportunity from Section 3 as a quick-win pilot.')
+
+    const months4to6: string[] = []
+    if (retaliations.length > 0) months4to6.push('Execute the competitive retaliation strategies from Section 4 — sales enablement, battle cards, objection handling.')
+    months4to6.push('Begin brand repositioning rollout — update website, pitch deck, and sales scripts to reflect buyer language.')
+    if (highCount > 0) months4to6.push(`Close the ${highCount} High-priority capability gap${highCount === 1 ? '' : 's'} from Section 2.`)
+
+    const months7to12: string[] = []
+    if (opportunities.length > 1) months7to12.push('Pursue remaining market opportunities from Section 3 in priority order.')
+    if (productGaps.length > 0) months7to12.push(`Address top product gaps surfaced in Insights: ${productGaps.slice(0, 2).join('; ')}.`)
+    months7to12.push('Measure progress against the success metrics in Section 7 and iterate.')
+
+    const months13to18: string[] = []
+    months13to18.push('Scale the initiatives that produced the strongest leading indicators.')
+    months13to18.push('Evaluate entry into adjacent segments based on validated win patterns.')
+    if (swEntries.length > 0) months13to18.push('Use Step 26 strengths and weaknesses output to prioritize sustained differentiation investments.')
+
+    const metrics: string[] = []
+    stage7Signals.slice(0, 3).forEach((sig) => metrics.push(`Validation signal: ${sig}`))
+    decisionSignals.slice(0, 3).forEach((sig) => metrics.push(`Decision signal: ${sig}`))
+    metrics.push('Critical capability gaps closed (target: 100% within 90 days)')
+    metrics.push('Win rate vs. priority competitors (target: +10 pts over baseline)')
+    if (metrics.length < 7) metrics.push('Buyer conversations validating revised positioning (target: 3 per quarter)')
+
+    return {
+      company,
+      generatedAt: new Date().toISOString(),
+      dcpConf,
+      insightsConf,
+      gapItems,
+      opportunities,
+      threats,
+      retaliations,
+      threatPairCount,
+      internalExternalInsights: Array.isArray(internalExternal?.insights) ? internalExternal!.insights : [],
+      brandPerceptionInsights: Array.isArray(brandPerception?.insights) ? brandPerception!.insights : [],
+      months1to3,
+      months4to6,
+      months7to12,
+      months13to18,
+      metrics,
+    }
+  }
+
   async function handleFutureStatePdf() {
     if (!canGenerateFutureState || !insightsContent) return
     setGeneratingFutureState(true)
+    const builtData = buildFutureStateData()
+    if (builtData) setFutureStateData(builtData)
     try {
       const { jsPDF } = await import('jspdf')
       const company = org?.name ?? 'Your Company'
@@ -2070,12 +2200,29 @@ export default function ReportPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
+                onClick={() => { void handleRefreshActionPlan() }}
+                disabled={refreshingPreview}
+                style={{
+                  minHeight: '44px',
+                  padding: '0 20px',
+                  backgroundColor: refreshingPreview ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: refreshingPreview ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {refreshingPreview ? 'Refreshing…' : 'Refresh Preview'}
+              </button>
+              <button
                 onClick={() => { void handlePdf() }}
                 disabled={generatingPdf}
                 style={{
                   minHeight: '44px',
                   padding: '0 20px',
-                  backgroundColor: generatingPdf ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                  backgroundColor: generatingPdf ? 'rgba(14,165,233,0.5)' : '#0EA5E9',
                   color: '#FFFFFF',
                   border: 'none',
                   borderRadius: '8px',
@@ -2084,7 +2231,7 @@ export default function ReportPage() {
                   cursor: generatingPdf ? 'not-allowed' : 'pointer',
                 }}
               >
-                {generatingPdf ? 'Generating PDF…' : 'Download PDF'}
+                {generatingPdf ? 'Preparing PDF…' : 'Download PDF'}
               </button>
               <button
                 onClick={() => { void handleDocx() }}
@@ -2092,16 +2239,16 @@ export default function ReportPage() {
                 style={{
                   minHeight: '44px',
                   padding: '0 20px',
-                  backgroundColor: exporting ? 'rgba(255,255,255,0.1)' : '#0EA5E9',
+                  backgroundColor: exporting ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.08)',
                   color: exporting ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
-                  border: 'none',
+                  border: '1px solid rgba(255,255,255,0.15)',
                   borderRadius: '8px',
                   fontSize: '13px',
                   fontWeight: 600,
                   cursor: exporting ? 'not-allowed' : 'pointer',
                 }}
               >
-                {exporting ? 'Generating…' : 'Download Word'}
+                {exporting ? 'Preparing…' : 'Download Word'}
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -2197,8 +2344,8 @@ export default function ReportPage() {
                   backgroundColor: !canGenerateFutureState
                     ? 'rgba(255,255,255,0.06)'
                     : generatingFutureState
-                      ? 'rgba(14,165,233,0.5)'
-                      : '#0EA5E9',
+                      ? 'rgba(232,82,10,0.5)'
+                      : '#E8520A',
                   color: !canGenerateFutureState ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
                   border: !canGenerateFutureState ? '1px solid rgba(255,255,255,0.15)' : 'none',
                   borderRadius: '8px',
@@ -2209,11 +2356,11 @@ export default function ReportPage() {
               >
                 {generatingFutureState
                   ? 'Generating…'
-                  : futureStateLastGenerated
+                  : futureStateData
                     ? 'Regenerate Future State Plan'
                     : 'Generate Future State Plan'}
               </button>
-              {futureStateLastGenerated && canGenerateFutureState && (
+              {futureStateData && canGenerateFutureState && (
                 <>
                   <button
                     onClick={() => { void handleFutureStatePdf() }}
@@ -2221,7 +2368,7 @@ export default function ReportPage() {
                     style={{
                       minHeight: '44px',
                       padding: '0 20px',
-                      backgroundColor: generatingFutureState ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                      backgroundColor: generatingFutureState ? 'rgba(14,165,233,0.5)' : '#0EA5E9',
                       color: '#FFFFFF',
                       border: 'none',
                       borderRadius: '8px',
@@ -2230,7 +2377,7 @@ export default function ReportPage() {
                       cursor: generatingFutureState ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {generatingFutureState ? 'Generating PDF…' : 'Download PDF'}
+                    {generatingFutureState ? 'Preparing PDF…' : 'Download PDF'}
                   </button>
                   <button
                     onClick={() => { void handleFutureStateDocx() }}
@@ -2247,7 +2394,7 @@ export default function ReportPage() {
                       cursor: exportingFutureStateDocx ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {exportingFutureStateDocx ? 'Generating…' : 'Download Word'}
+                    {exportingFutureStateDocx ? 'Preparing…' : 'Download Word'}
                   </button>
                 </>
               )}
@@ -2437,64 +2584,10 @@ export default function ReportPage() {
         </div>
 
         {/* Document preview — Future State Strategic Plan body */}
-        {canGenerateFutureState && insightsContent && futureStateLastGenerated && (() => {
-          const step13Items = extractAssessmentItems(getOutput('13')?.content)
-          const step14Items = extractAssessmentItems(getOutput('14')?.content)
-          const gapItems = [
-            ...step13Items.map((i) => ({ source: 'Critical Success Formula', ...i })),
-            ...step14Items.map((i) => ({ source: 'Core Competency', ...i })),
-          ].filter((i) => i.gapLevel === 'critical' || i.gapLevel === 'high')
-          const criticalCount = gapItems.filter((g) => g.gapLevel === 'critical').length
-          const highCount = gapItems.filter((g) => g.gapLevel === 'high').length
-
-          const step25Out = getOutput('25')
-          const opportunities = step25Out ? extractByPainPoint(step25Out, step4PainPoints) : []
-          const step20Out = getOutput('20')
-          const step24Out = getOutput('24')
-          const threats = step20Out ? extractByPainPoint(step20Out, step4PainPoints) : []
-          const retaliations = step24Out ? extractByPainPoint(step24Out, step4PainPoints) : []
-          const threatPairCount = Math.max(threats.length, retaliations.length)
-
-          const brandPerception = insightsContent.categories?.brand_perception
-          const internalExternal = insightsContent.categories?.internal_external_gap
-          const productGaps = insightsContent.categories?.product_gaps?.insights ?? []
-          const step26Out = getOutput('26')
-          const swEntries = step26Out ? extractByPainPoint(step26Out, step4PainPoints) : []
-
-          const stage7 = dcpStageSummaries.find((s) => s.stage_number === 7)
-          const stage7Signals = Array.isArray(stage7?.key_signals) ? (stage7!.key_signals as string[]) : []
-          const decisionSignals = insightsContent.categories?.decision_signals?.insights ?? []
-
-          const metrics: string[] = []
-          stage7Signals.slice(0, 3).forEach((sig) => metrics.push(`Validation signal: ${sig}`))
-          decisionSignals.slice(0, 3).forEach((sig) => metrics.push(`Decision signal: ${sig}`))
-          metrics.push('Critical capability gaps closed (target: 100% within 90 days)')
-          metrics.push('Win rate vs. priority competitors (target: +10 pts over baseline)')
-          if (metrics.length < 7) metrics.push('Buyer conversations validating revised positioning (target: 3 per quarter)')
-
-          const months1to3: string[] = []
-          months1to3.push('Close all Critical capability gaps from Section 2 — decide build/hire/partner for each within 30 days.')
-          if (criticalCount > 0) months1to3.push(`${criticalCount} Critical gap${criticalCount === 1 ? '' : 's'} require immediate ownership and a documented closure plan.`)
-          if (opportunities.length > 0) months1to3.push('Launch the highest-leverage market opportunity from Section 3 as a quick-win pilot.')
-
-          const months4to6: string[] = []
-          if (retaliations.length > 0) months4to6.push('Execute the competitive retaliation strategies from Section 4 — sales enablement, battle cards, objection handling.')
-          months4to6.push('Begin brand repositioning rollout — update website, pitch deck, and sales scripts to reflect buyer language.')
-          if (highCount > 0) months4to6.push(`Close the ${highCount} High-priority capability gap${highCount === 1 ? '' : 's'} from Section 2.`)
-
-          const months7to12: string[] = []
-          if (opportunities.length > 1) months7to12.push('Pursue remaining market opportunities from Section 3 in priority order.')
-          if (productGaps.length > 0) months7to12.push(`Address top product gaps surfaced in Insights: ${productGaps.slice(0, 2).join('; ')}.`)
-          months7to12.push('Measure progress against the success metrics in Section 7 and iterate.')
-
-          const months13to18: string[] = []
-          months13to18.push('Scale the initiatives that produced the strongest leading indicators.')
-          months13to18.push('Evaluate entry into adjacent segments based on validated win patterns.')
-          if (swEntries.length > 0) months13to18.push('Use Step 26 strengths and weaknesses output to prioritize sustained differentiation investments.')
-
-          const dcpConf = dcpOverallConfidence ?? 0
-          const insightsConf = insightsContent.overall_confidence ?? 0
-          const company = org?.name ?? 'Your Company'
+        {futureStateData && (() => {
+          const data = futureStateData
+          const { company, dcpConf, insightsConf, gapItems, opportunities, threats, retaliations, threatPairCount,
+            internalExternalInsights, brandPerceptionInsights, months1to3, months4to6, months7to12, months13to18, metrics } = data
 
           return (
             <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
@@ -2667,9 +2760,9 @@ export default function ReportPage() {
                   <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
                     Where the team&apos;s beliefs differ from what real buyers said.
                   </p>
-                  {Array.isArray(internalExternal?.insights) && internalExternal!.insights.length > 0 ? (
+                  {internalExternalInsights.length > 0 ? (
                     <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
-                      {internalExternal!.insights.map((item, i) => (
+                      {internalExternalInsights.map((item, i) => (
                         <li key={i} style={bodyStyle}>{item}</li>
                       ))}
                     </ul>
@@ -2681,9 +2774,9 @@ export default function ReportPage() {
                   <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
                     How buyers describe you vs. how you describe yourself — close this gap with deliberate messaging.
                   </p>
-                  {Array.isArray(brandPerception?.insights) && brandPerception!.insights.length > 0 ? (
+                  {brandPerceptionInsights.length > 0 ? (
                     <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
-                      {brandPerception!.insights.map((item, i) => (
+                      {brandPerceptionInsights.map((item, i) => (
                         <li key={i} style={bodyStyle}>{item}</li>
                       ))}
                     </ul>
