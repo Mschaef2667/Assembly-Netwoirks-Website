@@ -218,6 +218,8 @@ export default function DashboardPage() {
   const [icpRows, setIcpRows] = useState<Array<Record<string, unknown>>>([])
   const [audienceCounts, setAudienceCounts] = useState<AudienceCount[]>([])
   const [capabilityGaps, setCapabilityGaps] = useState<CapabilityGap[]>([])
+  const [orgName, setOrgName] = useState<string | null>(null)
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
@@ -235,7 +237,7 @@ export default function DashboardPage() {
         if (!userRow) throw new Error('User not found')
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes, capRes] = await Promise.all([
+        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes, capRes, orgRes] = await Promise.all([
           supabase.from('step_definition').select('id,title,section,phase'),
           supabase.from('step_output')
             .select('step_id,version,status,original_confidence')
@@ -251,6 +253,7 @@ export default function DashboardPage() {
             .select('step_id,version,content')
             .eq('workspace_id', orgId)
             .in('step_id', ['13', '14']),
+          supabase.from('organizations').select('name, logo_url').eq('id', orgId).single(),
         ])
 
         // Latest version per step_id
@@ -309,6 +312,14 @@ export default function DashboardPage() {
         setIcpRows((icpRes.data ?? []) as Array<Record<string, unknown>>)
         setAudienceCounts(counts)
         setCapabilityGaps(gaps)
+
+        if (orgRes.data) {
+          const orgRow = orgRes.data as Record<string, unknown>
+          const name = typeof orgRow['name'] === 'string' ? (orgRow['name'] as string) : null
+          const logo = typeof orgRow['logo_url'] === 'string' ? (orgRow['logo_url'] as string) : null
+          setOrgName(name && name.length > 0 ? name : null)
+          setOrgLogoUrl(logo && logo.length > 0 ? logo : null)
+        }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
@@ -349,7 +360,22 @@ export default function DashboardPage() {
 
   const pageHeader = (
     <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-      <h1 style={{ color: '#FFFFFF', fontSize: '28px', fontWeight: 700, margin: 0 }}>Workspace Dashboard</h1>
+      {orgLogoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={orgLogoUrl}
+          alt={orgName ?? 'Company logo'}
+          style={{
+            maxHeight: '60px',
+            width: 'auto',
+            display: 'block',
+            marginBottom: '16px',
+          }}
+        />
+      )}
+      <h1 style={{ color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: 0 }}>
+        {orgName ?? 'Workspace Dashboard'}
+      </h1>
     </header>
   )
 

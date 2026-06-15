@@ -49,7 +49,6 @@ export default function Sidebar() {
   const [userInitial, setUserInitial] = useState<string>('')
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [orgName, setOrgName] = useState<string | null>(null)
-  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null)
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -78,7 +77,7 @@ export default function Sidebar() {
           const orgId = String(row['org_id'] ?? '')
           if (orgId) {
             const [orgRes, stepsRes] = await Promise.all([
-              supabase.from('organizations').select('name, logo_url').eq('id', orgId).single(),
+              supabase.from('organizations').select('name').eq('id', orgId).single(),
               supabase.from('step_output')
                 .select('step_id,status')
                 .eq('workspace_id', orgId)
@@ -87,8 +86,6 @@ export default function Sidebar() {
             if (orgRes.data) {
               const orgRow = orgRes.data as Record<string, unknown>
               setOrgName(String(orgRow['name'] ?? ''))
-              const logo = orgRow['logo_url']
-              setOrgLogoUrl(typeof logo === 'string' && logo ? logo : null)
             }
             const steps = (stepsRes.data ?? []) as { step_id: string; status: string }[]
             const approvedIds = new Set(steps.filter(s => s.status === 'approved').map(s => s.step_id))
@@ -206,44 +203,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {orgLogoUrl ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '0 12px',
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={orgLogoUrl}
-              alt={orgName ?? 'Workspace logo'}
-              style={{
-                maxHeight: '32px',
-                maxWidth: '32px',
-                objectFit: 'contain',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '4px',
-                padding: '2px',
-              }}
-            />
-            <span
-              style={{
-                color: '#FFFFFF',
-                fontSize: '12px',
-                fontWeight: 600,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {orgName ?? 'C3 Method OS'}
-            </span>
-          </div>
-        ) : (
-          <p className="px-3 text-xs" style={{ color: '#6B7280' }}>{orgName ?? 'C3 Method OS'}</p>
-        )}
+        <p className="px-3 text-xs" style={{ color: '#6B7280' }}>{orgName ?? 'C3 Method OS'}</p>
         {userEmail && (
           <p
             className="px-3"
