@@ -853,7 +853,7 @@ export default function PainPointStepEditor({
       }
 
       const companyContext = [
-        'STEP 1 - PRODUCT/SERVICE PROFILE:\n' + getStepText(s1.data as Array<Record<string, unknown>> | null),
+        'STEP 1 - PRODUCT, SERVICE, OR CAUSE PROFILE:\n' + getStepText(s1.data as Array<Record<string, unknown>> | null),
         'STEP 2 - TARGET SEGMENTS:\n' + getStepText(s2.data as Array<Record<string, unknown>> | null),
         'STEP 3 - DECISION MAKERS:\n' + getStepText(s3.data as Array<Record<string, unknown>> | null),
       ].join('\n\n')

@@ -180,7 +180,7 @@ async function handleGenerateInsights(_req: NextRequest): Promise<Response> {
     : 'No DCP analysis available yet.'
 
   const phase1Summary = [
-    step1 ? `Product/Service:\n${JSON.stringify(step1, null, 2)}` : 'Product/Service: not yet provided.',
+    step1 ? `Product, Service, or Cause:\n${JSON.stringify(step1, null, 2)}` : 'Product, Service, or Cause: not yet provided.',
     step2 ? `Target Segments:\n${JSON.stringify(step2, null, 2)}` : 'Target Segments: not yet provided.',
     step3 ? `Decision Makers:\n${JSON.stringify(step3, null, 2)}` : 'Decision Makers: not yet provided.',
   ].join('\n\n').slice(0, 4000)

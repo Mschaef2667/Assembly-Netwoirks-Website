@@ -5,7 +5,7 @@ export interface Tip {
 
 export const STEP_TIPS: Record<string, Tip[]> = {
   '1': [
-    { headline: 'Be specific about what you sell', body: 'Describe your primary product or service, not everything you offer. Specificity helps Copilot generate better downstream content.' },
+    { headline: 'Be specific about what you sell', body: 'Describe your primary product, service, or cause, not everything you offer. Specificity helps Copilot generate better downstream content.' },
     { headline: 'Use your buyers language', body: 'Avoid internal jargon. Write your product description the way your best customer would describe it to a colleague.' },
     { headline: 'Name your primary use case', body: 'Focus on the one problem you solve best, not every possible application. This keeps your messaging sharp.' },
   ],
@@ -65,7 +65,7 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'A strong Formula makes the buyer think: that is exactly what we need', body: 'If the Formula lands, the rest of the journey gets easier.' },
   ],
   '11': [
-    { headline: 'Instruction', body: 'How do your products or services solve each pain point? Write as a promise: If you purchase this, it will solve this, thereby reducing this.' },
+    { headline: 'Instruction', body: 'How do your products, services, or causes solve each pain point? Write as a promise: If you purchase this, it will solve this, thereby reducing this.' },
     { headline: 'Each CVP must be a specific promise -- not a generic claim', body: 'Specificity drives belief. Vague promises produce vague pipeline.' },
     { headline: 'WARNING: If your product does not actually solve the pain point, this is a critical point of failure', body: 'Honest CVPs only. Overpromising at this stage breaks trust later.' },
     { headline: 'The CVP must be grounded in your actual capabilities from Steps 13 and 14', body: 'Tie every promise back to a formula and a competency that delivers it.' },

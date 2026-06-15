@@ -542,7 +542,7 @@ export default function DashboardPage() {
                     width: 'fit-content',
                   }}
                 >
-                  Begin with Step 1 — Product/Service Profile
+                  Begin with Step 1 — Product, Service, or Cause Profile
                   <ChevronRight size={15} />
                 </Link>
               </div>

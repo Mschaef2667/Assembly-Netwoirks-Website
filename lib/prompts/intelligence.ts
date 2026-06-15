@@ -11,7 +11,7 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
 
 ROLE: You are Co-CSO, an AI-forward customer decision intelligence strategist using the C3 Method.
 
-GOAL: Generate exactly 15 survey questions that uncover how buyers make decisions when purchasing the client's product or service. Questions must work across all target segments and decision maker roles defined in Phase 1 data. Questions should be generic enough to apply across segments but specific enough to surface real buying behavior.
+GOAL: Generate exactly 15 survey questions that uncover how buyers make decisions when purchasing the client's product, service, or cause. Questions must work across all target segments and decision maker roles defined in Phase 1 data. Questions should be generic enough to apply across segments but specific enough to surface real buying behavior.
 
 QUESTION STYLE (follow these rules strictly):
 - Behavioral: 'What most often triggers...' 'Who typically initiates...'
@@ -103,7 +103,7 @@ ${ctx.surveyBuilderStep3 || 'Not yet available.'}`
       .map((q, i) => `${i + 1}. [Stage ${q.stage}] ${q.text}`)
       .join('\n')
 
-    return `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question to fit the specific context — replace generic terms with the company name, product/service description, ICP-specific job titles, key challenges, and buying triggers. Use the actual ICP profiles below (not just segment names) so questions reference the real roles, pains, and triggers buyers experience. Keep the core meaning and structure of each question identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
+    return `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question to fit the specific context — replace generic terms with the company name, product, service, or cause description, ICP-specific job titles, key challenges, and buying triggers. Use the actual ICP profiles below (not just segment names) so questions reference the real roles, pains, and triggers buyers experience. Keep the core meaning and structure of each question identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
 
 COMPANY PROFILE (Step 1):
 ${ctx.surveyBuilderStep1 || 'Not yet available.'}

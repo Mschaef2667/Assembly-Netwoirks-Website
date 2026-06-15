@@ -422,7 +422,7 @@ export default function CompetitorStepEditor({
     }
 
     const companyContext = [
-      'STEP 1 - PRODUCT/SERVICE PROFILE:\n' + stepText(s1.data as Array<Record<string, unknown>> | null),
+      'STEP 1 - PRODUCT, SERVICE, OR CAUSE PROFILE:\n' + stepText(s1.data as Array<Record<string, unknown>> | null),
       'STEP 2 - TARGET SEGMENTS:\n' + stepText(s2.data as Array<Record<string, unknown>> | null),
       'STEP 3 - DECISION MAKERS:\n' + stepText(s3.data as Array<Record<string, unknown>> | null),
     ].join('\n\n')

@@ -216,7 +216,7 @@ function Step1Form({ data, onChange, onBlur }: Step1FormProps) {
           onChange={e => onChange({ ...data, smartGoals: e.target.value })}
           onBlur={onBlur}
           rows={4}
-          placeholder="Enter your Specific, Measurable, Achievable, Relevant, and Time-bound goals for the Product/Service"
+          placeholder="Enter your Specific, Measurable, Achievable, Relevant, and Time-bound goals for the Product, Service, or Cause"
           style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
         />
       </div>
@@ -227,12 +227,12 @@ function Step1Form({ data, onChange, onBlur }: Step1FormProps) {
           onChange={e => onChange({ ...data, whatDoYouSell: e.target.value })}
           onBlur={onBlur}
           rows={4}
-          placeholder="Describe your product or service in 3–5 sentences…"
+          placeholder="Describe your product, service, or cause in 3–5 sentences…"
           style={{ ...INPUT, minHeight: '110px', resize: 'vertical' }}
         />
       </div>
       <div>
-        <label style={LABEL}>Product/Service URL</label>
+        <label style={LABEL}>Product, Service, or Cause URL</label>
         <input
           type="url"
           value={data.productUrl}

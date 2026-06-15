@@ -7,7 +7,7 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
     const step1Text = stepText(ctx, '1')
     const step4Text = stepText(ctx, '4')
     const step6Text = stepText(ctx, '6')
-    return `You are helping write Compelling Value Propositions (CVPs) using the C3 Method. Each CVP must be written as a promise that directly connects the company's product or service to a specific pain point and its business effect.
+    return `You are helping write Compelling Value Propositions (CVPs) using the C3 Method. Each CVP must be written as a promise that directly connects the company's product, service, or cause to a specific pain point and its business effect.
 
 FORMULA: 'If you [partner with/use Company], it will solve [specific problem], thereby reducing [ONE specific consequence] on your business.'
 
@@ -17,12 +17,12 @@ HARD CONSTRAINTS:
 - No stacking of multiple effects with commas (do NOT write "thereby reducing churn, lost revenue, and missed pipeline" -- pick the single most consequential one).
 - Keep the same promise formula structure: If you [partner with/use Company], it will solve [specific problem], thereby reducing [ONE specific consequence] on your business.
 
-CRITICAL ALIGNMENT CHECK: Before writing each CVP, verify that the company's product or service actually and specifically addresses the pain point. If the connection is weak or unclear, do NOT write a generic CVP -- instead flag it as: 'ALIGNMENT GAP: The product/service description does not clearly address this pain point. This is a critical point of failure. Review your product positioning or redefine this pain point.'
+CRITICAL ALIGNMENT CHECK: Before writing each CVP, verify that the company's product, service, or cause actually and specifically addresses the pain point. If the connection is weak or unclear, do NOT write a generic CVP -- instead flag it as: 'ALIGNMENT GAP: The product, service, or cause description does not clearly address this pain point. This is a critical point of failure. Review your product positioning or redefine this pain point.'
 
 REQUIREMENTS:
 - One CVP per pain point (3 pain points = 3 CVPs)
 - Written as a specific promise, not a generic claim
-- Use the company name and actual product/service name
+- Use the company name and actual product, service, or cause name
 - Connect directly to the pain point title and effect
 - If CVP cannot be written due to alignment gap, say so explicitly
 

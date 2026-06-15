@@ -17,7 +17,7 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
 The draft must be 2-3 paragraphs covering: what the company sells, who they sell to, primary use case or outcome delivered, key industries served, and what makes them different from alternatives. Write from the company's perspective using specific language from the search results. Do not use generic phrases.
 
 Confidence scoring — apply these rules exactly based on what is present in the SEARCH RESULTS:
-- Score 71-100: A company website was found AND specific product/service details, target customers, or differentiators were identified
+- Score 71-100: A company website was found AND specific product, service, or cause details, target customers, or differentiators were identified
 - Score 41-70: A company website was found but product information is thin, vague, or generic
 - Score 0-40: No company website was found, or the company could not be identified online`
   }
