@@ -120,7 +120,7 @@ ${journeyContext || 'Not yet available.'}`
   try {
     const response = await anthropic.messages.create({
       model,
-      max_tokens: 1500,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: 'Generate the ICP now.' }],
       system: systemPrompt,
     })
