@@ -13,11 +13,12 @@ import type {
   AdminFeedback,
   AdminError,
   AdminUsageSummary,
+  AdminWhitepaperLead,
 } from '@/app/api/admin/data/route'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'feedback' | 'errors' | 'usage'
+type Tab = 'clients' | 'feedback' | 'errors' | 'usage' | 'leads'
 type FeedbackFilter = 'all' | 'issue' | 'idea' | 'thumbs_up' | 'thumbs_down'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ export default function SuperAdminPage() {
       </header>
 
       <nav style={TAB_BAR}>
-        {(['clients', 'feedback', 'errors', 'usage'] as Tab[]).map(t => {
+        {(['clients', 'feedback', 'errors', 'usage', 'leads'] as Tab[]).map(t => {
           const active = tab === t
           return (
             <button
@@ -244,6 +245,7 @@ export default function SuperAdminPage() {
             {tab === 'feedback' && <FeedbackTab feedback={data.feedback} onResolved={loadData} />}
             {tab === 'errors'   && <ErrorsTab   errors={data.errors} />}
             {tab === 'usage'    && <UsageTab    usage={data.usage} />}
+            {tab === 'leads'    && <LeadsTab    leads={data.leads ?? []} />}
           </>
         )}
       </div>
@@ -727,6 +729,45 @@ function UsageTab({ usage }: { usage: AdminUsageSummary }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Leads Tab ─────────────────────────────────────────────────────────────────
+
+function LeadsTab({ leads }: { leads: AdminWhitepaperLead[] }) {
+  if (leads.length === 0) {
+    return <div style={{ ...CARD, color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>No white paper downloads yet.</div>
+  }
+  return (
+    <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#0F2140' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <th style={TH}>Name</th>
+            <th style={TH}>Email</th>
+            <th style={TH}>Company</th>
+            <th style={TH}>Job Title</th>
+            <th style={TH}>Situation</th>
+            <th style={TH}>Downloaded</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leads.map(l => {
+            const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || '—'
+            return (
+              <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ ...TD, fontWeight: 600 }}>{name}</td>
+                <td style={SUBTLE}>{l.email}</td>
+                <td style={SUBTLE}>{l.company ?? '—'}</td>
+                <td style={SUBTLE}>{l.job_title ?? '—'}</td>
+                <td style={SUBTLE}>{l.situation ?? '—'}</td>
+                <td style={SUBTLE}>{formatDate(l.downloaded_at)}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

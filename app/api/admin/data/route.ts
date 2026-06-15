@@ -56,12 +56,24 @@ export type AdminUsageSummary = {
   error_rate_steps: Array<{ step_id: string; total: number; errors: number; rate: number }>
 }
 
+export type AdminWhitepaperLead = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string
+  company: string | null
+  job_title: string | null
+  situation: string | null
+  downloaded_at: string
+}
+
 export type AdminDataResponse = {
   orgs: AdminOrg[]
   users: AdminOrgUser[]
   feedback: AdminFeedback[]
   errors: AdminError[]
   usage: AdminUsageSummary
+  leads: AdminWhitepaperLead[]
 }
 
 const STEP_TOTAL = 38 + 4 // 38 journey + 4 onboarding (1, 2, 3, 3.5)
@@ -108,12 +120,14 @@ export async function GET(): Promise<Response> {
       feedbackRes,
       runsRes,
       stepOutputsRes,
+      leadsRes,
     ] = await Promise.all([
       service.from('organizations').select('id, name, slug, created_at').order('created_at', { ascending: false }),
       service.from('users').select('id, org_id, email, first_name, last_name, role, is_active, created_at'),
       service.from('beta_feedback').select('id, org_id, user_id, type, message, page_url, step_id, created_at, resolved_at').order('created_at', { ascending: false }),
       service.from('copilot_run').select('id, workspace_id, step_id, status, error_code, model, created_at').order('created_at', { ascending: false }).limit(2000),
       service.from('step_output').select('workspace_id, step_id, status, last_updated_at, last_saved_at'),
+      service.from('whitepaper_leads').select('id, first_name, last_name, email, company, job_title, situation, downloaded_at').order('downloaded_at', { ascending: false }).limit(1000),
     ])
 
     if (orgsRes.error)        return NextResponse.json({ error: orgsRes.error.message }, { status: 500 })
@@ -121,6 +135,7 @@ export async function GET(): Promise<Response> {
     if (feedbackRes.error)    return NextResponse.json({ error: feedbackRes.error.message }, { status: 500 })
     if (runsRes.error)        return NextResponse.json({ error: runsRes.error.message }, { status: 500 })
     if (stepOutputsRes.error) return NextResponse.json({ error: stepOutputsRes.error.message }, { status: 500 })
+    // leadsRes error is non-fatal — the table may not exist yet on this environment.
 
     const rawOrgs = (orgsRes.data ?? []) as Array<{
       id: string; name: string; slug: string; created_at: string
@@ -234,7 +249,11 @@ export async function GET(): Promise<Response> {
       error_rate_steps,
     }
 
-    const payload: AdminDataResponse = { orgs, users, feedback, errors, usage }
+    const leads: AdminWhitepaperLead[] = leadsRes.error
+      ? []
+      : ((leadsRes.data ?? []) as Array<AdminWhitepaperLead>).map(l => ({ ...l }))
+
+    const payload: AdminDataResponse = { orgs, users, feedback, errors, usage, leads }
     return NextResponse.json(payload)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

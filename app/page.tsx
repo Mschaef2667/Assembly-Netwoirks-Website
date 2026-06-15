@@ -583,6 +583,9 @@ export default function LandingPage() {
             <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
               Request Beta Access
             </Link>
+            <Link href="/whitepaper" style={BTN_OUTLINE}>
+              Download White Paper
+            </Link>
             <a href="#how-it-works" style={BTN_OUTLINE}>
               See How It Works
             </a>
@@ -674,9 +677,14 @@ export default function LandingPage() {
           <p style={{ ...SECTION_SUB, marginBottom: 32 }}>
             Join the beta and get early access to Assembly AI.
           </p>
-          <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
-            Request Beta Access
-          </Link>
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
+              Request Beta Access
+            </Link>
+            <Link href="/whitepaper" style={BTN_OUTLINE}>
+              Download White Paper
+            </Link>
+          </div>
         </div>
       </section>
 
