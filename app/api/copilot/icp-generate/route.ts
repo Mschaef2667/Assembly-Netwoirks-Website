@@ -132,7 +132,7 @@ ${journeyContext || 'Not yet available.'}`
     }
   } catch (err) {
     claudeError = err instanceof Error ? err.message : String(err)
-    console.error('[copilot/icp-generate] Claude error:', claudeError)
+    console.error('[icp-generate] 422 detail:', JSON.stringify(err))
   }
 
   console.log(`[copilot/icp-generate] raw response (${fullText.length} chars):`, fullText)
