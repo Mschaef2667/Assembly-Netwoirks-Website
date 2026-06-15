@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronDown, ChevronRight, CheckCircle2, Copy, Check, ExternalLink } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight, CheckCircle2, Copy, Check, ExternalLink, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type {
   AdminDataResponse,
@@ -14,12 +14,14 @@ import type {
   AdminError,
   AdminUsageSummary,
   AdminWhitepaperLead,
+  AdminDemoRequest,
 } from '@/app/api/admin/data/route'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'feedback' | 'errors' | 'usage' | 'leads'
+type Tab = 'clients' | 'feedback' | 'errors' | 'usage' | 'leads' | 'demo'
 type FeedbackFilter = 'all' | 'issue' | 'idea' | 'thumbs_up' | 'thumbs_down'
+type DeletableTable = 'whitepaper_leads' | 'demo_requests' | 'beta_feedback'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -92,6 +94,47 @@ function formatRelative(value: string | null): string {
   if (months < 12) return `${months} mo ago`
   const years = Math.floor(months / 12)
   return years === 1 ? '1 yr ago' : `${years} yr ago`
+}
+
+async function deleteRecord(table: DeletableTable, id: string): Promise<void> {
+  const res = await fetch('/api/admin/delete-record', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ table, id }),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(body.error ?? `Delete failed (${res.status})`)
+  }
+}
+
+function DeleteButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      title="Delete record"
+      style={{
+        minHeight: '28px',
+        minWidth: '28px',
+        padding: '0 8px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
+        borderRadius: '6px',
+        border: '1px solid rgba(239,68,68,0.4)',
+        backgroundColor: 'rgba(239,68,68,0.12)',
+        color: '#FCA5A5',
+        fontSize: '11px',
+        fontWeight: 600,
+        cursor: busy ? 'not-allowed' : 'pointer',
+        opacity: busy ? 0.5 : 1,
+      }}
+    >
+      {busy ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+    </button>
+  )
 }
 
 function FeedbackBadge({ type }: { type: AdminFeedback['type'] }) {
@@ -202,8 +245,9 @@ export default function SuperAdminPage() {
       </header>
 
       <nav style={TAB_BAR}>
-        {(['clients', 'feedback', 'errors', 'usage', 'leads'] as Tab[]).map(t => {
+        {(['clients', 'feedback', 'errors', 'usage', 'leads', 'demo'] as Tab[]).map(t => {
           const active = tab === t
+          const label = t === 'demo' ? 'Demo Requests' : t
           return (
             <button
               key={t}
@@ -221,7 +265,7 @@ export default function SuperAdminPage() {
                 textTransform: 'capitalize',
               }}
             >
-              {t}
+              {label}
             </button>
           )
         })}
@@ -246,6 +290,7 @@ export default function SuperAdminPage() {
             {tab === 'errors'   && <ErrorsTab   errors={data.errors} />}
             {tab === 'usage'    && <UsageTab    usage={data.usage} />}
             {tab === 'leads'    && <LeadsTab    leads={data.leads ?? []} />}
+            {tab === 'demo'     && <DemoRequestsTab demoRequests={data.demoRequests ?? []} />}
           </>
         )}
       </div>
@@ -463,11 +508,14 @@ function ClientsTab({ orgs, users }: { orgs: AdminOrg[]; users: AdminOrgUser[] }
 function FeedbackTab({ feedback, onResolved }: { feedback: AdminFeedback[]; onResolved: () => void }) {
   const [filter, setFilter] = useState<FeedbackFilter>('all')
   const [resolving, setResolving] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return feedback
-    return feedback.filter(f => f.type === filter)
-  }, [feedback, filter])
+    const visible = feedback.filter(f => !deletedIds.has(f.id))
+    if (filter === 'all') return visible
+    return visible.filter(f => f.type === filter)
+  }, [feedback, filter, deletedIds])
 
   async function markResolved(id: string) {
     setResolving(id)
@@ -483,6 +531,24 @@ function FeedbackTab({ feedback, onResolved }: { feedback: AdminFeedback[]; onRe
       console.error('[admin] resolve failed', err)
     } finally {
       setResolving(null)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Are you sure you want to delete this record?')) return
+    setDeletingId(id)
+    try {
+      await deleteRecord('beta_feedback', id)
+      setDeletedIds(prev => {
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+    } catch (err) {
+      console.error('[admin] delete feedback failed', err)
+      window.alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -558,29 +624,32 @@ function FeedbackTab({ feedback, onResolved }: { feedback: AdminFeedback[]; onRe
                   </td>
                   <td style={SUBTLE}>{formatDate(f.created_at)}</td>
                   <td style={TD}>
-                    {f.resolved_at ? (
-                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>—</span>
-                    ) : (
-                      <button
-                        onClick={() => markResolved(f.id)}
-                        disabled={resolving === f.id}
-                        style={{
-                          minHeight: '32px',
-                          padding: '0 10px',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(14,165,233,0.4)',
-                          backgroundColor: 'rgba(14,165,233,0.12)',
-                          color: '#7DD3FC',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: resolving === f.id ? 'not-allowed' : 'pointer',
-                          opacity: resolving === f.id ? 0.5 : 1,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {resolving === f.id ? 'Saving…' : 'Mark resolved'}
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {f.resolved_at ? (
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>—</span>
+                      ) : (
+                        <button
+                          onClick={() => markResolved(f.id)}
+                          disabled={resolving === f.id}
+                          style={{
+                            minHeight: '32px',
+                            padding: '0 10px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(14,165,233,0.4)',
+                            backgroundColor: 'rgba(14,165,233,0.12)',
+                            color: '#7DD3FC',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: resolving === f.id ? 'not-allowed' : 'pointer',
+                            opacity: resolving === f.id ? 0.5 : 1,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {resolving === f.id ? 'Saving…' : 'Mark resolved'}
+                        </button>
+                      )}
+                      <DeleteButton onClick={() => handleDelete(f.id)} busy={deletingId === f.id} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -736,7 +805,33 @@ function UsageTab({ usage }: { usage: AdminUsageSummary }) {
 // ── Leads Tab ─────────────────────────────────────────────────────────────────
 
 function LeadsTab({ leads }: { leads: AdminWhitepaperLead[] }) {
-  if (leads.length === 0) {
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+
+  const visibleLeads = useMemo(
+    () => leads.filter(l => !deletedIds.has(l.id)),
+    [leads, deletedIds],
+  )
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Are you sure you want to delete this record?')) return
+    setDeletingId(id)
+    try {
+      await deleteRecord('whitepaper_leads', id)
+      setDeletedIds(prev => {
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+    } catch (err) {
+      console.error('[admin] delete lead failed', err)
+      window.alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (visibleLeads.length === 0) {
     return <div style={{ ...CARD, color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>No white paper downloads yet.</div>
   }
   return (
@@ -750,10 +845,11 @@ function LeadsTab({ leads }: { leads: AdminWhitepaperLead[] }) {
             <th style={TH}>Job Title</th>
             <th style={TH}>Situation</th>
             <th style={TH}>Downloaded</th>
+            <th style={TH}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {leads.map(l => {
+          {visibleLeads.map(l => {
             const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || '—'
             return (
               <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -763,6 +859,78 @@ function LeadsTab({ leads }: { leads: AdminWhitepaperLead[] }) {
                 <td style={SUBTLE}>{l.job_title ?? '—'}</td>
                 <td style={SUBTLE}>{l.situation ?? '—'}</td>
                 <td style={SUBTLE}>{formatDate(l.downloaded_at)}</td>
+                <td style={TD}>
+                  <DeleteButton onClick={() => handleDelete(l.id)} busy={deletingId === l.id} />
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Demo Requests Tab ─────────────────────────────────────────────────────────
+
+function DemoRequestsTab({ demoRequests }: { demoRequests: AdminDemoRequest[] }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+
+  const visible = useMemo(
+    () => demoRequests.filter(d => !deletedIds.has(d.id)),
+    [demoRequests, deletedIds],
+  )
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Are you sure you want to delete this record?')) return
+    setDeletingId(id)
+    try {
+      await deleteRecord('demo_requests', id)
+      setDeletedIds(prev => {
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
+    } catch (err) {
+      console.error('[admin] delete demo request failed', err)
+      window.alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (visible.length === 0) {
+    return <div style={{ ...CARD, color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>No demo requests yet.</div>
+  }
+  return (
+    <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#0F2140' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <th style={TH}>Name</th>
+            <th style={TH}>Email</th>
+            <th style={TH}>Company</th>
+            <th style={TH}>Job Title</th>
+            <th style={TH}>Message</th>
+            <th style={TH}>Date</th>
+            <th style={TH}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map(d => {
+            const name = [d.first_name, d.last_name].filter(Boolean).join(' ') || '—'
+            return (
+              <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ ...TD, fontWeight: 600 }}>{name}</td>
+                <td style={SUBTLE}>{d.email}</td>
+                <td style={SUBTLE}>{d.company ?? '—'}</td>
+                <td style={SUBTLE}>{d.job_title ?? '—'}</td>
+                <td style={{ ...SUBTLE, maxWidth: '360px', whiteSpace: 'pre-wrap' }}>{d.goals ?? '—'}</td>
+                <td style={SUBTLE}>{formatDate(d.submitted_at)}</td>
+                <td style={TD}>
+                  <DeleteButton onClick={() => handleDelete(d.id)} busy={deletingId === d.id} />
+                </td>
               </tr>
             )
           })}
