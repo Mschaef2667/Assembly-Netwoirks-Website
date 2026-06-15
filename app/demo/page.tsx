@@ -3,7 +3,6 @@
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { WHITEPAPER } from '@/lib/whitepaper/content'
 
 const NAVY = '#0A1628'
 const NAVY_DEEP = '#06101F'
@@ -14,16 +13,6 @@ const BLACK = '#0D0D0D'
 const TEXT_MUTED = 'rgba(255,255,255,0.65)'
 const TEXT_DIMMER = 'rgba(255,255,255,0.5)'
 const BORDER = 'rgba(255,255,255,0.1)'
-const SURFACE = 'rgba(255,255,255,0.03)'
-
-const SITUATIONS = [
-  'Building new',
-  'Validating existing',
-  'Refreshing stale',
-  'Just exploring',
-] as const
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const PAGE: CSSProperties = {
   backgroundColor: NAVY,
@@ -64,16 +53,11 @@ const HERO: CSSProperties = {
     'radial-gradient(1200px 600px at 50% -10%, rgba(14,165,233,0.15), transparent 60%), radial-gradient(900px 500px at 80% 20%, rgba(232,82,10,0.1), transparent 60%)',
 }
 
-const GRID: CSSProperties = {
-  maxWidth: 1200,
+const CONTAINER: CSSProperties = {
+  maxWidth: 640,
   margin: '0 auto',
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)',
-  gap: 48,
-  alignItems: 'start',
+  textAlign: 'center',
 }
-
-const LEFT_COL: CSSProperties = { color: WHITE }
 
 const EYEBROW: CSSProperties = {
   display: 'inline-block',
@@ -102,71 +86,9 @@ const SUBTITLE: CSSProperties = {
   fontSize: 18,
   lineHeight: 1.55,
   color: TEXT_MUTED,
-  margin: '0 0 28px',
+  margin: '0 auto 36px',
   maxWidth: 560,
 }
-
-const PREVIEW_CARD: CSSProperties = {
-  backgroundColor: SURFACE,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 14,
-  padding: 28,
-  marginTop: 8,
-}
-
-const PREVIEW_LABEL: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 1.2,
-  textTransform: 'uppercase',
-  color: BLUE,
-  marginBottom: 14,
-}
-
-const PREVIEW_HEAD: CSSProperties = {
-  fontSize: 16,
-  fontWeight: 700,
-  color: WHITE,
-  margin: '0 0 14px',
-}
-
-const BULLET_LIST: CSSProperties = {
-  listStyle: 'none',
-  margin: 0,
-  padding: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-}
-
-const BULLET_ITEM: CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: 12,
-  color: TEXT_MUTED,
-  fontSize: 14,
-  lineHeight: 1.55,
-}
-
-const BULLET_DOT: CSSProperties = {
-  flexShrink: 0,
-  width: 6,
-  height: 6,
-  borderRadius: 999,
-  backgroundColor: ORANGE,
-  marginTop: 8,
-}
-
-const TRUST_ROW: CSSProperties = {
-  marginTop: 28,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 16,
-  color: TEXT_DIMMER,
-  fontSize: 13,
-}
-
-// Form ─────────
 
 const FORM_CARD: CSSProperties = {
   backgroundColor: WHITE,
@@ -174,19 +96,8 @@ const FORM_CARD: CSSProperties = {
   padding: 32,
   boxShadow: '0 30px 60px -20px rgba(0,0,0,0.55)',
   color: BLACK,
-}
-
-const FORM_TITLE: CSSProperties = {
-  fontSize: 22,
-  fontWeight: 700,
-  margin: '0 0 6px',
-  color: NAVY,
-}
-
-const FORM_SUB: CSSProperties = {
-  fontSize: 14,
-  color: '#475569',
-  margin: '0 0 22px',
+  textAlign: 'left',
+  marginTop: 8,
 }
 
 const FORM_ROW: CSSProperties = {
@@ -222,14 +133,12 @@ const INPUT: CSSProperties = {
   outline: 'none',
 }
 
-const SELECT: CSSProperties = {
+const TEXTAREA: CSSProperties = {
   ...INPUT,
-  appearance: 'none',
-  backgroundImage:
-    'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\' fill=\'none\'><path d=\'M1 1l5 5 5-5\' stroke=\'%2364748B\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/></svg>")',
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'right 14px center',
-  paddingRight: 38,
+  minHeight: 120,
+  resize: 'vertical',
+  fontFamily: 'inherit',
+  lineHeight: 1.5,
 }
 
 const SUBMIT_BTN: CSSProperties = {
@@ -246,14 +155,6 @@ const SUBMIT_BTN: CSSProperties = {
   boxShadow: '0 10px 24px -8px rgba(232,82,10,0.55)',
 }
 
-const SMALL_PRINT: CSSProperties = {
-  fontSize: 12,
-  color: '#64748B',
-  margin: '14px 0 0',
-  textAlign: 'center',
-  lineHeight: 1.5,
-}
-
 const ERROR_BOX: CSSProperties = {
   backgroundColor: '#FEF2F2',
   border: '1px solid #FCA5A5',
@@ -264,18 +165,17 @@ const ERROR_BOX: CSSProperties = {
   marginBottom: 14,
 }
 
-const SUCCESS_BOX: CSSProperties = {
+const SUCCESS_CARD: CSSProperties = {
   backgroundColor: '#ECFDF5',
   border: '1px solid #6EE7B7',
-  color: '#047857',
-  fontSize: 14,
-  borderRadius: 8,
-  padding: '14px 16px',
-  marginBottom: 14,
-  lineHeight: 1.5,
+  color: '#065F46',
+  fontSize: 17,
+  lineHeight: 1.55,
+  borderRadius: 12,
+  padding: '32px 28px',
+  textAlign: 'center',
+  fontWeight: 600,
 }
-
-// Footer ───────
 
 const FOOTER: CSSProperties = {
   padding: '32px 32px',
@@ -311,25 +211,13 @@ const COPYRIGHT: CSSProperties = {
   fontSize: 13,
 }
 
-// ── Bullets shown on the preview card ────────────────────────────────────────
-
-const PREVIEW_BULLETS = [
-  'Why most B2B GTM strategies collapse within 9 months — and the structural cause.',
-  'The 7-stage Decision Clarity Profile that turns buyer interviews into a usable artifact.',
-  'How to build an Ideal Customer Profile that survives contact with the pipeline.',
-  'The Set-Up · Jab · Knock-Out · Clean-Up messaging model in plain language.',
-  'A working blueprint for the 38-step Strategic Plan and how to operationalize it.',
-]
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function WhitepaperPage() {
+export default function DemoPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [company, setCompany] = useState('')
   const [jobTitle, setJobTitle] = useState('')
-  const [situation, setSituation] = useState<string>('')
+  const [goals, setGoals] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -338,16 +226,15 @@ export default function WhitepaperPage() {
     ev.preventDefault()
     if (submitting) return
     setError(null)
-    setSuccess(false)
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !company.trim() || !jobTitle.trim() || !situation) {
-      setError('Please complete every field before downloading.')
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !company.trim() || !jobTitle.trim()) {
+      setError('Please complete every required field.')
       return
     }
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/whitepaper/download', {
+      const res = await fetch('/api/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -356,7 +243,7 @@ export default function WhitepaperPage() {
           email: email.trim(),
           company: company.trim(),
           jobTitle: jobTitle.trim(),
-          situation,
+          goals: goals.trim(),
         }),
       })
 
@@ -372,11 +259,9 @@ export default function WhitepaperPage() {
         return
       }
 
-      window.open('/whitepaper.html', '_blank')
-
       setSuccess(true)
     } catch (err) {
-      console.error('[whitepaper] download failed', err)
+      console.error('[demo] submit failed', err)
       setError('Network error. Please try again.')
     } finally {
       setSubmitting(false)
@@ -401,49 +286,26 @@ export default function WhitepaperPage() {
       </nav>
 
       <section style={HERO}>
-        <div style={GRID} className="wp-grid">
-          <div style={LEFT_COL}>
-            <span style={EYEBROW}>Free White Paper · {WHITEPAPER.publicationDate}</span>
-            <h1 style={H1}>{WHITEPAPER.title}</h1>
-            <p style={SUBTITLE}>{WHITEPAPER.subtitle}</p>
+        <div style={CONTAINER}>
+          <span style={EYEBROW}>Assembly AI</span>
+          <h1 style={H1}>Request a Demo</h1>
+          <p style={SUBTITLE}>
+            See how Assembly AI turns buyer research into a complete GTM strategy in 2-4 weeks.
+          </p>
 
-            <div style={PREVIEW_CARD}>
-              <div style={PREVIEW_LABEL}>What You&rsquo;ll Learn</div>
-              <h3 style={PREVIEW_HEAD}>A buyer-led approach to B2B go-to-market strategy</h3>
-              <ul style={BULLET_LIST}>
-                {PREVIEW_BULLETS.map((b) => (
-                  <li key={b} style={BULLET_ITEM}>
-                    <span style={BULLET_DOT} />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
+          {success ? (
+            <div style={SUCCESS_CARD}>
+              Thank you! We will be in touch within 1 business day.
             </div>
-
-            <div style={TRUST_ROW}>
-              <span>Authored by {WHITEPAPER.author}, {WHITEPAPER.organization}</span>
-              <span>·</span>
-              <span>{WHITEPAPER.sections.length} sections · PDF</span>
-            </div>
-          </div>
-
-          <div>
+          ) : (
             <form style={FORM_CARD} onSubmit={handleSubmit} noValidate>
-              <h2 style={FORM_TITLE}>Download the white paper</h2>
-              <p style={FORM_SUB}>Enter your details to download a PDF copy instantly.</p>
-
               {error && <div style={ERROR_BOX}>{error}</div>}
-              {success && (
-                <div style={SUCCESS_BOX}>
-                  Thank you. Your download should have started — check your downloads folder if it didn&rsquo;t.
-                </div>
-              )}
 
               <div style={FORM_ROW}>
                 <div>
-                  <label htmlFor="wp-first" style={LABEL}>First Name</label>
+                  <label htmlFor="demo-first" style={LABEL}>First Name</label>
                   <input
-                    id="wp-first"
+                    id="demo-first"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -453,9 +315,9 @@ export default function WhitepaperPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="wp-last" style={LABEL}>Last Name</label>
+                  <label htmlFor="demo-last" style={LABEL}>Last Name</label>
                   <input
-                    id="wp-last"
+                    id="demo-last"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -467,9 +329,9 @@ export default function WhitepaperPage() {
               </div>
 
               <div style={FIELD}>
-                <label htmlFor="wp-email" style={LABEL}>Work Email</label>
+                <label htmlFor="demo-email" style={LABEL}>Work Email</label>
                 <input
-                  id="wp-email"
+                  id="demo-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -481,9 +343,9 @@ export default function WhitepaperPage() {
               </div>
 
               <div style={FIELD}>
-                <label htmlFor="wp-company" style={LABEL}>Company Name</label>
+                <label htmlFor="demo-company" style={LABEL}>Company</label>
                 <input
-                  id="wp-company"
+                  id="demo-company"
                   type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
@@ -494,9 +356,9 @@ export default function WhitepaperPage() {
               </div>
 
               <div style={FIELD}>
-                <label htmlFor="wp-title" style={LABEL}>Job Title</label>
+                <label htmlFor="demo-title" style={LABEL}>Job Title</label>
                 <input
-                  id="wp-title"
+                  id="demo-title"
                   type="text"
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
@@ -507,32 +369,21 @@ export default function WhitepaperPage() {
               </div>
 
               <div style={FIELD}>
-                <label htmlFor="wp-situation" style={LABEL}>What best describes your situation?</label>
-                <select
-                  id="wp-situation"
-                  value={situation}
-                  onChange={(e) => setSituation(e.target.value)}
-                  style={SELECT}
-                  required
-                >
-                  <option value="" disabled>Select one…</option>
-                  {SITUATIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <label htmlFor="demo-goals" style={LABEL}>What are you hoping to accomplish?</label>
+                <textarea
+                  id="demo-goals"
+                  value={goals}
+                  onChange={(e) => setGoals(e.target.value)}
+                  style={TEXTAREA}
+                  rows={5}
+                />
               </div>
 
               <button type="submit" style={SUBMIT_BTN} disabled={submitting}>
-                {submitting ? 'Preparing your PDF…' : 'Download Now'}
+                {submitting ? 'Submitting…' : 'Request a Demo'}
               </button>
-
-              <p style={SMALL_PRINT}>
-                We respect your privacy. No spam, ever.
-                <br />
-                See our <Link href="/privacy" style={{ color: '#0284C7', textDecoration: 'underline' }}>Privacy Policy</Link>.
-              </p>
             </form>
-          </div>
+          )}
         </div>
       </section>
 
@@ -557,10 +408,7 @@ export default function WhitepaperPage() {
       </footer>
 
       <style>{`
-        @media (max-width: 900px) {
-          .wp-grid { grid-template-columns: 1fr !important; }
-        }
-        input:focus, select:focus { border-color: ${BLUE} !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
+        input:focus, textarea:focus { border-color: ${BLUE} !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
         button[disabled] { opacity: 0.7; cursor: not-allowed; }
       `}</style>
     </div>

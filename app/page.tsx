@@ -580,7 +580,7 @@ export default function LandingPage() {
             automatically. The only platform that makes you earn your strategy before you execute it.
           </p>
           <div style={HERO_CTAS}>
-            <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
+            <Link href="/demo" style={BTN_HERO_PRIMARY}>
               Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
@@ -678,7 +678,7 @@ export default function LandingPage() {
             Request a Demo and get early access to Assembly AI.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/auth/signup" style={BTN_HERO_PRIMARY}>
+            <Link href="/demo" style={BTN_HERO_PRIMARY}>
               Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
