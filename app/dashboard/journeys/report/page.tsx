@@ -1016,6 +1016,7 @@ export default function ReportPage() {
   // ─── Future State Strategic Plan PDF ────────────────────────────────────────
 
   const canGenerateFutureState = dcpStatus === 'approved' && insightsContent !== null
+  console.log('[FutureState] canGenerate:', canGenerateFutureState, 'dcpStatus:', dcpStatus, 'insightsContent:', insightsContent !== null)
 
   function buildFutureStateData(): FutureStateData | null {
     if (!insightsContent) return null
