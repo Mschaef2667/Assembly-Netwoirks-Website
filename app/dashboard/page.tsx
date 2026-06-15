@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShieldCheck, Lock, Clock, ChevronRight, X } from 'lucide-react'
+import { ShieldCheck, Lock, Clock, ChevronRight, X, Brain, Lightbulb, FileText, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 
@@ -220,6 +220,9 @@ export default function DashboardPage() {
   const [capabilityGaps, setCapabilityGaps] = useState<CapabilityGap[]>([])
   const [orgName, setOrgName] = useState<string | null>(null)
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [actionPlanGeneratedAt, setActionPlanGeneratedAt] = useState<string | null>(null)
+  const [futureStateGeneratedAt, setFutureStateGeneratedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
@@ -320,6 +323,7 @@ export default function DashboardPage() {
           setOrgName(name && name.length > 0 ? name : null)
           setOrgLogoUrl(logo && logo.length > 0 ? logo : null)
         }
+        setOrgId(orgId)
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load dashboard')
       } finally {
@@ -350,6 +354,14 @@ export default function DashboardPage() {
   useEffect(() => {
     setBannerDismissed(localStorage.getItem('phase1_banner_dismissed') === 'true')
   }, [])
+
+  // ── Report last-generated timestamps (per org) ────────────────────────────────
+
+  useEffect(() => {
+    if (!orgId) return
+    setActionPlanGeneratedAt(localStorage.getItem(`c3.report.actionPlan.lastGenerated:${orgId}`))
+    setFutureStateGeneratedAt(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
+  }, [orgId])
 
   function handleDismissBanner() {
     localStorage.setItem('phase1_banner_dismissed', 'true')
@@ -847,6 +859,238 @@ export default function DashboardPage() {
                   </Link>
                 </>
               )}
+            </div>
+          )
+        })()}
+
+        {/* ── Widget 7: Reports (full width) ──────────────────────────────── */}
+        {(() => {
+          const insightsGenerated = latestOutputs.has('insights')
+          const futureStateLocked = gate1 !== 'approved'
+
+          function formatDate(iso: string | null): string {
+            if (!iso) return ''
+            const d = new Date(iso)
+            if (Number.isNaN(d.getTime())) return ''
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+          }
+
+          const actionPlanGenerated = !!actionPlanGeneratedAt
+          const futureStateGenerated = !!futureStateGeneratedAt && !futureStateLocked
+
+          interface ReportRowProps {
+            icon: React.ReactNode
+            iconColor: string
+            iconBg: string
+            name: string
+            description: string
+            statusLabel: string
+            statusColor: string
+            statusBg: string
+            actions: React.ReactNode
+          }
+
+          function ReportRow(p: ReportRowProps) {
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '14px',
+                padding: '14px 16px', borderRadius: '8px',
+                backgroundColor: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.07)',
+              }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '8px', flexShrink: 0,
+                  backgroundColor: p.iconBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ color: p.iconColor, display: 'flex' }}>{p.icon}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', margin: 0 }}>
+                    {p.name}
+                  </p>
+                  <p style={{
+                    fontSize: '11px', color: 'rgba(255,255,255,0.45)',
+                    margin: '2px 0 0', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {p.description}
+                  </p>
+                </div>
+                <span style={{
+                  fontSize: '10px', fontWeight: 700, color: p.statusColor,
+                  backgroundColor: p.statusBg, padding: '4px 10px', borderRadius: '4px',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  flexShrink: 0, whiteSpace: 'nowrap',
+                }}>
+                  {p.statusLabel}
+                </span>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  {p.actions}
+                </div>
+              </div>
+            )
+          }
+
+          const linkBtn: React.CSSProperties = {
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            minHeight: '36px', padding: '0 14px', borderRadius: '7px',
+            backgroundColor: '#0EA5E9', color: '#FFFFFF',
+            textDecoration: 'none', fontSize: '12px', fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }
+          const linkBtnSecondary: React.CSSProperties = {
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            minHeight: '36px', padding: '0 14px', borderRadius: '7px',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.85)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            textDecoration: 'none', fontSize: '12px', fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }
+          const lockedBtn: React.CSSProperties = {
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            minHeight: '36px', padding: '0 14px', borderRadius: '7px',
+            backgroundColor: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.35)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            fontSize: '12px', fontWeight: 600,
+            cursor: 'not-allowed', whiteSpace: 'nowrap',
+          }
+
+          // DCP Map row
+          const dcpStatusLabel = dcpRow?.status === 'approved'
+            ? 'Approved'
+            : dcpRow?.status === 'pending_approval' || dcpRow?.status === 'draft'
+            ? 'Draft'
+            : 'Not started'
+          const dcpStatusColor = dcpRow?.status === 'approved'
+            ? '#10B981'
+            : dcpRow?.status === 'pending_approval' || dcpRow?.status === 'draft'
+            ? '#D97706'
+            : 'rgba(255,255,255,0.5)'
+          const dcpStatusBg = dcpRow?.status === 'approved'
+            ? 'rgba(16,185,129,0.15)'
+            : dcpRow?.status === 'pending_approval' || dcpRow?.status === 'draft'
+            ? 'rgba(217,119,6,0.15)'
+            : 'rgba(255,255,255,0.06)'
+
+          // Insights row
+          const insightsStatusLabel = insightsGenerated ? 'Generated' : 'Not started'
+          const insightsStatusColor = insightsGenerated ? '#10B981' : 'rgba(255,255,255,0.5)'
+          const insightsStatusBg = insightsGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
+
+          // Action Plan row
+          const apStatusLabel = actionPlanGenerated
+            ? `Generated ${formatDate(actionPlanGeneratedAt)}`
+            : 'Not generated'
+          const apStatusColor = actionPlanGenerated ? '#10B981' : 'rgba(255,255,255,0.5)'
+          const apStatusBg = actionPlanGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
+
+          // Future State Plan row
+          const fsStatusLabel = futureStateLocked
+            ? 'Locked'
+            : futureStateGenerated
+            ? `Generated ${formatDate(futureStateGeneratedAt)}`
+            : 'Not generated'
+          const fsStatusColor = futureStateLocked
+            ? 'rgba(255,255,255,0.35)'
+            : futureStateGenerated
+            ? '#10B981'
+            : 'rgba(255,255,255,0.5)'
+          const fsStatusBg = futureStateLocked
+            ? 'rgba(255,255,255,0.06)'
+            : futureStateGenerated
+            ? 'rgba(16,185,129,0.15)'
+            : 'rgba(255,255,255,0.06)'
+
+          return (
+            <div id="widget-reports" style={CARD}>
+              <p style={CARD_HDR}>Reports</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <ReportRow
+                  icon={<Brain size={20} />}
+                  iconColor="#0EA5E9"
+                  iconBg="rgba(14,165,233,0.15)"
+                  name="DCP Map"
+                  description="Decision Clarity Profile across the 7 stages of buyer research."
+                  statusLabel={dcpStatusLabel}
+                  statusColor={dcpStatusColor}
+                  statusBg={dcpStatusBg}
+                  actions={
+                    <>
+                      <Link href="/dashboard/intelligence/dcp-map" style={linkBtnSecondary}>Open</Link>
+                      {dcpRow?.status === 'approved' && (
+                        <Link href="/dashboard/intelligence/dcp-map" style={linkBtn}>Download PDF</Link>
+                      )}
+                    </>
+                  }
+                />
+                <ReportRow
+                  icon={<Lightbulb size={20} />}
+                  iconColor="#F59E0B"
+                  iconBg="rgba(245,158,11,0.15)"
+                  name="Insights Report"
+                  description="Six-category strategic intelligence drawn from buyer research."
+                  statusLabel={insightsStatusLabel}
+                  statusColor={insightsStatusColor}
+                  statusBg={insightsStatusBg}
+                  actions={
+                    <>
+                      <Link href="/dashboard/intelligence/insights" style={linkBtnSecondary}>Open</Link>
+                      {insightsGenerated && (
+                        <Link href="/dashboard/intelligence/insights" style={linkBtn}>Download PDF</Link>
+                      )}
+                    </>
+                  }
+                />
+                <ReportRow
+                  icon={<FileText size={20} />}
+                  iconColor="#E8520A"
+                  iconBg="rgba(232,82,10,0.15)"
+                  name="Action Plan"
+                  description="Current state Strategic Action Plan compiled from approved Journey steps."
+                  statusLabel={apStatusLabel}
+                  statusColor={apStatusColor}
+                  statusBg={apStatusBg}
+                  actions={
+                    <>
+                      <Link href="/dashboard/journeys/report" style={linkBtnSecondary}>Open</Link>
+                      {actionPlanGenerated && (
+                        <>
+                          <Link href="/dashboard/journeys/report" style={linkBtn}>Download PDF</Link>
+                          <Link href="/dashboard/journeys/report" style={linkBtnSecondary}>Download Word</Link>
+                        </>
+                      )}
+                    </>
+                  }
+                />
+                <ReportRow
+                  icon={<TrendingUp size={20} />}
+                  iconColor="#0EA5E9"
+                  iconBg="rgba(14,165,233,0.15)"
+                  name="Future State Plan"
+                  description="6-18 month strategic roadmap drawn from Insights and capability gaps."
+                  statusLabel={fsStatusLabel}
+                  statusColor={fsStatusColor}
+                  statusBg={fsStatusBg}
+                  actions={
+                    futureStateLocked ? (
+                      <span style={lockedBtn} title="Gate 1 must be approved to unlock Future State Plan">
+                        <Lock size={13} />
+                        Locked
+                      </span>
+                    ) : (
+                      <>
+                        <Link href="/dashboard/journeys/report" style={linkBtnSecondary}>Open</Link>
+                        {futureStateGenerated && (
+                          <Link href="/dashboard/journeys/report" style={linkBtn}>Download PDF</Link>
+                        )}
+                      </>
+                    )
+                  }
+                />
+              </div>
             </div>
           )
         })()}

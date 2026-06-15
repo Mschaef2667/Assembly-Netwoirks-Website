@@ -423,6 +423,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [org, setOrg] = useState<OrgRow | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [stepDefs, setStepDefs] = useState<StepDef[]>([])
   const [outputs, setOutputs] = useState<Map<string, StepOutput>>(new Map())
   const [exporting, setExporting] = useState(false)
@@ -454,6 +455,7 @@ export default function ReportPage() {
 
       if (uErr || !userRow) { setError('Failed to load user'); setLoading(false); return }
       const orgId: string = userRow.org_id
+      setOrgId(orgId)
 
       const [
         { data: orgData },
@@ -623,6 +625,9 @@ export default function ReportPage() {
           }
         }) as unknown as { save: () => Promise<void> }
       await worker.save()
+      if (orgId) {
+        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
+      }
     } catch (e) {
       console.error('PDF export failed:', e)
     } finally {
@@ -910,6 +915,9 @@ export default function ReportPage() {
       a.download = `${(org?.name ?? 'strategic-plan').replace(/\s+/g, '-')}-c3-report.docx`
       a.click()
       URL.revokeObjectURL(url)
+      if (orgId) {
+        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
+      }
     } catch (e) {
       console.error('DOCX export failed:', e)
     } finally {
@@ -1390,6 +1398,9 @@ export default function ReportPage() {
 
       const slug = company.toLowerCase().replace(/\s+/g, '-')
       doc.save(`${slug}-future-state-strategic-plan.pdf`)
+      if (orgId) {
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, new Date().toISOString())
+      }
     } catch (e) {
       console.error('Future State PDF export failed:', e)
     } finally {
@@ -1739,70 +1750,152 @@ export default function ReportPage() {
           >
             ← Back to Journeys
           </Link>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={() => { void handlePdf() }}
-              disabled={generatingPdf}
-              style={{
-                minHeight: '44px',
-                padding: '0 20px',
-                backgroundColor: generatingPdf ? 'rgba(232,82,10,0.5)' : '#E8520A',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: generatingPdf ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {generatingPdf ? 'Generating PDF…' : 'Download PDF'}
-            </button>
-            <button
-              onClick={() => { void handleFutureStatePdf() }}
-              disabled={!canGenerateFutureState || generatingFutureState}
-              title={canGenerateFutureState
-                ? 'Generate the 6-18 month Future State Strategic Plan'
-                : 'Complete Intelligence (Gate 1) and generate Insights to unlock the Future State Plan.'}
-              style={{
-                minHeight: '44px',
-                padding: '0 20px',
-                backgroundColor: !canGenerateFutureState
-                  ? 'rgba(255,255,255,0.06)'
-                  : generatingFutureState
-                    ? 'rgba(232,82,10,0.5)'
-                    : '#E8520A',
-                color: !canGenerateFutureState ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
-                border: !canGenerateFutureState ? '1px solid rgba(255,255,255,0.15)' : 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: !canGenerateFutureState || generatingFutureState ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {generatingFutureState ? 'Generating…' : 'Download Future State Plan'}
-            </button>
-            <button
-              onClick={() => { void handleDocx() }}
-              disabled={exporting}
-              style={{
-                minHeight: '44px',
-                padding: '0 20px',
-                backgroundColor: exporting ? 'rgba(255,255,255,0.1)' : '#0EA5E9',
-                color: exporting ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: exporting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {exporting ? 'Generating…' : 'Download Word'}
-            </button>
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+            Reports for {org?.name ?? 'your workspace'}
+          </span>
+        </div>
+
+        {/* Two report sections — Action Plan and Future State Plan */}
+        <div
+          className="no-print"
+          style={{
+            padding: '80px 32px 0',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            maxWidth: '1280px',
+            margin: '0 auto',
+          }}
+        >
+          {/* ── Action Plan section ── */}
+          <div style={{
+            backgroundColor: '#0F2140',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderLeft: '3px solid #E8520A',
+            borderRadius: '10px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            <div>
+              <p style={{
+                fontSize: '11px', fontWeight: 700, color: '#E8520A',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                margin: '0 0 8px',
+              }}>
+                Current State
+              </p>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px' }}>
+                Strategic Action Plan
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
+                Compiles Phase 1 foundation, competitive environment, strategic messages, and the 30/60/90 day action plan based on what is true today.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { void handlePdf() }}
+                disabled={generatingPdf}
+                style={{
+                  minHeight: '44px',
+                  padding: '0 20px',
+                  backgroundColor: generatingPdf ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: generatingPdf ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {generatingPdf ? 'Generating PDF…' : 'Download PDF'}
+              </button>
+              <button
+                onClick={() => { void handleDocx() }}
+                disabled={exporting}
+                style={{
+                  minHeight: '44px',
+                  padding: '0 20px',
+                  backgroundColor: exporting ? 'rgba(255,255,255,0.1)' : '#0EA5E9',
+                  color: exporting ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: exporting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {exporting ? 'Generating…' : 'Download Word'}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Future State Plan section ── */}
+          <div style={{
+            backgroundColor: '#0F2140',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderLeft: '3px solid #0EA5E9',
+            borderRadius: '10px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            <div>
+              <p style={{
+                fontSize: '11px', fontWeight: 700, color: '#0EA5E9',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                margin: '0 0 8px',
+              }}>
+                Future State · 6-18 months
+              </p>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px' }}>
+                Future State Strategic Plan
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
+                6-18 month roadmap that closes capability gaps, captures market opportunities, neutralizes threats, and repositions the brand using Insights output.
+              </p>
+              {!canGenerateFutureState && (
+                <p style={{
+                  fontSize: '12px', color: '#D97706', margin: '12px 0 0',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  Locked — complete Intelligence (Gate 1) and generate Insights to unlock.
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { void handleFutureStatePdf() }}
+                disabled={!canGenerateFutureState || generatingFutureState}
+                title={canGenerateFutureState
+                  ? 'Generate the 6-18 month Future State Strategic Plan'
+                  : 'Complete Intelligence (Gate 1) and generate Insights to unlock the Future State Plan.'}
+                style={{
+                  minHeight: '44px',
+                  padding: '0 20px',
+                  backgroundColor: !canGenerateFutureState
+                    ? 'rgba(255,255,255,0.06)'
+                    : generatingFutureState
+                      ? 'rgba(14,165,233,0.5)'
+                      : '#0EA5E9',
+                  color: !canGenerateFutureState ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                  border: !canGenerateFutureState ? '1px solid rgba(255,255,255,0.15)' : 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: !canGenerateFutureState || generatingFutureState ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {generatingFutureState ? 'Generating PDF…' : 'Download PDF'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Document preview — top padding accounts for fixed header */}
-        <div style={{ padding: '80px 32px 40px', display: 'flex', justifyContent: 'center' }}>
+        {/* Document preview — Strategic Action Plan body */}
+        <div style={{ padding: '32px 32px 40px', display: 'flex', justifyContent: 'center' }}>
           <div
             ref={reportRef}
             className="report-doc"
