@@ -99,9 +99,9 @@ const TEXTAREA_ST: React.CSSProperties = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function defaultIcp(): IcpFormData {
+function defaultIcp(buyerType: BuyerType = 'economic_buyer'): IcpFormData {
   return {
-    buyer_type: 'economic_buyer',
+    buyer_type: buyerType,
     job_titles: [],
     company_size_range: '',
     industry_verticals: [],
@@ -350,10 +350,23 @@ export default function TargetMarketsPage() {
     { index: 3, name: 'Segment 3', description: '' },
   ])
 
-  // ICP forms (index 0, 1, 2 = segments 1, 2, 3)
-  const [icpForms, setIcpForms] = useState<IcpFormData[]>([defaultIcp(), defaultIcp(), defaultIcp()])
-  const [icpDbIds, setIcpDbIds] = useState<(string | null)[]>([null, null, null])
-  const [icpSaveStates, setIcpSaveStates] = useState<SaveState[]>(['idle', 'idle', 'idle'])
+  // ICP forms (index 0, 1, 2 = segments 1, 2, 3) — independent per buyer_type
+  const [icpForms, setIcpForms] = useState<Record<BuyerType, IcpFormData>[]>([
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+  ])
+  const [icpDbIds, setIcpDbIds] = useState<Record<BuyerType, string | null>[]>([
+    { economic_buyer: null, champion: null },
+    { economic_buyer: null, champion: null },
+    { economic_buyer: null, champion: null },
+  ])
+  const [icpSaveStates, setIcpSaveStates] = useState<Record<BuyerType, SaveState>[]>([
+    { economic_buyer: 'idle', champion: 'idle' },
+    { economic_buyer: 'idle', champion: 'idle' },
+    { economic_buyer: 'idle', champion: 'idle' },
+  ])
+  const [activeBuyerType, setActiveBuyerType] = useState<BuyerType[]>(['economic_buyer', 'economic_buyer', 'economic_buyer'])
   const [openAccordions, setOpenAccordions] = useState<boolean[]>([true, false, false])
 
   // Copilot per segment
@@ -366,11 +379,20 @@ export default function TargetMarketsPage() {
   const [offerSaveStates, setOfferSaveStates] = useState<Record<string, SaveState>>({})
 
   // Refs
-  const icpFormsRef = useRef<IcpFormData[]>([defaultIcp(), defaultIcp(), defaultIcp()])
+  const icpFormsRef = useRef<Record<BuyerType, IcpFormData>[]>([
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+    { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+  ])
   const segmentsRef = useRef<Segment[]>(segments)
-  const icpDbIdsRef = useRef<(string | null)[]>([null, null, null])
+  const icpDbIdsRef = useRef<Record<BuyerType, string | null>[]>([
+    { economic_buyer: null, champion: null },
+    { economic_buyer: null, champion: null },
+    { economic_buyer: null, champion: null },
+  ])
+  const activeBuyerTypeRef = useRef<BuyerType[]>(['economic_buyer', 'economic_buyer', 'economic_buyer'])
   const workspaceIdRef = useRef<string | null>(null)
-  const saveTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const offerSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const offersRef = useRef<OfferData[]>([])
 
@@ -378,6 +400,7 @@ export default function TargetMarketsPage() {
   icpFormsRef.current = icpForms
   segmentsRef.current = segments
   icpDbIdsRef.current = icpDbIds
+  activeBuyerTypeRef.current = activeBuyerType
   workspaceIdRef.current = workspaceId
   offersRef.current = offers
 
@@ -440,13 +463,22 @@ export default function TargetMarketsPage() {
           .eq('org_id', wsId)
           .order('segment_index')
         if (icpRows) {
-          const newForms = [defaultIcp(), defaultIcp(), defaultIcp()]
-          const newIds: (string | null)[] = [null, null, null]
+          const newForms: Record<BuyerType, IcpFormData>[] = [
+            { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+            { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+            { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
+          ]
+          const newIds: Record<BuyerType, string | null>[] = [
+            { economic_buyer: null, champion: null },
+            { economic_buyer: null, champion: null },
+            { economic_buyer: null, champion: null },
+          ]
           for (const raw of icpRows as Array<Record<string, unknown>>) {
             const si = Number(raw['segment_index'] ?? 0)
             if (si < 1 || si > 3) continue
             const i = si - 1
-            newIds[i] = String(raw['id'] ?? '')
+            const bt: BuyerType = raw['buyer_type'] === 'champion' ? 'champion' : 'economic_buyer'
+            newIds[i][bt] = String(raw['id'] ?? '')
             const strArr = (v: unknown): string[] => Array.isArray(v) ? (v as unknown[]).map(String) : []
             const objArr = (v: unknown): Objection[] =>
               Array.isArray(v)
@@ -455,8 +487,8 @@ export default function TargetMarketsPage() {
                     overcomes: typeof o['overcomes'] === 'string' ? o['overcomes'] : '',
                   }))
                 : []
-            newForms[i] = {
-              buyer_type: raw['buyer_type'] === 'champion' ? 'champion' : 'economic_buyer',
+            newForms[i][bt] = {
+              buyer_type: bt,
               job_titles: strArr(raw['job_titles']),
               company_size_range: String(raw['company_size_range'] ?? ''),
               industry_verticals: strArr(raw['industry_verticals']),
@@ -510,14 +542,14 @@ export default function TargetMarketsPage() {
 
   // ── ICP save ──────────────────────────────────────────────────────────────
 
-  async function doSaveIcp(i: number) {
+  async function doSaveIcp(i: number, bt: BuyerType) {
     const wsId = workspaceIdRef.current
     if (!wsId) return
-    const form = icpFormsRef.current[i]
+    const form = icpFormsRef.current[i][bt]
     const seg = segmentsRef.current[i]
     const segIdx = i + 1
 
-    setIcpSaveStates(prev => setAt(prev, i, 'saving'))
+    setIcpSaveStates(prev => setAt(prev, i, { ...prev[i], [bt]: 'saving' }))
     try {
       const now = new Date().toISOString()
       const payload = {
@@ -525,34 +557,40 @@ export default function TargetMarketsPage() {
         segment_index: segIdx,
         segment_name: seg?.name ?? `Segment ${segIdx}`,
         ...form,
+        buyer_type: bt,
         updated_at: now,
       }
       const { data, error } = await supabase
         .from('icp_definition')
-        .upsert(payload, { onConflict: 'org_id,segment_index' })
+        .upsert(payload, { onConflict: 'org_id,segment_index,buyer_type' })
         .select('id')
         .single()
       if (error) throw error
       if (data) {
         const newId = String((data as Record<string, unknown>)['id'] ?? '')
-        setIcpDbIds(prev => { const n = setAt(prev, i, newId); icpDbIdsRef.current = n; return n })
+        setIcpDbIds(prev => {
+          const n = setAt(prev, i, { ...prev[i], [bt]: newId })
+          icpDbIdsRef.current = n
+          return n
+        })
       }
-      setIcpSaveStates(prev => setAt(prev, i, 'saved'))
-      setTimeout(() => setIcpSaveStates(prev => setAt(prev, i, 'idle')), 2500)
+      setIcpSaveStates(prev => setAt(prev, i, { ...prev[i], [bt]: 'saved' }))
+      setTimeout(() => setIcpSaveStates(prev => setAt(prev, i, { ...prev[i], [bt]: 'idle' })), 2500)
     } catch {
-      setIcpSaveStates(prev => setAt(prev, i, 'error'))
+      setIcpSaveStates(prev => setAt(prev, i, { ...prev[i], [bt]: 'error' }))
     }
   }
 
-  function scheduleIcpSave(i: number) {
-    const existing = saveTimers.current.get(i)
+  function scheduleIcpSave(i: number, bt: BuyerType) {
+    const key = `${i}-${bt}`
+    const existing = saveTimers.current.get(key)
     if (existing) clearTimeout(existing)
-    saveTimers.current.set(i, setTimeout(() => void doSaveIcp(i), AUTOSAVE_MS))
+    saveTimers.current.set(key, setTimeout(() => void doSaveIcp(i, bt), AUTOSAVE_MS))
   }
 
-  function updateIcp(i: number, patch: Partial<IcpFormData>) {
-    setIcpForms(prev => setAt(prev, i, { ...prev[i], ...patch }))
-    scheduleIcpSave(i)
+  function updateIcp(i: number, bt: BuyerType, patch: Partial<IcpFormData>) {
+    setIcpForms(prev => setAt(prev, i, { ...prev[i], [bt]: { ...prev[i][bt], ...patch } }))
+    scheduleIcpSave(i, bt)
   }
 
   // ── Offer save ────────────────────────────────────────────────────────────
@@ -602,12 +640,17 @@ export default function TargetMarketsPage() {
     scheduleOfferSave(localKey)
   }
 
+  function primaryIcpId(i: number): string | null {
+    const ids = icpDbIdsRef.current[i]
+    return ids.economic_buyer ?? ids.champion
+  }
+
   async function handleAddOffer(i: number) {
-    let icpId = icpDbIdsRef.current[i]
+    let icpId = primaryIcpId(i)
     if (!icpId) {
-      // Save ICP immediately to get an id
-      await doSaveIcp(i)
-      icpId = icpDbIdsRef.current[i]
+      // Save ICP immediately to get an id (prefer economic_buyer as the primary)
+      await doSaveIcp(i, 'economic_buyer')
+      icpId = primaryIcpId(i)
       if (!icpId) return
     }
     const localKey = `new-${Date.now()}-${i}`
@@ -703,17 +746,17 @@ export default function TargetMarketsPage() {
   function applyCopilotPreview(i: number) {
     const preview = copilotPreviews[i]
     if (!preview) return
-    setIcpForms(prev => setAt(prev, i, { ...prev[i], ...preview }))
-    setCopilotPreviews(prev => setAt(prev, i, null))
-    // Mark copilot_generated and trigger save
+    const bt = preview.buyer_type
+    setActiveBuyerType(prev => setAt(prev, i, bt))
     setIcpForms(prev => {
-      const updated = setAt(prev, i, { ...prev[i], ...preview })
+      const updated = setAt(prev, i, { ...prev[i], [bt]: { ...prev[i][bt], ...preview, buyer_type: bt } })
       icpFormsRef.current = updated
       return updated
     })
-    scheduleIcpSave(i)
+    setCopilotPreviews(prev => setAt(prev, i, null))
+    scheduleIcpSave(i, bt)
     // Also set copilot_generated flag on the DB record (non-blocking)
-    const dbId = icpDbIdsRef.current[i]
+    const dbId = icpDbIdsRef.current[i][bt]
     if (dbId) {
       void supabase.from('icp_definition').update({ copilot_generated: true }).eq('id', dbId).then(() => null)
     }
@@ -722,8 +765,9 @@ export default function TargetMarketsPage() {
   // ── ICP form render ───────────────────────────────────────────────────────
 
   function renderIcpForm(i: number) {
-    const form = icpForms[i]
-    const u = (patch: Partial<IcpFormData>) => updateIcp(i, patch)
+    const bt = activeBuyerType[i]
+    const form = icpForms[i][bt]
+    const u = (patch: Partial<IcpFormData>) => updateIcp(i, bt, patch)
 
     const field = (label: string, children: React.ReactNode) => (
       <div>
@@ -741,13 +785,13 @@ export default function TargetMarketsPage() {
             <div style={{ gridColumn: 'span 2' }}>
               {field('Buyer Type', (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {(['economic_buyer', 'champion'] as BuyerType[]).map(bt => (
-                    <button key={bt} onClick={() => u({ buyer_type: bt })}
+                  {(['economic_buyer', 'champion'] as BuyerType[]).map(opt => (
+                    <button key={opt} onClick={() => setActiveBuyerType(prev => setAt(prev, i, opt))}
                       style={{ flex: 1, minHeight: '40px', padding: '0 16px', borderRadius: '8px', border: '1px solid', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-                        backgroundColor: form.buyer_type === bt ? '#0EA5E9' : 'rgba(255,255,255,0.05)',
-                        color: form.buyer_type === bt ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
-                        borderColor: form.buyer_type === bt ? '#0EA5E9' : 'rgba(255,255,255,0.15)' }}>
-                      {bt === 'economic_buyer' ? 'Economic Buyer' : 'Champion'}
+                        backgroundColor: bt === opt ? '#0EA5E9' : 'rgba(255,255,255,0.05)',
+                        color: bt === opt ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+                        borderColor: bt === opt ? '#0EA5E9' : 'rgba(255,255,255,0.15)' }}>
+                      {opt === 'economic_buyer' ? 'Economic Buyer' : 'Champion'}
                     </button>
                   ))}
                 </div>
@@ -808,7 +852,7 @@ export default function TargetMarketsPage() {
   // ── Offers tab render ─────────────────────────────────────────────────────
 
   function renderOffersTab() {
-    const hasAnyIcp = icpDbIds.some(id => id !== null)
+    const hasAnyIcp = icpDbIds.some(ids => ids.economic_buyer !== null || ids.champion !== null)
 
     if (!hasAnyIcp) {
       return (
@@ -823,7 +867,8 @@ export default function TargetMarketsPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {segments.map((seg, i) => {
-          const icpId = icpDbIds[i]
+          const ids = icpDbIds[i]
+          const icpId = ids.economic_buyer ?? ids.champion
           const segOffers = offers.filter(o => o.icpId === icpId)
           return (
             <div key={i} style={CARD}>
@@ -988,7 +1033,7 @@ export default function TargetMarketsPage() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                    <SaveIndicator state={icpSaveStates[i]} />
+                    <SaveIndicator state={icpSaveStates[i][activeBuyerType[i]]} />
                     <button
                       onClick={e => { e.stopPropagation(); void runCopilot(i) }}
                       disabled={copilotLoading[i]}
