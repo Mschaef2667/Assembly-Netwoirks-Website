@@ -1110,6 +1110,7 @@ export default function ReportPage() {
     })
     if (!canGenerateFutureState || !insightsContent) return
     const builtData = buildFutureStateData()
+    console.log('FutureState builtData', { builtDataIsNull: builtData === null })
     if (!builtData) return
     setFutureStateData(builtData)
     if (orgId && typeof window !== 'undefined') {
