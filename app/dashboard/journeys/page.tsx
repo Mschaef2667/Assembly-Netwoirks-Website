@@ -477,7 +477,7 @@ export default function JourneysPage() {
                 textDecoration: 'none',
               }}
             >
-              Generate Report
+              Reports
             </Link>
           </div>
         </div>
