@@ -1103,14 +1103,8 @@ export default function ReportPage() {
   }
 
   function handleGenerateFutureState() {
-    console.log('[FutureState] handleGenerateFutureState called', {
-      canGenerateFutureState,
-      insightsContentIsNull: insightsContent === null,
-      dcpStatus,
-    })
     if (!canGenerateFutureState || !insightsContent) return
     const builtData = buildFutureStateData()
-    console.log('FutureState builtData', { builtDataIsNull: builtData === null })
     if (!builtData) return
     setFutureStateData(builtData)
     if (orgId && typeof window !== 'undefined') {
