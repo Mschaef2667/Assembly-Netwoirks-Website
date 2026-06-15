@@ -1016,7 +1016,6 @@ export default function ReportPage() {
   // ─── Future State Strategic Plan PDF ────────────────────────────────────────
 
   const canGenerateFutureState = dcpStatus === 'approved' && insightsContent !== null
-  console.log('[FutureState] canGenerate:', canGenerateFutureState, 'dcpStatus:', dcpStatus, 'insightsContent:', insightsContent !== null)
 
   function buildFutureStateData(): FutureStateData | null {
     if (!insightsContent) return null
@@ -1100,6 +1099,18 @@ export default function ReportPage() {
       months7to12,
       months13to18,
       metrics,
+    }
+  }
+
+  function handleGenerateFutureState() {
+    if (!canGenerateFutureState || !insightsContent) return
+    const builtData = buildFutureStateData()
+    if (!builtData) return
+    setFutureStateData(builtData)
+    if (orgId && typeof window !== 'undefined') {
+      const ts = new Date().toISOString()
+      localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+      setFutureStateLastGenerated(ts)
     }
   }
 
@@ -2334,7 +2345,7 @@ export default function ReportPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => { void handleFutureStatePdf() }}
+                onClick={() => { handleGenerateFutureState() }}
                 disabled={!canGenerateFutureState || generatingFutureState}
                 title={canGenerateFutureState
                   ? 'Generate the 6-18 month Future State Strategic Plan'
