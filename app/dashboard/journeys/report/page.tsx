@@ -429,6 +429,8 @@ export default function ReportPage() {
   const [exporting, setExporting] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [generatingFutureState, setGeneratingFutureState] = useState(false)
+  const [exportingFutureStateDocx, setExportingFutureStateDocx] = useState(false)
+  const [futureStateLastGenerated, setFutureStateLastGenerated] = useState<string | null>(null)
   const [dcpStatus, setDcpStatus] = useState<string | null>(null)
   const [dcpOverallConfidence, setDcpOverallConfidence] = useState<number | null>(null)
   const [dcpStageSummaries, setDcpStageSummaries] = useState<DcpStageSummary[]>([])
@@ -444,6 +446,11 @@ export default function ReportPage() {
       setFutureStateApproved(localStorage.getItem('report_future_state_approved'))
     }
   }, [])
+
+  useEffect(() => {
+    if (!orgId || typeof window === 'undefined') return
+    setFutureStateLastGenerated(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
+  }, [orgId])
 
   function formatApprovalDate(iso: string): string {
     try {
@@ -1437,12 +1444,242 @@ export default function ReportPage() {
       const slug = company.toLowerCase().replace(/\s+/g, '-')
       doc.save(`${slug}-future-state-strategic-plan.pdf`)
       if (orgId) {
-        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, new Date().toISOString())
+        const ts = new Date().toISOString()
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+        setFutureStateLastGenerated(ts)
       }
     } catch (e) {
       console.error('Future State PDF export failed:', e)
     } finally {
       setGeneratingFutureState(false)
+    }
+  }
+
+  // ─── Future State Strategic Plan DOCX ───────────────────────────────────────
+
+  async function handleFutureStateDocx() {
+    if (!canGenerateFutureState || !insightsContent) return
+    setExportingFutureStateDocx(true)
+    try {
+      const lib = await import('docx')
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel } = lib
+
+      const company = org?.name ?? 'Your Company'
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      const dcpConf = dcpOverallConfidence ?? 0
+      const insightsConf = insightsContent.overall_confidence ?? 0
+
+      const step4PainPoints = (() => { const o = getOutput('4'); return o ? extractPainPoints(o.content) : [] })()
+      const step13Items = extractAssessmentItems(getOutput('13')?.content)
+      const step14Items = extractAssessmentItems(getOutput('14')?.content)
+      const gapItems = [
+        ...step13Items.map((i) => ({ source: 'Critical Success Formula', ...i })),
+        ...step14Items.map((i) => ({ source: 'Core Competency', ...i })),
+      ].filter((i) => i.gapLevel === 'critical' || i.gapLevel === 'high')
+      const criticalCount = gapItems.filter((g) => g.gapLevel === 'critical').length
+      const highCount = gapItems.filter((g) => g.gapLevel === 'high').length
+
+      const step25Out = getOutput('25')
+      const opportunities = step25Out ? extractByPainPoint(step25Out, step4PainPoints) : []
+      const step20Out = getOutput('20')
+      const step24Out = getOutput('24')
+      const threats = step20Out ? extractByPainPoint(step20Out, step4PainPoints) : []
+      const retaliations = step24Out ? extractByPainPoint(step24Out, step4PainPoints) : []
+
+      const brandPerception = insightsContent.categories?.brand_perception
+      const internalExternal = insightsContent.categories?.internal_external_gap
+      const productGaps = insightsContent.categories?.product_gaps?.insights ?? []
+      const step26Out = getOutput('26')
+      const swEntries = step26Out ? extractByPainPoint(step26Out, step4PainPoints) : []
+
+      const stage7 = dcpStageSummaries.find((s) => s.stage_number === 7)
+      const stage7Signals = Array.isArray(stage7?.key_signals) ? (stage7!.key_signals as string[]) : []
+      const decisionSignals = insightsContent.categories?.decision_signals?.insights ?? []
+
+      const children: InstanceType<typeof Paragraph>[] = []
+      const blank = () => children.push(new Paragraph({ text: '' }))
+
+      // Cover
+      children.push(new Paragraph({ text: company, heading: HeadingLevel.TITLE, spacing: { after: 200 } }))
+      children.push(new Paragraph({ children: [new TextRun({ text: 'Future State Strategic Plan', bold: true, size: 36, color: '0EA5E9' })], spacing: { after: 100 } }))
+      children.push(new Paragraph({ children: [new TextRun({ text: '6-18 Month GTM Roadmap', size: 24, color: '6B7280' })], spacing: { after: 200 } }))
+      children.push(new Paragraph({ children: [new TextRun({ text: today, size: 22, color: '6B7280' })], spacing: { after: 600 } }))
+
+      // 1. Executive Summary
+      children.push(new Paragraph({ text: '1. Executive Summary', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      children.push(para(lib, `${company} has completed Phase 1 buyer research with an overall Decision Clarity Profile confidence of ${dcpConf}/100. Insights analysis surfaced patterns across six intelligence categories with an aggregate confidence of ${insightsConf}/100. These signals form the foundation for the future state strategy outlined in this plan.`))
+      children.push(para(lib, 'This Future State Strategic Plan is the companion to the current state Strategic Plan. While the current state plan describes the actions to take today based on what is true, this plan describes the 6-18 month strategic agenda to close capability gaps, capture market opportunities, neutralize competitive threats, and reposition the brand to align with how buyers actually evaluate solutions.'))
+      children.push(para(lib, 'Execute the roadmap in sequence: close critical capability gaps first, pursue quick-win market opportunities next, then execute longer-horizon competitive and brand initiatives. Track the success metrics in Section 7 to measure progress toward the future state.'))
+      blank()
+
+      // 2. Capability Gap Roadmap
+      children.push(new Paragraph({ text: '2. Priority Capability Gaps to Address', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      if (gapItems.length === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'No critical or high gaps identified. Complete Steps 13 and 14 to surface capability gaps.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        gapItems.forEach((gap, idx) => {
+          const badgeLabel = gap.gapLevel === 'critical' ? 'CRITICAL' : 'HIGH'
+          const timeline = gap.gapLevel === 'critical' ? '30 days' : '60-90 days'
+          children.push(new Paragraph({
+            children: [new TextRun({ text: `${idx + 1}. ${gap.label || 'Untitled gap'}`, bold: true, size: 24 })],
+            spacing: { before: 160, after: 60 },
+          }))
+          children.push(new Paragraph({
+            children: [new TextRun({ text: `[${badgeLabel}] ${gap.source} · Close within ${timeline}`, color: gap.gapLevel === 'critical' ? 'DC2626' : 'E8520A', bold: true, size: 18 })],
+            spacing: { after: 80 },
+          }))
+          if (gap.description) children.push(para(lib, `Current state: ${gap.description}`, false, true))
+          if (gap.notes) children.push(para(lib, `Notes: ${gap.notes}`, false, true))
+          const action = gap.gapLevel === 'critical'
+            ? 'Decide within 30 days whether to build, hire for, or partner to close this gap. This capability is promised in the CVP and cannot be deferred.'
+            : 'Plan a 60-90 day initiative to strengthen this capability. Assign an owner and document a measurable target.'
+          children.push(para(lib, `Recommended action: ${action}`, false, true))
+          blank()
+        })
+      }
+
+      // 3. Competitive Opportunity Map
+      children.push(new Paragraph({ text: '3. Market Opportunities to Pursue', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      if (opportunities.length === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'No competitive opportunities recorded yet. Complete Step 25 to identify market openings.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        opportunities.forEach((opp, idx) => {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: `${idx + 1}. ${opp.label}`, bold: true, size: 22 })],
+            spacing: { before: 140, after: 60 },
+          }))
+          if (opp.text) children.push(para(lib, opp.text, false, true))
+        })
+      }
+      blank()
+
+      // 4. Competitive Threat Response
+      children.push(new Paragraph({ text: '4. Competitive Threats and Response Strategies', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      const threatPairCount = Math.max(threats.length, retaliations.length)
+      if (threatPairCount === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'No competitive threats or retaliation strategies recorded yet. Complete Steps 20 and 24.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        for (let i = 0; i < threatPairCount; i++) {
+          const t = threats[i]
+          const r = retaliations[i]
+          const label = t?.label || r?.label || `Pain Point ${i + 1}`
+          children.push(new Paragraph({
+            children: [new TextRun({ text: label, bold: true, size: 22 })],
+            spacing: { before: 140, after: 60 },
+          }))
+          if (t?.text) children.push(para(lib, `Threat: ${t.text}`, false, true))
+          if (r?.text) children.push(para(lib, `Retaliation strategy: ${r.text}`, false, true))
+        }
+      }
+      blank()
+
+      // 5. Brand Repositioning
+      children.push(new Paragraph({ text: '5. Brand and Positioning Recommendations', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      children.push(subheading(lib, 'Internal vs External Gaps'))
+      children.push(para(lib, "Where the team's beliefs differ from what real buyers said.", false, true))
+      const ieList = Array.isArray(internalExternal?.insights) ? internalExternal!.insights : []
+      if (ieList.length === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'No findings in this category.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        ieList.forEach((item) => children.push(para(lib, `• ${item}`, false, true)))
+      }
+      blank()
+      children.push(subheading(lib, 'Brand Perception Gaps'))
+      children.push(para(lib, 'How buyers describe you vs. how you describe yourself — close this gap with deliberate messaging.', false, true))
+      const bpList = Array.isArray(brandPerception?.insights) ? brandPerception!.insights : []
+      if (bpList.length === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'No findings in this category.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        bpList.forEach((item) => children.push(para(lib, `• ${item}`, false, true)))
+      }
+      blank()
+      children.push(subheading(lib, 'Repositioning Recommendation'))
+      children.push(para(lib, 'Use the gaps above to adjust positioning, website copy, sales collateral, and pitch language so the external story matches how buyers describe the problem and the desired outcome. Validate the revised positioning with three customer conversations before rolling out broadly.'))
+      blank()
+
+      // 6. 6-18 Month Roadmap
+      children.push(new Paragraph({ text: '6. 6-18 Month GTM Roadmap', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+
+      const months1to3: string[] = []
+      months1to3.push('Close all Critical capability gaps from Section 2 — decide build/hire/partner for each within 30 days.')
+      if (criticalCount > 0) months1to3.push(`${criticalCount} Critical gap${criticalCount === 1 ? '' : 's'} require immediate ownership and a documented closure plan.`)
+      if (opportunities.length > 0) months1to3.push('Launch the highest-leverage market opportunity from Section 3 as a quick-win pilot.')
+
+      const months4to6: string[] = []
+      if (retaliations.length > 0) months4to6.push('Execute the competitive retaliation strategies from Section 4 — sales enablement, battle cards, objection handling.')
+      months4to6.push('Begin brand repositioning rollout — update website, pitch deck, and sales scripts to reflect buyer language.')
+      if (highCount > 0) months4to6.push(`Close the ${highCount} High-priority capability gap${highCount === 1 ? '' : 's'} from Section 2.`)
+
+      const months7to12: string[] = []
+      if (opportunities.length > 1) months7to12.push('Pursue remaining market opportunities from Section 3 in priority order.')
+      if (productGaps.length > 0) months7to12.push(`Address top product gaps surfaced in Insights: ${productGaps.slice(0, 2).join('; ')}.`)
+      months7to12.push('Measure progress against the success metrics in Section 7 and iterate.')
+
+      const months13to18: string[] = []
+      months13to18.push('Scale the initiatives that produced the strongest leading indicators.')
+      months13to18.push('Evaluate entry into adjacent segments based on validated win patterns.')
+      if (swEntries.length > 0) months13to18.push('Use Step 26 strengths and weaknesses output to prioritize sustained differentiation investments.')
+
+      const buckets = [
+        { title: 'Months 1-3', summary: 'Close critical gaps and launch quick-win opportunities.', lines: months1to3 },
+        { title: 'Months 4-6', summary: 'Execute competitive retaliation and begin brand repositioning.', lines: months4to6 },
+        { title: 'Months 7-12', summary: 'Pursue competitive opportunities, measure and optimize.', lines: months7to12 },
+        { title: 'Months 13-18', summary: 'Scale what is working and enter new segments.', lines: months13to18 },
+      ]
+      buckets.forEach((b) => {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: b.title, bold: true, size: 24, color: '0A1628' })],
+          spacing: { before: 160, after: 60 },
+        }))
+        children.push(new Paragraph({
+          children: [new TextRun({ text: b.summary, italics: true, color: '6B7280', size: 20 })],
+          spacing: { after: 80 },
+        }))
+        b.lines.forEach((line) => children.push(para(lib, `• ${line}`, false, true)))
+        blank()
+      })
+
+      // 7. Success Metrics
+      children.push(new Paragraph({ text: '7. Success Metrics to Track', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      children.push(para(lib, 'Drawn from DCP Stage 7 (Confirmation) signals and Insights decision signals.', false, true))
+      const metrics: string[] = []
+      stage7Signals.slice(0, 3).forEach((sig) => metrics.push(`Validation signal: ${sig}`))
+      decisionSignals.slice(0, 3).forEach((sig) => metrics.push(`Decision signal: ${sig}`))
+      metrics.push('Critical capability gaps closed (target: 100% within 90 days)')
+      metrics.push('Win rate vs. priority competitors from Section 4 (target: +10 pts over baseline)')
+      if (metrics.length < 7) metrics.push('Number of buyer conversations validating revised positioning (target: 3 per quarter)')
+      metrics.slice(0, 7).forEach((m, idx) => {
+        children.push(para(lib, `${idx + 1}. ${m}`, false, true))
+      })
+
+      const doc = new Document({
+        creator: 'Assembly AI',
+        title: `${company} — Future State Strategic Plan`,
+        description: 'Generated by Assembly AI',
+        sections: [{ children }],
+        styles: {
+          paragraphStyles: [
+            { id: 'Normal', name: 'Normal', run: { font: 'Calibri', size: 22 } },
+          ],
+        },
+      })
+
+      const blob = await Packer.toBlob(doc)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${company.toLowerCase().replace(/\s+/g, '-')}-future-state-strategic-plan.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+      if (orgId) {
+        const ts = new Date().toISOString()
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+        setFutureStateLastGenerated(ts)
+      }
+    } catch (e) {
+      console.error('Future State DOCX export failed:', e)
+    } finally {
+      setExportingFutureStateDocx(false)
     }
   }
 
@@ -1970,8 +2207,50 @@ export default function ReportPage() {
                   cursor: !canGenerateFutureState || generatingFutureState ? 'not-allowed' : 'pointer',
                 }}
               >
-                {generatingFutureState ? 'Generating PDF…' : 'Download PDF'}
+                {generatingFutureState
+                  ? 'Generating…'
+                  : futureStateLastGenerated
+                    ? 'Regenerate Future State Plan'
+                    : 'Generate Future State Plan'}
               </button>
+              {futureStateLastGenerated && canGenerateFutureState && (
+                <>
+                  <button
+                    onClick={() => { void handleFutureStatePdf() }}
+                    disabled={generatingFutureState}
+                    style={{
+                      minHeight: '44px',
+                      padding: '0 20px',
+                      backgroundColor: generatingFutureState ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: generatingFutureState ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {generatingFutureState ? 'Generating PDF…' : 'Download PDF'}
+                  </button>
+                  <button
+                    onClick={() => { void handleFutureStateDocx() }}
+                    disabled={exportingFutureStateDocx}
+                    style={{
+                      minHeight: '44px',
+                      padding: '0 20px',
+                      backgroundColor: exportingFutureStateDocx ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.08)',
+                      color: exportingFutureStateDocx ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: exportingFutureStateDocx ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {exportingFutureStateDocx ? 'Generating…' : 'Download Word'}
+                  </button>
+                </>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {futureStateApproved ? (
@@ -2158,7 +2437,7 @@ export default function ReportPage() {
         </div>
 
         {/* Document preview — Future State Strategic Plan body */}
-        {canGenerateFutureState && insightsContent && (() => {
+        {canGenerateFutureState && insightsContent && futureStateLastGenerated && (() => {
           const step13Items = extractAssessmentItems(getOutput('13')?.content)
           const step14Items = extractAssessmentItems(getOutput('14')?.content)
           const gapItems = [

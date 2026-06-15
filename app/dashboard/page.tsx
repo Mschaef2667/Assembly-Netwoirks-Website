@@ -223,6 +223,8 @@ export default function DashboardPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [actionPlanGeneratedAt, setActionPlanGeneratedAt] = useState<string | null>(null)
   const [futureStateGeneratedAt, setFutureStateGeneratedAt] = useState<string | null>(null)
+  const [actionPlanApproved, setActionPlanApproved] = useState<string | null>(null)
+  const [futureStateApproved, setFutureStateApproved] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
@@ -359,8 +361,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!orgId) return
-    setActionPlanGeneratedAt(localStorage.getItem(`c3.report.actionPlan.lastGenerated:${orgId}`))
-    setFutureStateGeneratedAt(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
+    function readReportStatus() {
+      setActionPlanGeneratedAt(localStorage.getItem(`c3.report.actionPlan.lastGenerated:${orgId}`))
+      setFutureStateGeneratedAt(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
+      setActionPlanApproved(localStorage.getItem('report_action_plan_approved'))
+      setFutureStateApproved(localStorage.getItem('report_future_state_approved'))
+    }
+    readReportStatus()
+    window.addEventListener('focus', readReportStatus)
+    return () => window.removeEventListener('focus', readReportStatus)
   }, [orgId])
 
   function handleDismissBanner() {
@@ -981,25 +990,37 @@ export default function DashboardPage() {
           const insightsStatusBg = insightsGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
 
           // Action Plan row
-          const apStatusLabel = actionPlanGenerated
+          const apStatusLabel = actionPlanApproved
+            ? `Approved ${formatDate(actionPlanApproved)}`
+            : actionPlanGenerated
             ? `Generated ${formatDate(actionPlanGeneratedAt)}`
             : 'Not generated'
-          const apStatusColor = actionPlanGenerated ? '#10B981' : 'rgba(255,255,255,0.5)'
-          const apStatusBg = actionPlanGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
+          const apStatusColor = actionPlanApproved
+            ? '#16A34A'
+            : actionPlanGenerated ? '#10B981' : 'rgba(255,255,255,0.5)'
+          const apStatusBg = actionPlanApproved
+            ? 'rgba(22,163,74,0.15)'
+            : actionPlanGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
 
           // Future State Plan row
           const fsStatusLabel = futureStateLocked
             ? 'Locked'
+            : futureStateApproved
+            ? `Approved ${formatDate(futureStateApproved)}`
             : futureStateGenerated
             ? `Generated ${formatDate(futureStateGeneratedAt)}`
             : 'Not generated'
           const fsStatusColor = futureStateLocked
             ? 'rgba(255,255,255,0.35)'
+            : futureStateApproved
+            ? '#16A34A'
             : futureStateGenerated
             ? '#10B981'
             : 'rgba(255,255,255,0.5)'
           const fsStatusBg = futureStateLocked
             ? 'rgba(255,255,255,0.06)'
+            : futureStateApproved
+            ? 'rgba(22,163,74,0.15)'
             : futureStateGenerated
             ? 'rgba(16,185,129,0.15)'
             : 'rgba(255,255,255,0.06)'
