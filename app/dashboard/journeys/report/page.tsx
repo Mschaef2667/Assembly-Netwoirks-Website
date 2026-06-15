@@ -25,6 +25,43 @@ interface OrgRow {
   logo_url: string | null
 }
 
+interface AssessmentItem {
+  label: string
+  description: string
+  gapLevel: 'none' | 'low' | 'medium' | 'high' | 'critical'
+  notes: string
+  currentState: string
+}
+
+interface DcpStageSummary {
+  stage_number: number
+  stage_name: string
+  summary: string
+  key_signals?: string[]
+  gaps?: string[]
+  confidence?: number
+  confidence_score?: number
+  recommended_actions?: string[]
+}
+
+interface InsightCategory {
+  insights: string[]
+  confidence: number
+}
+
+interface InsightsContent {
+  generated_at: string
+  overall_confidence: number
+  categories: {
+    internal_external_gap: InsightCategory
+    product_gaps: InsightCategory
+    key_competitors: InsightCategory
+    decision_signals: InsightCategory
+    brand_perception: InsightCategory
+    segment_differences: InsightCategory
+  }
+}
+
 // ─── Content extractors ──────────────────────────────────────────────────────
 
 function extractText(content: Record<string, unknown>): string {
@@ -261,6 +298,29 @@ function extractCompetitiveContent(
   return fallback.length > 0 ? [{ label: '', text: fallback }] : []
 }
 
+function extractAssessmentItems(content: Record<string, unknown> | undefined | null): AssessmentItem[] {
+  if (!content) return []
+  const raw = content['items']
+  if (!Array.isArray(raw)) return []
+  return (raw as unknown[])
+    .map((r): AssessmentItem => {
+      const obj = (typeof r === 'object' && r !== null) ? (r as Record<string, unknown>) : {}
+      const gapRaw = typeof obj['gapLevel'] === 'string' ? (obj['gapLevel'] as string) : 'none'
+      const gapLevel: AssessmentItem['gapLevel'] =
+        gapRaw === 'critical' || gapRaw === 'high' || gapRaw === 'medium' || gapRaw === 'low' || gapRaw === 'none'
+          ? gapRaw
+          : 'none'
+      return {
+        label: typeof obj['label'] === 'string' ? (obj['label'] as string).trim() : '',
+        description: typeof obj['description'] === 'string' ? (obj['description'] as string).trim() : '',
+        gapLevel,
+        notes: typeof obj['notes'] === 'string' ? (obj['notes'] as string).trim() : '',
+        currentState: typeof obj['currentState'] === 'string' ? (obj['currentState'] as string).trim() : '',
+      }
+    })
+    .filter((i) => i.label.length > 0 || i.description.length > 0)
+}
+
 function extractPainPoints(content: Record<string, unknown>): PainPointItem[] {
   const raw = content['pain_points']
   const activeCount = typeof content['active_count'] === 'number' ? content['active_count'] : undefined
@@ -367,6 +427,11 @@ export default function ReportPage() {
   const [outputs, setOutputs] = useState<Map<string, StepOutput>>(new Map())
   const [exporting, setExporting] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [generatingFutureState, setGeneratingFutureState] = useState(false)
+  const [dcpStatus, setDcpStatus] = useState<string | null>(null)
+  const [dcpOverallConfidence, setDcpOverallConfidence] = useState<number | null>(null)
+  const [dcpStageSummaries, setDcpStageSummaries] = useState<DcpStageSummary[]>([])
+  const [insightsContent, setInsightsContent] = useState<InsightsContent | null>(null)
   const reportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -394,10 +459,12 @@ export default function ReportPage() {
         { data: orgData },
         { data: defsData },
         { data: outputsData },
+        { data: dcpData },
       ] = await Promise.all([
         supabase.from('organizations').select('name, logo_url').eq('id', orgId).single(),
         supabase.from('step_definition').select('id, title, section, phase').order('id'),
         supabase.from('step_output').select('step_id, version, status, content').eq('workspace_id', orgId),
+        supabase.from('dcp_analysis').select('status, overall_confidence, stage_summaries').eq('org_id', orgId).maybeSingle(),
       ])
 
       setOrg(orgData ?? { name: 'Your Company', logo_url: null })
@@ -410,6 +477,19 @@ export default function ReportPage() {
         if (!existing || row.version > existing.version) outMap.set(row.step_id, row)
       }
       setOutputs(outMap)
+
+      if (dcpData) {
+        const dcpRow = dcpData as Record<string, unknown>
+        setDcpStatus(typeof dcpRow['status'] === 'string' ? (dcpRow['status'] as string) : null)
+        setDcpOverallConfidence(typeof dcpRow['overall_confidence'] === 'number' ? (dcpRow['overall_confidence'] as number) : null)
+        const stages = dcpRow['stage_summaries']
+        setDcpStageSummaries(Array.isArray(stages) ? (stages as DcpStageSummary[]) : [])
+      }
+
+      const insightsRow = outMap.get('insights')
+      if (insightsRow && insightsRow.content && (insightsRow.content as Record<string, unknown>)['categories']) {
+        setInsightsContent(insightsRow.content as unknown as InsightsContent)
+      }
     } catch (e) {
       setError(String(e))
     } finally {
@@ -837,6 +917,486 @@ export default function ReportPage() {
     }
   }
 
+  // ─── Future State Strategic Plan PDF ────────────────────────────────────────
+
+  const canGenerateFutureState = dcpStatus === 'approved' && insightsContent !== null
+
+  async function handleFutureStatePdf() {
+    if (!canGenerateFutureState || !insightsContent) return
+    setGeneratingFutureState(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const company = org?.name ?? 'Your Company'
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+
+      const NAVY   = '#0A1628'
+      const ORANGE = '#E8520A'
+      const BLUE   = '#0EA5E9'
+      const GREY   = '#6B7280'
+      const BLACK  = '#0D0D0D'
+      const AMBER  = '#D97706'
+      const RED    = '#DC2626'
+
+      const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
+      const pageW = doc.internal.pageSize.getWidth()
+      const pageH = doc.internal.pageSize.getHeight()
+      const margin = 50
+      const contentW = pageW - margin * 2
+
+      function hexToRgb(hex: string): [number, number, number] {
+        return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
+      }
+      function setFill(hex: string) { doc.setFillColor(...hexToRgb(hex)) }
+      function setStroke(hex: string) { doc.setDrawColor(...hexToRgb(hex)) }
+      function setTextColor(hex: string) { doc.setTextColor(...hexToRgb(hex)) }
+
+      function wrappedText(text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
+        const lines = doc.splitTextToSize(text, maxWidth) as string[]
+        for (const line of lines) {
+          if (y > pageH - margin - 36) { doc.addPage(); y = margin + 20 }
+          doc.text(line, x, y)
+          y += lineHeight
+        }
+        return y
+      }
+
+      function checkPage(y: number, needed = 60): number {
+        if (y + needed > pageH - margin - 30) { doc.addPage(); return margin + 20 }
+        return y
+      }
+
+      function sectionHeader(title: string, subtitle?: string): number {
+        doc.addPage()
+        let y = margin
+        setFill(NAVY)
+        doc.rect(0, 0, pageW, 50, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(15)
+        setTextColor('#FFFFFF')
+        doc.text(title, margin, 32)
+        y = 78
+        setFill(ORANGE)
+        doc.rect(margin, y, 48, 3, 'F')
+        y += 22
+        if (subtitle) {
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(10)
+          setTextColor(GREY)
+          y = wrappedText(subtitle, margin, y, contentW, 13)
+          y += 12
+        }
+        return y
+      }
+
+      // ── Cover ──
+      setFill(ORANGE)
+      doc.rect(0, 0, pageW, 6, 'F')
+
+      // Logo (if available) — embed via Image API
+      if (org?.logo_url) {
+        try {
+          const res = await fetch(org.logo_url)
+          if (res.ok) {
+            const blob = await res.blob()
+            const reader = new FileReader()
+            const dataUrl: string = await new Promise((resolve, reject) => {
+              reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+              reader.onerror = reject
+              reader.readAsDataURL(blob)
+            })
+            if (dataUrl) {
+              const fmt = dataUrl.includes('image/png') ? 'PNG' : dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg') ? 'JPEG' : null
+              if (fmt) doc.addImage(dataUrl, fmt, pageW / 2 - 50, 60, 100, 50)
+            }
+          }
+        } catch {
+          // logo embed is best-effort
+        }
+      }
+
+      let y = 150
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      setTextColor(ORANGE)
+      doc.text('ASSEMBLY AI', pageW / 2, y, { align: 'center', charSpace: 2 })
+      y += 40
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(28)
+      setTextColor(NAVY)
+      doc.text('Future State Strategic Plan', pageW / 2, y, { align: 'center' })
+      y += 32
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(14)
+      setTextColor(GREY)
+      doc.text('6-18 Month GTM Roadmap', pageW / 2, y, { align: 'center' })
+      y += 28
+
+      setStroke(ORANGE)
+      doc.setLineWidth(1.5)
+      doc.line(margin + 60, y, pageW - margin - 60, y)
+      y += 36
+
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      setTextColor(NAVY)
+      doc.text(company, pageW / 2, y, { align: 'center' })
+      y += 22
+      doc.setFont('helvetica', 'normal')
+      setTextColor(GREY)
+      doc.text(today, pageW / 2, y, { align: 'center' })
+
+      // Confidential footer on cover
+      setTextColor('#9CA3AF')
+      doc.setFontSize(9)
+      doc.text('Proprietary and Confidential', pageW / 2, pageH - 60, { align: 'center' })
+
+      // ── Section 1: Executive Summary ──
+      y = sectionHeader('1. Executive Summary',
+        'Current state assessment and the strategic future state opportunity.')
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(11)
+      setTextColor(BLACK)
+      const dcpConf = dcpOverallConfidence ?? 0
+      const insightsConf = insightsContent.overall_confidence ?? 0
+      const para1 = `${company} has completed Phase 1 buyer research with an overall Decision Clarity Profile confidence of ${dcpConf}/100. Insights analysis surfaced patterns across six intelligence categories with an aggregate confidence of ${insightsConf}/100. These signals form the foundation for the future state strategy outlined in this plan.`
+      y = wrappedText(para1, margin, y, contentW, 16)
+      y += 10
+      const para2 = `This Future State Strategic Plan is the companion to the current state Strategic Plan. While the current state plan describes the actions to take today based on what is true, this plan describes the 6-18 month strategic agenda to close capability gaps, capture market opportunities, neutralize competitive threats, and reposition the brand to align with how buyers actually evaluate solutions.`
+      y = wrappedText(para2, margin, y, contentW, 16)
+      y += 10
+      const para3 = `Execute the roadmap in sequence: close critical capability gaps first, pursue quick-win market opportunities next, then execute longer-horizon competitive and brand initiatives. Track the success metrics in Section 7 to measure progress toward the future state.`
+      y = wrappedText(para3, margin, y, contentW, 16)
+
+      // ── Section 2: Capability Gap Roadmap ──
+      y = sectionHeader('2. Priority Capability Gaps to Address',
+        'Critical and High gaps identified in Steps 13 (Critical Success Formulas) and 14 (Core Competencies).')
+
+      const step13Items = extractAssessmentItems(getOutput('13')?.content)
+      const step14Items = extractAssessmentItems(getOutput('14')?.content)
+      const gapItems = [
+        ...step13Items.map((i) => ({ source: 'Critical Success Formula', ...i })),
+        ...step14Items.map((i) => ({ source: 'Core Competency', ...i })),
+      ].filter((i) => i.gapLevel === 'critical' || i.gapLevel === 'high')
+
+      if (gapItems.length === 0) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(10)
+        setTextColor(GREY)
+        y = wrappedText('No critical or high gaps identified. Complete Steps 13 and 14 to surface capability gaps.', margin, y, contentW, 14)
+      } else {
+        gapItems.forEach((gap, idx) => {
+          y = checkPage(y, 90)
+          const badgeColor = gap.gapLevel === 'critical' ? RED : ORANGE
+          const badgeLabel = gap.gapLevel === 'critical' ? 'CRITICAL' : 'HIGH'
+          const timeline = gap.gapLevel === 'critical' ? '30 days' : '60-90 days'
+
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          setTextColor(NAVY)
+          doc.text(`${idx + 1}. ${gap.label || 'Untitled gap'}`, margin, y)
+          y += 16
+
+          // Gap level badge
+          setFill(badgeColor)
+          doc.roundedRect(margin, y - 10, 56, 14, 2, 2, 'F')
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(8)
+          setTextColor('#FFFFFF')
+          doc.text(badgeLabel, margin + 28, y, { align: 'center' })
+
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+          setTextColor(GREY)
+          doc.text(`${gap.source} · Close within ${timeline}`, margin + 64, y)
+          y += 16
+
+          if (gap.description) {
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            setTextColor(NAVY)
+            doc.text('Current state:', margin, y); y += 12
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(BLACK)
+            y = wrappedText(gap.description, margin, y, contentW, 13)
+            y += 6
+          }
+
+          if (gap.notes) {
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            setTextColor(NAVY)
+            doc.text('Notes:', margin, y); y += 12
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(BLACK)
+            y = wrappedText(gap.notes, margin, y, contentW, 13)
+            y += 6
+          }
+
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(9)
+          setTextColor(NAVY)
+          doc.text('Recommended action:', margin, y); y += 12
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(10)
+          setTextColor(BLACK)
+          const action = gap.gapLevel === 'critical'
+            ? `Decide within 30 days whether to build, hire for, or partner to close this gap. This capability is promised in the CVP and cannot be deferred.`
+            : `Plan a 60-90 day initiative to strengthen this capability. Assign an owner and document a measurable target.`
+          y = wrappedText(action, margin, y, contentW, 13)
+          y += 14
+        })
+      }
+
+      // ── Section 3: Competitive Opportunity Map ──
+      y = sectionHeader('3. Market Opportunities to Pursue',
+        'Competitive opportunities surfaced in Step 25 — gaps in the market where competitors are weak.')
+      const step25 = getOutput('25')
+      const step4PainPoints = (() => { const o = getOutput('4'); return o ? extractPainPoints(o.content) : [] })()
+      const opportunities = step25 ? extractByPainPoint(step25, step4PainPoints) : []
+      if (opportunities.length === 0) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(10)
+        setTextColor(GREY)
+        y = wrappedText('No competitive opportunities recorded yet. Complete Step 25 to identify market openings.', margin, y, contentW, 14)
+      } else {
+        opportunities.forEach((opp, idx) => {
+          y = checkPage(y, 60)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          setTextColor(NAVY)
+          y = wrappedText(`${idx + 1}. ${opp.label}`, margin, y, contentW, 14)
+          y += 4
+          if (opp.text) {
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(BLACK)
+            y = wrappedText(opp.text, margin, y, contentW, 13)
+          }
+          y += 12
+        })
+      }
+
+      // ── Section 4: Competitive Threats and Response ──
+      y = sectionHeader('4. Competitive Threats and Response Strategies',
+        'Threats from Step 20 paired with the retaliation strategies developed in Step 24.')
+      const step20 = getOutput('20')
+      const step24 = getOutput('24')
+      const threats = step20 ? extractByPainPoint(step20, step4PainPoints) : []
+      const retaliations = step24 ? extractByPainPoint(step24, step4PainPoints) : []
+      if (threats.length === 0 && retaliations.length === 0) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(10)
+        setTextColor(GREY)
+        y = wrappedText('No competitive threats or retaliation strategies recorded yet. Complete Steps 20 and 24.', margin, y, contentW, 14)
+      } else {
+        const maxLen = Math.max(threats.length, retaliations.length)
+        for (let i = 0; i < maxLen; i++) {
+          y = checkPage(y, 80)
+          const t = threats[i]
+          const r = retaliations[i]
+          const label = (t?.label || r?.label || `Pain Point ${i + 1}`)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          setTextColor(NAVY)
+          y = wrappedText(label, margin, y, contentW, 14)
+          y += 4
+          if (t?.text) {
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            setTextColor(RED)
+            doc.text('Threat:', margin, y); y += 12
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(BLACK)
+            y = wrappedText(t.text, margin, y, contentW, 13)
+            y += 6
+          }
+          if (r?.text) {
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            setTextColor(BLUE)
+            doc.text('Retaliation strategy:', margin, y); y += 12
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            setTextColor(BLACK)
+            y = wrappedText(r.text, margin, y, contentW, 13)
+            y += 6
+          }
+          y += 8
+        }
+      }
+
+      // ── Section 5: Brand Repositioning ──
+      y = sectionHeader('5. Brand and Positioning Recommendations',
+        'Drawn from the Insights categories: Brand Perception and Internal vs External Gap.')
+      const brandPerception = insightsContent.categories?.brand_perception
+      const internalExternal = insightsContent.categories?.internal_external_gap
+
+      function renderInsightBlock(heading: string, sub: string, items: string[] | undefined): number {
+        y = checkPage(y, 60)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(12)
+        setTextColor(NAVY)
+        y = wrappedText(heading, margin, y, contentW, 14)
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(9)
+        setTextColor(GREY)
+        y = wrappedText(sub, margin, y, contentW, 12)
+        y += 6
+        const list = Array.isArray(items) ? items : []
+        if (list.length === 0) {
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(10)
+          setTextColor(GREY)
+          y = wrappedText('No findings in this category.', margin, y, contentW, 13)
+        } else {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(10)
+          setTextColor(BLACK)
+          list.forEach((item) => {
+            y = checkPage(y, 24)
+            y = wrappedText(`• ${item}`, margin + 8, y, contentW - 8, 14)
+            y += 4
+          })
+        }
+        y += 10
+        return y
+      }
+
+      y = renderInsightBlock(
+        'Internal vs External Gaps',
+        'Where the team\'s beliefs differ from what real buyers said.',
+        internalExternal?.insights,
+      )
+      y = renderInsightBlock(
+        'Brand Perception Gaps',
+        'How buyers describe you vs. how you describe yourself — close this gap with deliberate messaging.',
+        brandPerception?.insights,
+      )
+
+      // Recommendation block
+      y = checkPage(y, 60)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      setTextColor(NAVY)
+      doc.text('Repositioning Recommendation', margin, y); y += 16
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      setTextColor(BLACK)
+      y = wrappedText('Use the gaps above to adjust positioning, website copy, sales collateral, and pitch language so the external story matches how buyers describe the problem and the desired outcome. Validate the revised positioning with three customer conversations before rolling out broadly.', margin, y, contentW, 14)
+
+      // ── Section 6: 6-18 Month GTM Roadmap ──
+      y = sectionHeader('6. 6-18 Month GTM Roadmap',
+        'Sequenced initiatives drawing on Step 26 (Strengths and Weaknesses) and Insights product gaps.')
+      const step26 = getOutput('26')
+      const swEntries = step26 ? extractByPainPoint(step26, step4PainPoints) : []
+      const productGaps = insightsContent.categories?.product_gaps?.insights ?? []
+
+      function bucket(title: string, summary: string, lines: string[]): void {
+        y = checkPage(y, 80)
+        setFill(ORANGE)
+        doc.rect(margin, y - 10, 4, 18, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(12)
+        setTextColor(NAVY)
+        doc.text(title, margin + 12, y); y += 16
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(9)
+        setTextColor(GREY)
+        y = wrappedText(summary, margin + 12, y, contentW - 12, 12)
+        y += 6
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        setTextColor(BLACK)
+        lines.forEach((line) => {
+          y = checkPage(y, 24)
+          y = wrappedText(`• ${line}`, margin + 16, y, contentW - 16, 14)
+          y += 2
+        })
+        y += 14
+      }
+
+      const months1to3: string[] = []
+      months1to3.push('Close all Critical capability gaps from Section 2 — decide build/hire/partner for each within 30 days.')
+      const criticalCount = gapItems.filter((g) => g.gapLevel === 'critical').length
+      if (criticalCount > 0) months1to3.push(`${criticalCount} Critical gap${criticalCount === 1 ? '' : 's'} require immediate ownership and a documented closure plan.`)
+      if (opportunities.length > 0) months1to3.push(`Launch the highest-leverage market opportunity from Section 3 as a quick-win pilot.`)
+      bucket('Months 1-3', 'Close critical gaps and launch quick-win opportunities.', months1to3)
+
+      const months4to6: string[] = []
+      if (retaliations.length > 0) months4to6.push('Execute the competitive retaliation strategies from Section 4 — sales enablement, battle cards, objection handling.')
+      months4to6.push('Begin brand repositioning rollout — update website, pitch deck, and sales scripts to reflect buyer language.')
+      const highCount = gapItems.filter((g) => g.gapLevel === 'high').length
+      if (highCount > 0) months4to6.push(`Close the ${highCount} High-priority capability gap${highCount === 1 ? '' : 's'} from Section 2.`)
+      bucket('Months 4-6', 'Execute competitive retaliation and begin brand repositioning.', months4to6)
+
+      const months7to12: string[] = []
+      if (opportunities.length > 1) months7to12.push('Pursue remaining market opportunities from Section 3 in priority order.')
+      if (productGaps.length > 0) months7to12.push(`Address top product gaps surfaced in Insights: ${productGaps.slice(0, 2).join('; ')}.`)
+      months7to12.push('Measure progress against the success metrics in Section 7 and iterate.')
+      bucket('Months 7-12', 'Pursue competitive opportunities, measure and optimize.', months7to12)
+
+      const months13to18: string[] = []
+      months13to18.push('Scale the initiatives that produced the strongest leading indicators.')
+      months13to18.push('Evaluate entry into adjacent segments based on validated win patterns.')
+      if (swEntries.length > 0) months13to18.push('Use Step 26 strengths and weaknesses output to prioritize sustained differentiation investments.')
+      bucket('Months 13-18', 'Scale what is working and enter new segments.', months13to18)
+
+      // ── Section 7: Success Metrics ──
+      y = sectionHeader('7. Success Metrics to Track',
+        'Drawn from DCP Stage 7 (Confirmation) signals and Insights decision signals.')
+      const stage7 = dcpStageSummaries.find((s) => s.stage_number === 7)
+      const decisionSignals = insightsContent.categories?.decision_signals?.insights ?? []
+
+      const metrics: string[] = []
+      const stage7Signals = Array.isArray(stage7?.key_signals) ? (stage7!.key_signals as string[]) : []
+      stage7Signals.slice(0, 3).forEach((sig) => metrics.push(`Validation signal: ${sig}`))
+      decisionSignals.slice(0, 3).forEach((sig) => metrics.push(`Decision signal: ${sig}`))
+      // Always-on operational metrics
+      metrics.push('Critical capability gaps closed (target: 100% within 90 days)')
+      metrics.push('Win rate vs. priority competitors from Section 4 (target: +10 pts over baseline)')
+      if (metrics.length < 7) metrics.push('Number of buyer conversations validating revised positioning (target: 3 per quarter)')
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      setTextColor(BLACK)
+      metrics.slice(0, 7).forEach((m, idx) => {
+        y = checkPage(y, 24)
+        doc.setFont('helvetica', 'bold')
+        setTextColor(ORANGE)
+        doc.text(`${idx + 1}.`, margin, y)
+        doc.setFont('helvetica', 'normal')
+        setTextColor(BLACK)
+        y = wrappedText(m, margin + 18, y, contentW - 18, 14)
+        y += 6
+      })
+
+      // ── Footer on every page (except cover handled inline above) ──
+      const totalPages = (doc as unknown as { internal: { pages: unknown[] } }).internal.pages.length - 1
+      for (let p = 2; p <= totalPages; p++) {
+        doc.setPage(p)
+        setFill(NAVY)
+        doc.rect(0, pageH - 26, pageW, 26, 'F')
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        setTextColor('#9CA3AF')
+        doc.text(`Assembly AI Confidential — Future State Strategic Plan — ${company}`, margin, pageH - 10)
+        doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 10, { align: 'right' })
+      }
+
+      const slug = company.toLowerCase().replace(/\s+/g, '-')
+      doc.save(`${slug}-future-state-strategic-plan.pdf`)
+    } catch (e) {
+      console.error('Future State PDF export failed:', e)
+    } finally {
+      setGeneratingFutureState(false)
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -1196,6 +1756,30 @@ export default function ReportPage() {
               }}
             >
               {generatingPdf ? 'Generating PDF…' : 'Download PDF'}
+            </button>
+            <button
+              onClick={() => { void handleFutureStatePdf() }}
+              disabled={!canGenerateFutureState || generatingFutureState}
+              title={canGenerateFutureState
+                ? 'Generate the 6-18 month Future State Strategic Plan'
+                : 'Complete Intelligence (Gate 1) and generate Insights to unlock the Future State Plan.'}
+              style={{
+                minHeight: '44px',
+                padding: '0 20px',
+                backgroundColor: !canGenerateFutureState
+                  ? 'rgba(255,255,255,0.06)'
+                  : generatingFutureState
+                    ? 'rgba(232,82,10,0.5)'
+                    : '#E8520A',
+                color: !canGenerateFutureState ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                border: !canGenerateFutureState ? '1px solid rgba(255,255,255,0.15)' : 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: !canGenerateFutureState || generatingFutureState ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {generatingFutureState ? 'Generating…' : 'Download Future State Plan'}
             </button>
             <button
               onClick={() => { void handleDocx() }}
