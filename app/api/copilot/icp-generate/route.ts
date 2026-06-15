@@ -17,7 +17,7 @@ interface IcpGenerateBody {
 
 // ── Route config ──────────────────────────────────────────────────────────────
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 // ── POST /api/copilot/icp-generate ───────────────────────────────────────────
 
