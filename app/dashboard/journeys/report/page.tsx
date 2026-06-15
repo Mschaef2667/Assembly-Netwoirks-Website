@@ -2417,6 +2417,262 @@ export default function ReportPage() {
                 </>
               )}
             </div>
+            {/* Document preview — Future State Strategic Plan body */}
+            {futureStateData && (() => {
+              const data = futureStateData
+              const { company, dcpConf, insightsConf, gapItems, opportunities, threats, retaliations, threatPairCount,
+                internalExternalInsights, brandPerceptionInsights, months1to3, months4to6, months7to12, months13to18, metrics } = data
+
+              return (
+                <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
+                  <div
+                    className="report-doc"
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      maxWidth: '900px',
+                      width: '100%',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Cover */}
+                    <div
+                      className="report-cover"
+                      style={{
+                        backgroundColor: '#0A1628',
+                        padding: '60px 48px',
+                        minHeight: '280px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        borderTop: '6px solid #0EA5E9',
+                      }}
+                    >
+                      <div>
+                        {org?.logo_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={org.logo_url} alt="Company logo" style={{ maxHeight: '48px', marginBottom: '24px', objectFit: 'contain' }} />
+                        )}
+                        <div style={{ color: '#0EA5E9', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }}>
+                          Future State Strategic Plan · 6-18 Months
+                        </div>
+                        <h1 style={{ color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
+                          {company}
+                        </h1>
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginTop: '40px' }}>
+                        Generated {today} · Assembly AI
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '48px 48px 20px' }}>
+
+                      {/* 1. Executive Summary */}
+                      <h2 style={sectionHeadStyle}>1. Executive Summary</h2>
+                      <p style={bodyStyle}>
+                        {company} has completed Phase 1 buyer research with an overall Decision Clarity Profile confidence of {dcpConf}/100. Insights analysis surfaced patterns across six intelligence categories with an aggregate confidence of {insightsConf}/100. These signals form the foundation for the future state strategy outlined in this plan.
+                      </p>
+                      <p style={bodyStyle}>
+                        This Future State Strategic Plan is the companion to the current state Strategic Plan. While the current state plan describes the actions to take today based on what is true, this plan describes the 6-18 month strategic agenda to close capability gaps, capture market opportunities, neutralize competitive threats, and reposition the brand to align with how buyers actually evaluate solutions.
+                      </p>
+                      <p style={bodyStyle}>
+                        Execute the roadmap in sequence: close critical capability gaps first, pursue quick-win market opportunities next, then execute longer-horizon competitive and brand initiatives. Track the success metrics in Section 7 to measure progress toward the future state.
+                      </p>
+
+                      {/* 2. Capability Gap Roadmap */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>2. Priority Capability Gaps to Address</h2>
+                      {gapItems.length === 0 ? (
+                        <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
+                          No critical or high gaps identified. Complete Steps 13 and 14 to surface capability gaps.
+                        </p>
+                      ) : (
+                        <div style={{ marginTop: '4px' }}>
+                          {gapItems.map((gap, idx) => {
+                            const isCritical = gap.gapLevel === 'critical'
+                            const badgeColor = isCritical ? '#DC2626' : '#E8520A'
+                            const badgeLabel = isCritical ? 'CRITICAL' : 'HIGH'
+                            const timeline = isCritical ? '30 days' : '60-90 days'
+                            return (
+                              <div key={idx} style={{ marginBottom: '20px' }}>
+                                <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 6px' }}>
+                                  {idx + 1}. {gap.label || 'Untitled gap'}
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 8px', flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    display: 'inline-block', padding: '2px 8px',
+                                    backgroundColor: badgeColor, color: '#FFFFFF',
+                                    borderRadius: '4px', fontSize: '10px', fontWeight: 700,
+                                  }}>
+                                    {badgeLabel}
+                                  </span>
+                                  <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                                    {gap.source} · Close within {timeline}
+                                  </span>
+                                </div>
+                                {gap.description && (
+                                  <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
+                                    <strong style={{ color: '#0A1628' }}>Current state:</strong> {gap.description}
+                                  </p>
+                                )}
+                                {gap.notes && (
+                                  <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
+                                    <strong style={{ color: '#0A1628' }}>Notes:</strong> {gap.notes}
+                                  </p>
+                                )}
+                                <p style={{ ...bodyStyle, margin: 0 }}>
+                                  <strong style={{ color: '#0A1628' }}>Recommended action:</strong>{' '}
+                                  {isCritical
+                                    ? 'Decide within 30 days whether to build, hire for, or partner to close this gap. This capability is promised in the CVP and cannot be deferred.'
+                                    : 'Plan a 60-90 day initiative to strengthen this capability. Assign an owner and document a measurable target.'}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* 3. Competitive Opportunity Map */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>3. Market Opportunities to Pursue</h2>
+                      {opportunities.length === 0 ? (
+                        <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
+                          No competitive opportunities recorded yet. Complete Step 25 to identify market openings.
+                        </p>
+                      ) : (
+                        <div style={{ marginTop: '4px' }}>
+                          {opportunities.map((opp, idx) => (
+                            <div key={idx} style={{ marginBottom: '14px' }}>
+                              <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+                                {idx + 1}. {opp.label}
+                              </p>
+                              {opp.text && <p style={bodyStyle}>{opp.text}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 4. Competitive Threat Response */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>4. Competitive Threats and Response Strategies</h2>
+                      {threatPairCount === 0 ? (
+                        <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
+                          No competitive threats or retaliation strategies recorded yet. Complete Steps 20 and 24.
+                        </p>
+                      ) : (
+                        <div style={{ marginTop: '4px' }}>
+                          {Array.from({ length: threatPairCount }).map((_, i) => {
+                            const t = threats[i]
+                            const r = retaliations[i]
+                            const label = t?.label || r?.label || `Pain Point ${i + 1}`
+                            return (
+                              <div key={i} style={{ marginBottom: '16px' }}>
+                                <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 6px' }}>
+                                  {label}
+                                </p>
+                                {t?.text && (
+                                  <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
+                                    <strong style={{ color: '#DC2626' }}>Threat:</strong> {t.text}
+                                  </p>
+                                )}
+                                {r?.text && (
+                                  <p style={bodyStyle}>
+                                    <strong style={{ color: '#0EA5E9' }}>Retaliation strategy:</strong> {r.text}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* 5. Brand Repositioning */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>5. Brand and Positioning Recommendations</h2>
+                      <p style={{ ...subheadStyle, marginTop: '12px' }}>Internal vs External Gaps</p>
+                      <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
+                        Where the team&apos;s beliefs differ from what real buyers said.
+                      </p>
+                      {internalExternalInsights.length > 0 ? (
+                        <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
+                          {internalExternalInsights.map((item, i) => (
+                            <li key={i} style={bodyStyle}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No findings in this category.</p>
+                      )}
+
+                      <p style={{ ...subheadStyle, marginTop: '20px' }}>Brand Perception Gaps</p>
+                      <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
+                        How buyers describe you vs. how you describe yourself — close this gap with deliberate messaging.
+                      </p>
+                      {brandPerceptionInsights.length > 0 ? (
+                        <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
+                          {brandPerceptionInsights.map((item, i) => (
+                            <li key={i} style={bodyStyle}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No findings in this category.</p>
+                      )}
+
+                      <p style={{ ...subheadStyle, marginTop: '20px' }}>Repositioning Recommendation</p>
+                      <p style={bodyStyle}>
+                        Use the gaps above to adjust positioning, website copy, sales collateral, and pitch language so the external story matches how buyers describe the problem and the desired outcome. Validate the revised positioning with three customer conversations before rolling out broadly.
+                      </p>
+
+                      {/* 6. 6-18 Month Roadmap */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>6. 6-18 Month GTM Roadmap</h2>
+                      {([
+                        { title: 'Months 1-3', summary: 'Close critical gaps and launch quick-win opportunities.', lines: months1to3 },
+                        { title: 'Months 4-6', summary: 'Execute competitive retaliation and begin brand repositioning.', lines: months4to6 },
+                        { title: 'Months 7-12', summary: 'Pursue competitive opportunities, measure and optimize.', lines: months7to12 },
+                        { title: 'Months 13-18', summary: 'Scale what is working and enter new segments.', lines: months13to18 },
+                      ]).map((bucket, idx) => (
+                        <div key={idx} style={{
+                          borderLeft: '3px solid #E8520A',
+                          padding: '4px 0 4px 14px',
+                          marginBottom: '18px',
+                        }}>
+                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
+                            {bucket.title}
+                          </p>
+                          <p style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic', margin: '0 0 8px' }}>
+                            {bucket.summary}
+                          </p>
+                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                            {bucket.lines.map((line, i) => (
+                              <li key={i} style={bodyStyle}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+
+                      {/* 7. Success Metrics */}
+                      <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                      <h2 style={sectionHeadStyle}>7. Success Metrics to Track</h2>
+                      <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
+                        Drawn from DCP Stage 7 (Confirmation) signals and Insights decision signals.
+                      </p>
+                      <ol style={{ paddingLeft: '24px', margin: '12px 0 0' }}>
+                        {metrics.slice(0, 7).map((m, i) => (
+                          <li key={i} style={bodyStyle}>{m}</li>
+                        ))}
+                      </ol>
+
+                      {/* Footer */}
+                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Generated {today}</span>
+                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Assembly AI · Future State Plan</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {futureStateApproved ? (
                 <>
@@ -2600,263 +2856,6 @@ export default function ReportPage() {
             </div>
           </div>
         </div>
-
-        {/* Document preview — Future State Strategic Plan body */}
-        {futureStateData && (() => {
-          const data = futureStateData
-          const { company, dcpConf, insightsConf, gapItems, opportunities, threats, retaliations, threatPairCount,
-            internalExternalInsights, brandPerceptionInsights, months1to3, months4to6, months7to12, months13to18, metrics } = data
-
-          return (
-            <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
-              <div
-                className="report-doc"
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  maxWidth: '900px',
-                  width: '100%',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Cover */}
-                <div
-                  className="report-cover"
-                  style={{
-                    backgroundColor: '#0A1628',
-                    padding: '60px 48px',
-                    minHeight: '280px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    borderTop: '6px solid #0EA5E9',
-                  }}
-                >
-                  <div>
-                    {org?.logo_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={org.logo_url} alt="Company logo" style={{ maxHeight: '48px', marginBottom: '24px', objectFit: 'contain' }} />
-                    )}
-                    <div style={{ color: '#0EA5E9', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }}>
-                      Future State Strategic Plan · 6-18 Months
-                    </div>
-                    <h1 style={{ color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
-                      {company}
-                    </h1>
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginTop: '40px' }}>
-                    Generated {today} · Assembly AI
-                  </div>
-                </div>
-
-                <div style={{ padding: '48px 48px 20px' }}>
-
-                  {/* 1. Executive Summary */}
-                  <h2 style={sectionHeadStyle}>1. Executive Summary</h2>
-                  <p style={bodyStyle}>
-                    {company} has completed Phase 1 buyer research with an overall Decision Clarity Profile confidence of {dcpConf}/100. Insights analysis surfaced patterns across six intelligence categories with an aggregate confidence of {insightsConf}/100. These signals form the foundation for the future state strategy outlined in this plan.
-                  </p>
-                  <p style={bodyStyle}>
-                    This Future State Strategic Plan is the companion to the current state Strategic Plan. While the current state plan describes the actions to take today based on what is true, this plan describes the 6-18 month strategic agenda to close capability gaps, capture market opportunities, neutralize competitive threats, and reposition the brand to align with how buyers actually evaluate solutions.
-                  </p>
-                  <p style={bodyStyle}>
-                    Execute the roadmap in sequence: close critical capability gaps first, pursue quick-win market opportunities next, then execute longer-horizon competitive and brand initiatives. Track the success metrics in Section 7 to measure progress toward the future state.
-                  </p>
-
-                  {/* 2. Capability Gap Roadmap */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>2. Priority Capability Gaps to Address</h2>
-                  {gapItems.length === 0 ? (
-                    <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
-                      No critical or high gaps identified. Complete Steps 13 and 14 to surface capability gaps.
-                    </p>
-                  ) : (
-                    <div style={{ marginTop: '4px' }}>
-                      {gapItems.map((gap, idx) => {
-                        const isCritical = gap.gapLevel === 'critical'
-                        const badgeColor = isCritical ? '#DC2626' : '#E8520A'
-                        const badgeLabel = isCritical ? 'CRITICAL' : 'HIGH'
-                        const timeline = isCritical ? '30 days' : '60-90 days'
-                        return (
-                          <div key={idx} style={{ marginBottom: '20px' }}>
-                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 6px' }}>
-                              {idx + 1}. {gap.label || 'Untitled gap'}
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 8px', flexWrap: 'wrap' }}>
-                              <span style={{
-                                display: 'inline-block', padding: '2px 8px',
-                                backgroundColor: badgeColor, color: '#FFFFFF',
-                                borderRadius: '4px', fontSize: '10px', fontWeight: 700,
-                              }}>
-                                {badgeLabel}
-                              </span>
-                              <span style={{ fontSize: '12px', color: '#6B7280' }}>
-                                {gap.source} · Close within {timeline}
-                              </span>
-                            </div>
-                            {gap.description && (
-                              <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
-                                <strong style={{ color: '#0A1628' }}>Current state:</strong> {gap.description}
-                              </p>
-                            )}
-                            {gap.notes && (
-                              <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
-                                <strong style={{ color: '#0A1628' }}>Notes:</strong> {gap.notes}
-                              </p>
-                            )}
-                            <p style={{ ...bodyStyle, margin: 0 }}>
-                              <strong style={{ color: '#0A1628' }}>Recommended action:</strong>{' '}
-                              {isCritical
-                                ? 'Decide within 30 days whether to build, hire for, or partner to close this gap. This capability is promised in the CVP and cannot be deferred.'
-                                : 'Plan a 60-90 day initiative to strengthen this capability. Assign an owner and document a measurable target.'}
-                            </p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* 3. Competitive Opportunity Map */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>3. Market Opportunities to Pursue</h2>
-                  {opportunities.length === 0 ? (
-                    <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
-                      No competitive opportunities recorded yet. Complete Step 25 to identify market openings.
-                    </p>
-                  ) : (
-                    <div style={{ marginTop: '4px' }}>
-                      {opportunities.map((opp, idx) => (
-                        <div key={idx} style={{ marginBottom: '14px' }}>
-                          <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
-                            {idx + 1}. {opp.label}
-                          </p>
-                          {opp.text && <p style={bodyStyle}>{opp.text}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 4. Competitive Threat Response */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>4. Competitive Threats and Response Strategies</h2>
-                  {threatPairCount === 0 ? (
-                    <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
-                      No competitive threats or retaliation strategies recorded yet. Complete Steps 20 and 24.
-                    </p>
-                  ) : (
-                    <div style={{ marginTop: '4px' }}>
-                      {Array.from({ length: threatPairCount }).map((_, i) => {
-                        const t = threats[i]
-                        const r = retaliations[i]
-                        const label = t?.label || r?.label || `Pain Point ${i + 1}`
-                        return (
-                          <div key={i} style={{ marginBottom: '16px' }}>
-                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 6px' }}>
-                              {label}
-                            </p>
-                            {t?.text && (
-                              <p style={{ ...bodyStyle, margin: '0 0 6px' }}>
-                                <strong style={{ color: '#DC2626' }}>Threat:</strong> {t.text}
-                              </p>
-                            )}
-                            {r?.text && (
-                              <p style={bodyStyle}>
-                                <strong style={{ color: '#0EA5E9' }}>Retaliation strategy:</strong> {r.text}
-                              </p>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* 5. Brand Repositioning */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>5. Brand and Positioning Recommendations</h2>
-                  <p style={{ ...subheadStyle, marginTop: '12px' }}>Internal vs External Gaps</p>
-                  <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
-                    Where the team&apos;s beliefs differ from what real buyers said.
-                  </p>
-                  {internalExternalInsights.length > 0 ? (
-                    <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
-                      {internalExternalInsights.map((item, i) => (
-                        <li key={i} style={bodyStyle}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No findings in this category.</p>
-                  )}
-
-                  <p style={{ ...subheadStyle, marginTop: '20px' }}>Brand Perception Gaps</p>
-                  <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
-                    How buyers describe you vs. how you describe yourself — close this gap with deliberate messaging.
-                  </p>
-                  {brandPerceptionInsights.length > 0 ? (
-                    <ul style={{ paddingLeft: '20px', margin: '8px 0 0' }}>
-                      {brandPerceptionInsights.map((item, i) => (
-                        <li key={i} style={bodyStyle}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>No findings in this category.</p>
-                  )}
-
-                  <p style={{ ...subheadStyle, marginTop: '20px' }}>Repositioning Recommendation</p>
-                  <p style={bodyStyle}>
-                    Use the gaps above to adjust positioning, website copy, sales collateral, and pitch language so the external story matches how buyers describe the problem and the desired outcome. Validate the revised positioning with three customer conversations before rolling out broadly.
-                  </p>
-
-                  {/* 6. 6-18 Month Roadmap */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>6. 6-18 Month GTM Roadmap</h2>
-                  {([
-                    { title: 'Months 1-3', summary: 'Close critical gaps and launch quick-win opportunities.', lines: months1to3 },
-                    { title: 'Months 4-6', summary: 'Execute competitive retaliation and begin brand repositioning.', lines: months4to6 },
-                    { title: 'Months 7-12', summary: 'Pursue competitive opportunities, measure and optimize.', lines: months7to12 },
-                    { title: 'Months 13-18', summary: 'Scale what is working and enter new segments.', lines: months13to18 },
-                  ]).map((bucket, idx) => (
-                    <div key={idx} style={{
-                      borderLeft: '3px solid #E8520A',
-                      padding: '4px 0 4px 14px',
-                      marginBottom: '18px',
-                    }}>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
-                        {bucket.title}
-                      </p>
-                      <p style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic', margin: '0 0 8px' }}>
-                        {bucket.summary}
-                      </p>
-                      <ul style={{ paddingLeft: '20px', margin: 0 }}>
-                        {bucket.lines.map((line, i) => (
-                          <li key={i} style={bodyStyle}>{line}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-
-                  {/* 7. Success Metrics */}
-                  <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                  <h2 style={sectionHeadStyle}>7. Success Metrics to Track</h2>
-                  <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#6B7280' }}>
-                    Drawn from DCP Stage 7 (Confirmation) signals and Insights decision signals.
-                  </p>
-                  <ol style={{ paddingLeft: '24px', margin: '12px 0 0' }}>
-                    {metrics.slice(0, 7).map((m, i) => (
-                      <li key={i} style={bodyStyle}>{m}</li>
-                    ))}
-                  </ol>
-
-                  {/* Footer */}
-                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Generated {today}</span>
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Assembly AI · Future State Plan</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
       </div>
     </>
   )
