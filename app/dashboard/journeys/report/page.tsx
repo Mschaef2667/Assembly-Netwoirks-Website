@@ -1103,6 +1103,11 @@ export default function ReportPage() {
   }
 
   function handleGenerateFutureState() {
+    console.log('[FutureState] handleGenerateFutureState called', {
+      canGenerateFutureState,
+      insightsContentIsNull: insightsContent === null,
+      dcpStatus,
+    })
     if (!canGenerateFutureState || !insightsContent) return
     const builtData = buildFutureStateData()
     if (!builtData) return
