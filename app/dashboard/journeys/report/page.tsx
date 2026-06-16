@@ -2226,7 +2226,7 @@ export default function ReportPage() {
                   cursor: refreshingPreview ? 'not-allowed' : 'pointer',
                 }}
               >
-                {refreshingPreview ? 'Refreshing…' : 'Refresh Preview'}
+                {refreshingPreview ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 onClick={() => { void handlePdf() }}
@@ -2262,6 +2262,141 @@ export default function ReportPage() {
               >
                 {exporting ? 'Preparing…' : 'Download Word'}
               </button>
+            </div>
+            {/* Document preview — Strategic Action Plan body */}
+            <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
+              <div
+                ref={reportRef}
+                className="report-doc"
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  maxWidth: '900px',
+                  width: '100%',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+                  overflow: 'hidden',
+                }}
+              >
+
+                {/* Cover */}
+                <div
+                  className="report-cover"
+                  style={{
+                    backgroundColor: '#0A1628',
+                    padding: '60px 48px',
+                    minHeight: '280px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    {org?.logo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={org.logo_url} alt="Company logo" style={{ maxHeight: '48px', marginBottom: '24px', objectFit: 'contain' }} />
+                    )}
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                      C3 Method Strategic Plan
+                    </div>
+                    <h1 style={{ color: '#FFFFFF', fontSize: '36px', fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
+                      {org?.name ?? 'Your Company'}
+                    </h1>
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginTop: '40px' }}>
+                    Generated {today} · Assembly AI
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '48px 48px 20px' }}>
+
+                  {/* ── Section 1: Company Foundation ── */}
+                  <h2 style={sectionHeadStyle}>1. Company Foundation</h2>
+
+                  <p style={subheadStyle}>1a. {getStep('1')?.title ?? 'Product / Service Profile'}</p>
+                  <StepContent id="1" />
+
+                  <div style={dividerStyle} />
+
+                  <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Key Decision Makers'}</p>
+                  <KeyDecisionMakersContent id="3" />
+
+                  <div style={dividerStyle} />
+
+                  <p style={subheadStyle}>1c. Compelling Value Propositions</p>
+                  <ByPainPointContent id="11" />
+
+                  <div style={dividerStyle} />
+
+                  <p style={subheadStyle}>1d. {getStep('15')?.title ?? 'Key Selling Points'}</p>
+                  <ByPainPointContent id="15" />
+
+                  {/* ── Section 2: Competitive Environment ── */}
+                  <div data-empty={sec2Empty ? 'true' : undefined}>
+                    <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                    <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
+                    {COMP_STEP_IDS.map((sid, i) => (
+                      <div key={sid}>
+                        <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
+                        {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
+                        {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Section 3: Strategic Messages ── */}
+                  <div data-empty={sec3Empty ? 'true' : undefined}>
+                    <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                    <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
+                    {(['27', '28', '29', '30'] as const).map((sid, i) => (
+                      <div key={sid}>
+                        <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                        <StrategicMessageContent id={sid} />
+                        {i < 3 && <div style={dividerStyle} />}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Section 4: Action Plan ── */}
+                  <div data-empty={sec4Empty ? 'true' : undefined}>
+                    <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                    <h2 style={sectionHeadStyle}>4. Action Plan</h2>
+                    {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
+                      <div key={sid}>
+                        <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                        <ActionPlanSummary id={sid} />
+                        {i < 6 && <div style={dividerStyle} />}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Section 5: 30/60/90 Day Action Plan ── */}
+                  <div data-empty={sec5Empty ? 'true' : undefined}>
+                    <div style={{ ...dividerStyle, margin: '40px 0' }} />
+                    <h2 style={sectionHeadStyle}>5. 30/60/90 Day Action Plan</h2>
+
+                    <p style={subheadStyle}>First 30 Days</p>
+                    <TimeBucketContent stepIds={['31', '32']} />
+
+                    <div style={dividerStyle} />
+
+                    <p style={subheadStyle}>Days 31-60</p>
+                    <TimeBucketContent stepIds={['33', '34']} />
+
+                    <div style={dividerStyle} />
+
+                    <p style={subheadStyle}>Days 61-90</p>
+                    <TimeBucketContent stepIds={['35', '36']} />
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Generated {today}</span>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Assembly AI · C3 Method</span>
+                  </div>
+
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {actionPlanApproved ? (
@@ -2366,11 +2501,7 @@ export default function ReportPage() {
                   cursor: !canGenerateFutureState || generatingFutureState ? 'not-allowed' : 'pointer',
                 }}
               >
-                {generatingFutureState
-                  ? 'Generating…'
-                  : futureStateData
-                    ? 'Regenerate Future State Plan'
-                    : 'Generate Future State Plan'}
+                {generatingFutureState ? 'Generating…' : 'Refresh'}
               </button>
               {futureStateData && canGenerateFutureState && (
                 <>
@@ -2409,6 +2540,51 @@ export default function ReportPage() {
                     {exportingFutureStateDocx ? 'Preparing…' : 'Download Word'}
                   </button>
                 </>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {futureStateApproved ? (
+                <>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    minHeight: '32px', padding: '0 12px',
+                    backgroundColor: 'rgba(22,163,74,0.15)',
+                    border: '1px solid rgba(22,163,74,0.45)',
+                    color: '#16A34A', borderRadius: '999px',
+                    fontSize: '12px', fontWeight: 700,
+                  }}>
+                    ✓ Approved · {formatApprovalDate(futureStateApproved)}
+                  </span>
+                  <button
+                    onClick={handleRevokeFutureState}
+                    style={{
+                      background: 'none', border: 'none',
+                      color: 'rgba(255,255,255,0.55)',
+                      fontSize: '12px', textDecoration: 'underline',
+                      cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    Revoke Approval
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleApproveFutureState}
+                  disabled={!canGenerateFutureState}
+                  style={{
+                    minHeight: '32px',
+                    padding: '0 14px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    color: canGenerateFutureState ? '#FFFFFF' : 'rgba(255,255,255,0.35)',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: canGenerateFutureState ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Approve as Final
+                </button>
               )}
             </div>
             {/* Document preview — Future State Strategic Plan body */}
@@ -2667,189 +2843,9 @@ export default function ReportPage() {
                 </div>
               )
             })()}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {futureStateApproved ? (
-                <>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    minHeight: '32px', padding: '0 12px',
-                    backgroundColor: 'rgba(22,163,74,0.15)',
-                    border: '1px solid rgba(22,163,74,0.45)',
-                    color: '#16A34A', borderRadius: '999px',
-                    fontSize: '12px', fontWeight: 700,
-                  }}>
-                    ✓ Approved · {formatApprovalDate(futureStateApproved)}
-                  </span>
-                  <button
-                    onClick={handleRevokeFutureState}
-                    style={{
-                      background: 'none', border: 'none',
-                      color: 'rgba(255,255,255,0.55)',
-                      fontSize: '12px', textDecoration: 'underline',
-                      cursor: 'pointer', padding: 0,
-                    }}
-                  >
-                    Revoke Approval
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleApproveFutureState}
-                  disabled={!canGenerateFutureState}
-                  style={{
-                    minHeight: '32px',
-                    padding: '0 14px',
-                    backgroundColor: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    color: canGenerateFutureState ? '#FFFFFF' : 'rgba(255,255,255,0.35)',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: canGenerateFutureState ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Approve as Final
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Document preview — Strategic Action Plan body */}
-        <div style={{ padding: '32px 32px 40px', display: 'flex', justifyContent: 'center' }}>
-          <div
-            ref={reportRef}
-            className="report-doc"
-            style={{
-              backgroundColor: '#FFFFFF',
-              maxWidth: '900px',
-              width: '100%',
-              borderRadius: '8px',
-              boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
-              overflow: 'hidden',
-            }}
-          >
-
-            {/* Cover */}
-            <div
-              className="report-cover"
-              style={{
-                backgroundColor: '#0A1628',
-                padding: '60px 48px',
-                minHeight: '280px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div>
-                {org?.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={org.logo_url} alt="Company logo" style={{ maxHeight: '48px', marginBottom: '24px', objectFit: 'contain' }} />
-                )}
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
-                  C3 Method Strategic Plan
-                </div>
-                <h1 style={{ color: '#FFFFFF', fontSize: '36px', fontWeight: 700, margin: 0, lineHeight: 1.2 }}>
-                  {org?.name ?? 'Your Company'}
-                </h1>
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginTop: '40px' }}>
-                Generated {today} · Assembly AI
-              </div>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: '48px 48px 20px' }}>
-
-              {/* ── Section 1: Company Foundation ── */}
-              <h2 style={sectionHeadStyle}>1. Company Foundation</h2>
-
-              <p style={subheadStyle}>1a. {getStep('1')?.title ?? 'Product / Service Profile'}</p>
-              <StepContent id="1" />
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Key Decision Makers'}</p>
-              <KeyDecisionMakersContent id="3" />
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1c. Compelling Value Propositions</p>
-              <ByPainPointContent id="11" />
-
-              <div style={dividerStyle} />
-
-              <p style={subheadStyle}>1d. {getStep('15')?.title ?? 'Key Selling Points'}</p>
-              <ByPainPointContent id="15" />
-
-              {/* ── Section 2: Competitive Environment ── */}
-              <div data-empty={sec2Empty ? 'true' : undefined}>
-                <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
-                {COMP_STEP_IDS.map((sid, i) => (
-                  <div key={sid}>
-                    <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
-                    {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Section 3: Strategic Messages ── */}
-              <div data-empty={sec3Empty ? 'true' : undefined}>
-                <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
-                {(['27', '28', '29', '30'] as const).map((sid, i) => (
-                  <div key={sid}>
-                    <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <StrategicMessageContent id={sid} />
-                    {i < 3 && <div style={dividerStyle} />}
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Section 4: Action Plan ── */}
-              <div data-empty={sec4Empty ? 'true' : undefined}>
-                <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>4. Action Plan</h2>
-                {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
-                  <div key={sid}>
-                    <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                    <ActionPlanSummary id={sid} />
-                    {i < 6 && <div style={dividerStyle} />}
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Section 5: 30/60/90 Day Action Plan ── */}
-              <div data-empty={sec5Empty ? 'true' : undefined}>
-                <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                <h2 style={sectionHeadStyle}>5. 30/60/90 Day Action Plan</h2>
-
-                <p style={subheadStyle}>First 30 Days</p>
-                <TimeBucketContent stepIds={['31', '32']} />
-
-                <div style={dividerStyle} />
-
-                <p style={subheadStyle}>Days 31-60</p>
-                <TimeBucketContent stepIds={['33', '34']} />
-
-                <div style={dividerStyle} />
-
-                <p style={subheadStyle}>Days 61-90</p>
-                <TimeBucketContent stepIds={['35', '36']} />
-              </div>
-
-              {/* Footer */}
-              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Generated {today}</span>
-                <span style={{ fontSize: '11px', color: '#9CA3AF' }}>Assembly AI · C3 Method</span>
-              </div>
-
-            </div>
-          </div>
-        </div>
       </div>
     </>
   )
