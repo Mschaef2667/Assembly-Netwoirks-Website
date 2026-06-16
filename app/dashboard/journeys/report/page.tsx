@@ -1102,15 +1102,19 @@ export default function ReportPage() {
     }
   }
 
-  function handleGenerateFutureState() {
+  async function handleGenerateFutureState() {
     if (!canGenerateFutureState || !insightsContent) return
-    const builtData = buildFutureStateData()
-    if (!builtData) return
-    setFutureStateData(builtData)
-    if (orgId && typeof window !== 'undefined') {
-      const ts = new Date().toISOString()
-      localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
-      setFutureStateLastGenerated(ts)
+    setGeneratingFutureState(true)
+    setFutureStateData(null)
+    try {
+      await loadData()
+      if (orgId && typeof window !== 'undefined') {
+        const ts = new Date().toISOString()
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+        setFutureStateLastGenerated(ts)
+      }
+    } finally {
+      setGeneratingFutureState(false)
     }
   }
 
@@ -2263,6 +2267,50 @@ export default function ReportPage() {
                 {exporting ? 'Preparing…' : 'Download Word'}
               </button>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {actionPlanApproved ? (
+                <>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    minHeight: '32px', padding: '0 12px',
+                    backgroundColor: 'rgba(22,163,74,0.15)',
+                    border: '1px solid rgba(22,163,74,0.45)',
+                    color: '#16A34A', borderRadius: '999px',
+                    fontSize: '12px', fontWeight: 700,
+                  }}>
+                    ✓ Approved · {formatApprovalDate(actionPlanApproved)}
+                  </span>
+                  <button
+                    onClick={handleRevokeActionPlan}
+                    style={{
+                      background: 'none', border: 'none',
+                      color: 'rgba(255,255,255,0.55)',
+                      fontSize: '12px', textDecoration: 'underline',
+                      cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    Revoke Approval
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleApproveActionPlan}
+                  style={{
+                    minHeight: '32px',
+                    padding: '0 14px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    color: '#FFFFFF',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Approve as Final
+                </button>
+              )}
+            </div>
             {/* Document preview — Strategic Action Plan body */}
             <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
               <div
@@ -2398,50 +2446,6 @@ export default function ReportPage() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {actionPlanApproved ? (
-                <>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    minHeight: '32px', padding: '0 12px',
-                    backgroundColor: 'rgba(22,163,74,0.15)',
-                    border: '1px solid rgba(22,163,74,0.45)',
-                    color: '#16A34A', borderRadius: '999px',
-                    fontSize: '12px', fontWeight: 700,
-                  }}>
-                    ✓ Approved · {formatApprovalDate(actionPlanApproved)}
-                  </span>
-                  <button
-                    onClick={handleRevokeActionPlan}
-                    style={{
-                      background: 'none', border: 'none',
-                      color: 'rgba(255,255,255,0.55)',
-                      fontSize: '12px', textDecoration: 'underline',
-                      cursor: 'pointer', padding: 0,
-                    }}
-                  >
-                    Revoke Approval
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleApproveActionPlan}
-                  style={{
-                    minHeight: '32px',
-                    padding: '0 14px',
-                    backgroundColor: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    color: '#FFFFFF',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Approve as Final
-                </button>
-              )}
-            </div>
           </div>
 
           {/* ── Future State Plan section ── */}
@@ -2480,7 +2484,7 @@ export default function ReportPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => { handleGenerateFutureState() }}
+                onClick={() => { void handleGenerateFutureState() }}
                 disabled={!canGenerateFutureState || generatingFutureState}
                 title={canGenerateFutureState
                   ? 'Generate the 6-18 month Future State Strategic Plan'
