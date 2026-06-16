@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ShieldCheck, Lock, Clock, ChevronRight, X, Brain, Lightbulb, FileText, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
+import { isJourneyStep, JOURNEY_TOTAL } from '@/lib/journey/canonicalSteps'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,10 +117,15 @@ function computeScore(
   icpRows: Array<Record<string, unknown>>,
   dcpRow: DcpRow | null,
 ): ScoreBreakdown {
-  const approved = Array.from(outputs.values()).filter(s => s.status === 'approved')
+  // Only canonical Journey steps (1..38) count toward step completion.
+  // Non-canonical artefacts (insights, dcp-map, survey-builder-*, sub-steps)
+  // are filtered out so they can never inflate the count past 38.
+  const approved = Array.from(outputs.values()).filter(
+    s => s.status === 'approved' && isJourneyStep(s.step_id),
+  )
 
-  // Step completion: approved / 38 * 40
-  const stepPts = Math.round((approved.length / 38) * 40)
+  // Step completion: approved / JOURNEY_TOTAL * 40, clamped to the 40-pt band.
+  const stepPts = Math.min(40, Math.round((approved.length / JOURNEY_TOTAL) * 40))
 
   // ICP completeness: filled fields / (19 fields × 3 ICPs) * 20
   const totalIcpFields = (ICP_TEXT_FIELDS.length + ICP_ARR_FIELDS.length) * 3
@@ -453,13 +459,17 @@ export default function DashboardPage() {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
+  // approvedSet contains every approved step_id (canonical + non-canonical),
+  // used by gate-status derivation which references specific ids like '3.5'.
   const approvedSet = new Set(
     Array.from(latestOutputs.values())
       .filter(s => s.status === 'approved')
       .map(s => s.step_id)
   )
-  const totalApproved = approvedSet.size
-  const overallPct = Math.round((totalApproved / 38) * 100)
+  // Header count uses canonical Journey steps only so sub-steps and
+  // non-step artefacts can never push the total above JOURNEY_TOTAL.
+  const canonicalApprovedCount = Array.from(approvedSet).filter(isJourneyStep).length
+  const overallPct = Math.min(100, Math.round((canonicalApprovedCount / JOURNEY_TOTAL) * 100))
 
   const sortedDefs = [...stepDefs].sort((a, b) => stepOrder(a.id) - stepOrder(b.id))
 
@@ -512,7 +522,7 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <p style={{ ...CARD_HDR, margin: 0 }}>Journey Progress</p>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#0EA5E9' }}>
-              {totalApproved} of 38 steps approved · {overallPct}%
+              {canonicalApprovedCount} of {JOURNEY_TOTAL} steps approved · {overallPct}%
             </span>
           </div>
           <div style={{

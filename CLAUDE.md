@@ -473,3 +473,28 @@ Always write to copilot_run after every call
 
 ## Business Model
 - Lead Generation module (planned - separate subscription tier): Build after core journey is complete and stable. Will include prospecting tools, opportunity scoring, pipeline management, and outreach sequences. Priced as an add-on subscription similar to Assets Studio and Integrations. Step 38 (Opportunity Evaluation) is a placeholder that will move into this module.
+
+## Pricing Strategy
+
+PRICING STRATEGY (planned - post-beta):
+
+Philosophy: Do not call it a subscription. Position as a GTM Operating System with a one-time Platform License, optional Power-Up add-ons, an Annual Refresh, and a Guided Service option.
+
+TIER 1 - Platform License (one-time):
+- Starter: ,500 one-time -- 1 segment, 1 product/service/cause, full 38-step journey, both Strategic Plans
+- Growth: ,000 one-time -- 3 segments, 3 products/services/causes
+- Market Leader: ,000 one-time -- unlimited segments, unlimited products
+
+TIER 2 - Power-Up Add-Ons (monthly subscriptions):
+- Additional Segments: /month per segment
+- Additional Products/Services/Causes: /month per product
+- Lead Generation Module: /month
+- Asset Studio: /month
+- Integrations (HubSpot, Salesforce, Marketo): /month
+- Annual Strategy Refresh: /year (re-run DCP surveys, update journey, generate new Strategic Plans)
+
+TIER 3 - Extended Service Plans (Assembly Networks consulting):
+- Guided: ,000 -- Assembly Networks facilitates the entire journey, runs DCP surveys, interprets results, delivers Strategic Plan
+- Full Service: ,000-,000 -- Assembly Networks runs everything end to end including buyer interviews, competitive research, and Strategic Plan presentation to leadership
+
+Key insight: The Annual Strategy Refresh solves the one-time use objection. Markets change, buyer behavior evolves, competitors enter. Position refresh as essential annual maintenance.
