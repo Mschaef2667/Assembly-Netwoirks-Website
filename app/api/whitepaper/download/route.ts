@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { WHITEPAPER, type WhitepaperSection } from '@/lib/whitepaper/content'
+import { resend } from '@/lib/email/resend'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -329,43 +330,36 @@ interface LeadRecord {
 }
 
 async function sendNotificationEmail(lead: LeadRecord): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     console.log('[whitepaper/download] RESEND_API_KEY not set; skipping notification email.')
     return
   }
-  const from = process.env.WHITEPAPER_NOTIFY_FROM ?? 'Assembly AI <noreply@assemblyai.net>'
-  const to = process.env.WHITEPAPER_NOTIFY_TO ?? 'info@assemblynetworks.net'
 
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || '—'
-  const body = `
-    <h2 style="font-family: Helvetica, Arial, sans-serif; color:#0A1628;">New white paper download</h2>
+  const company = lead.company ?? '—'
+  const date = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+
+  const html = `
+    <h2 style="font-family: Helvetica, Arial, sans-serif; color:#0A1628;">New White Paper Download</h2>
     <table style="font-family: Helvetica, Arial, sans-serif; font-size:14px; color:#0D0D0D; border-collapse: collapse;">
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Name</td><td>${escapeHtml(fullName)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Email</td><td>${escapeHtml(lead.email)}</td></tr>
-      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(lead.company ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(company)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Job Title</td><td>${escapeHtml(lead.jobTitle ?? '—')}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Situation</td><td>${escapeHtml(lead.situation ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Date</td><td>${escapeHtml(date)}</td></tr>
     </table>
   `
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: `New white paper lead: ${fullName} (${lead.company ?? 'unknown'})`,
-        html: body,
-      }),
+    const { error } = await resend.emails.send({
+      from: 'Assembly AI <info@assemblynetworks.net>',
+      to: 'mschaef@gmail.com',
+      subject: `New White Paper Download - ${company} - ${fullName}`,
+      html,
     })
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '')
-      console.error('[whitepaper/download] resend failed:', res.status, txt)
+    if (error) {
+      console.error('[whitepaper/download] resend failed:', error)
     }
   } catch (err) {
     console.error('[whitepaper/download] resend error:', err)

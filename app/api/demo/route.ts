@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { resend } from '@/lib/email/resend'
 
 interface DemoBody {
   firstName?: string
@@ -46,47 +47,36 @@ function escapeHtml(value: string): string {
 }
 
 async function sendNotificationEmail(lead: LeadRecord): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     console.log('[api/demo] RESEND_API_KEY not set; skipping notification email.')
     return
   }
-  const from = process.env.DEMO_NOTIFY_FROM ?? 'Assembly AI <noreply@assemblyai.net>'
-  const to = process.env.DEMO_NOTIFY_TO ?? 'info@assemblynetworks.net'
 
   const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || '—'
-  const goalsHtml = lead.goals
-    ? `<tr><td style="padding:6px 14px 6px 0; color:#6B7280; vertical-align:top;">Goals</td><td style="white-space:pre-wrap;">${escapeHtml(lead.goals)}</td></tr>`
-    : ''
+  const company = lead.company ?? '—'
+  const date = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
 
-  const body = `
-    <h2 style="font-family: Helvetica, Arial, sans-serif; color:#0A1628;">New demo request</h2>
+  const html = `
+    <h2 style="font-family: Helvetica, Arial, sans-serif; color:#0A1628;">New Demo Request</h2>
     <table style="font-family: Helvetica, Arial, sans-serif; font-size:14px; color:#0D0D0D; border-collapse: collapse;">
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Name</td><td>${escapeHtml(fullName)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Email</td><td>${escapeHtml(lead.email)}</td></tr>
-      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(lead.company ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(company)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Job Title</td><td>${escapeHtml(lead.jobTitle ?? '—')}</td></tr>
-      ${goalsHtml}
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280; vertical-align:top;">Message</td><td style="white-space:pre-wrap;">${escapeHtml(lead.goals ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Date</td><td>${escapeHtml(date)}</td></tr>
     </table>
   `
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: `New demo request: ${fullName} (${lead.company ?? 'unknown'})`,
-        html: body,
-      }),
+    const { error } = await resend.emails.send({
+      from: 'Assembly AI <info@assemblynetworks.net>',
+      to: 'mschaef@gmail.com',
+      subject: `New Demo Request - ${company} - ${fullName}`,
+      html,
     })
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '')
-      console.error('[api/demo] resend failed:', res.status, txt)
+    if (error) {
+      console.error('[api/demo] resend failed:', error)
     }
   } catch (err) {
     console.error('[api/demo] resend error:', err)

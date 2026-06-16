@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { resend } from '@/lib/email/resend'
 
 interface ProvisionBody {
   demoRequestId?: string
@@ -29,6 +30,60 @@ function slugify(input: string): string {
 function generateTempPassword(): string {
   const suffix = String(Math.floor(1000 + Math.random() * 9000))
   return `AssemblyBeta2026!${suffix}`
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+interface ProvisionNotification {
+  company: string
+  firstName: string
+  lastName: string
+  email: string
+  tempPassword: string
+  loginUrl: string
+}
+
+async function sendProvisionNotificationEmail(payload: ProvisionNotification): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('[admin/provision-client] RESEND_API_KEY not set; skipping notification email.')
+    return
+  }
+
+  const fullName = [payload.firstName, payload.lastName].filter(Boolean).join(' ') || '—'
+  const date = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+
+  const html = `
+    <h2 style="font-family: Helvetica, Arial, sans-serif; color:#0A1628;">Beta Client Provisioned</h2>
+    <table style="font-family: Helvetica, Arial, sans-serif; font-size:14px; color:#0D0D0D; border-collapse: collapse;">
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(payload.company)}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Name</td><td>${escapeHtml(fullName)}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Email</td><td>${escapeHtml(payload.email)}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Temp Password</td><td><code>${escapeHtml(payload.tempPassword)}</code></td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Login URL</td><td><a href="${escapeHtml(payload.loginUrl)}">${escapeHtml(payload.loginUrl)}</a></td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Date Provisioned</td><td>${escapeHtml(date)}</td></tr>
+    </table>
+  `
+
+  try {
+    const { error } = await resend.emails.send({
+      from: 'Assembly AI <info@assemblynetworks.net>',
+      to: 'mschaef@gmail.com',
+      subject: `Beta Client Provisioned - ${payload.company}`,
+      html,
+    })
+    if (error) {
+      console.error('[admin/provision-client] resend failed:', error)
+    }
+  } catch (err) {
+    console.error('[admin/provision-client] resend error:', err)
+  }
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -172,6 +227,20 @@ export async function POST(req: NextRequest): Promise<Response> {
         { status: 500 },
       )
     }
+
+    const loginUrl =
+      process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/auth/login`
+        : 'https://assemblyai.net/auth/login'
+
+    void sendProvisionNotificationEmail({
+      company,
+      firstName,
+      lastName,
+      email,
+      tempPassword,
+      loginUrl,
+    })
 
     const payload: ProvisionResponse = {
       org_id: orgId,
