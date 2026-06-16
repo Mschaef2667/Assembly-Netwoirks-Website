@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
+import { isJourneyStep, JOURNEY_TOTAL } from '@/lib/journey/canonicalSteps'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -424,9 +425,9 @@ export default function JourneysPage() {
     )
   }
 
-  // Steps 3.5 and 4.5 are excluded from phase counts — they will be consolidated into Step 1.
-  // Step 38 is excluded — it will move to the Lead Generation module.
-  const phaseCountedSteps = steps.filter(s => s.id !== '3.5' && s.id !== '4.5' && s.id !== '38')
+  // Canonical 38-step set excludes sub-steps 3.5 / 4.5 (consolidated into Step 1).
+  // Step 38 ("Generate Plans") is included so Phase 6 shows the full 8 steps.
+  const phaseCountedSteps = steps.filter(s => isJourneyStep(s.id))
 
   const stepsByPhase = new Map<number, StepDef[]>()
   for (const step of phaseCountedSteps) {
@@ -436,7 +437,7 @@ export default function JourneysPage() {
   }
 
   const phaseSteps = phaseCountedSteps.filter(s => s.phase >= 1 && s.phase <= 6)
-  const totalSteps = phaseSteps.length
+  const totalSteps = JOURNEY_TOTAL
   const totalApproved = phaseSteps.filter(s => outputMap.get(s.id)?.status === 'approved').length
   const hasAnyProgress = outputMap.size > 0
 
@@ -454,7 +455,7 @@ export default function JourneysPage() {
           <div>
             <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Journeys</h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-              Complete all 38 C3 Method steps to build your go-to-market operating system.
+              {`Complete all ${JOURNEY_TOTAL} C3 Method steps to build your go-to-market operating system.`}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>

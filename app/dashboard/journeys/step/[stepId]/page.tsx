@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Loader2, Wand2, ShieldCheck, Sparkles, HelpCircle, AlertTriangle, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import TipsPanel from '@/components/ui/TipsPanel'
@@ -13,7 +13,6 @@ import CompetitorStepEditor from '@/components/journeys/CompetitorStepEditor'
 import AssessmentStepEditor from '@/components/journeys/AssessmentStepEditor'
 import BlendEditor from '@/components/journeys/BlendEditor'
 import ActionPlanEditor from '@/components/journeys/ActionPlanEditor'
-import DealScorecard from '@/components/journeys/DealScorecard'
 import AcidTestEditor from '@/components/journeys/AcidTestEditor'
 import CompetitiveEvaluationEditor from '@/components/journeys/CompetitiveEvaluationEditor'
 import DecisionProcessEditor from '@/components/journeys/DecisionProcessEditor'
@@ -63,6 +62,7 @@ import { useStepContext } from '@/lib/journeys/stepContext'
 
 export default function StepPage() {
   const { stepId } = useParams<{ stepId: string }>()
+  const router = useRouter()
 
   const ctx = useStepContext(stepId)
   const {
@@ -1010,12 +1010,39 @@ export default function StepPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {header}
-        <div style={{ padding: '28px 32px', flex: 1 }}>
+        <div style={{ padding: '28px 32px', maxWidth: '900px', flex: 1 }}>
           {warningBanner}
-          <DealScorecard
-            workspaceId={workspaceId}
-            preferredModel={preferredModel}
-          />
+          <div style={{
+            backgroundColor: '#0F2140',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '32px',
+          }}>
+            <h2 style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>
+              Generate Plans
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', margin: '0 0 22px', lineHeight: '1.6' }}>
+              This is the final step. Click below to generate both your Strategic Plan (current state)
+              and your Future State Strategic Plan (6-18 month roadmap) as PDFs. When generation
+              succeeds, Step 38 will be marked complete and Gate 4 will unlock.
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', margin: '0 0 22px', lineHeight: '1.5' }}>
+              Note: the Future State Plan requires Gate 1 approval and generated Insights. If those
+              are not complete, the report page will show you what to finish first.
+            </p>
+            <button
+              onClick={() => router.push('/dashboard/journeys/report?autoGenerate=both')}
+              style={{
+                display: 'inline-flex', alignItems: 'center',
+                minHeight: '44px', padding: '0 22px',
+                backgroundColor: '#E8520A', color: '#FFFFFF',
+                border: 'none', borderRadius: '8px',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Generate Plans
+            </button>
+          </div>
         </div>
         {navBar}
       </div>

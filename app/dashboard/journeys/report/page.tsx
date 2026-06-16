@@ -1,8 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+
+// Step 38 ("Generate Plans") completion behavior.
+// When false: step 38 auto-approves the moment both PDFs generate successfully (lenient).
+// When true:  step 38 writes status='pending_approval' so a reviewer must sign off
+//             before Gate 4 unlocks. Flip to true once a Gate 4 review UI exists.
+const STEP_38_REQUIRE_APPROVAL = false
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -443,6 +450,14 @@ function subheading(lib: DocxLib, text: string) {
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function ReportPage() {
+  return (
+    <Suspense fallback={<div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }} />}>
+      <ReportPageInner />
+    </Suspense>
+  )
+}
+
+function ReportPageInner() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [org, setOrg] = useState<OrgRow | null>(null)
@@ -462,7 +477,17 @@ export default function ReportPage() {
   const [insightsContent, setInsightsContent] = useState<InsightsContent | null>(null)
   const [actionPlanApproved, setActionPlanApproved] = useState<string | null>(null)
   const [futureStateApproved, setFutureStateApproved] = useState<string | null>(null)
+  const [autoBannerState, setAutoBannerState] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
   const reportRef = useRef<HTMLDivElement>(null)
+
+  // Step 38 auto-generate guard. A ref (not state) so it survives re-renders without
+  // re-triggering the effect, and so React strict-mode's double-invoke can never
+  // double-fire the PDF generators.
+  const autoGenerateFiredRef = useRef(false)
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const autoGenerateParam = searchParams.get('autoGenerate')
 
   useEffect(() => {
     void loadData()
@@ -485,6 +510,85 @@ export default function ReportPage() {
     if (data) setFutureStateData(data)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [futureStateLastGenerated, dcpStatus, insightsContent, outputs, dcpStageSummaries, dcpOverallConfidence, org])
+
+  // Step 38 auto-trigger: when the user clicks "Generate Plans" on Step 38, they
+  // land here with ?autoGenerate=both. Run both PDF generators sequentially, then
+  // mark Step 38 complete on success. The ref guard ensures exactly-once firing
+  // across re-renders and React strict-mode double-invokes.
+  useEffect(() => {
+    if (autoGenerateParam !== 'both') return
+    if (autoGenerateFiredRef.current) return
+    if (loading) return
+    if (!orgId) return
+
+    // Both plans must be generatable; Future State needs Gate 1 + Insights.
+    if (dcpStatus !== 'approved' || !insightsContent) {
+      autoGenerateFiredRef.current = true
+      setAutoBannerState({
+        kind: 'error',
+        message:
+          'Cannot auto-generate both plans yet. Complete Intelligence (Gate 1) and generate Insights first, then return to Step 38.',
+      })
+      router.replace('/dashboard/journeys/report')
+      return
+    }
+
+    autoGenerateFiredRef.current = true
+    ;(async () => {
+      try {
+        await handlePdf()
+        await handleFutureStatePdf()
+
+        const targetStatus = STEP_38_REQUIRE_APPROVAL ? 'pending_approval' : 'approved'
+        const now = new Date().toISOString()
+
+        const { data: existing } = await supabase
+          .from('step_output')
+          .select('id, version')
+          .eq('workspace_id', orgId)
+          .eq('step_id', '38')
+          .order('version', { ascending: false })
+          .limit(1)
+
+        if (existing && existing.length > 0) {
+          const rowId = String((existing[0] as Record<string, unknown>)['id'])
+          const { error: upErr } = await supabase
+            .from('step_output')
+            .update({ status: targetStatus, last_updated_at: now, last_reviewed_at: now })
+            .eq('id', rowId)
+          if (upErr) throw upErr
+        } else {
+          const { error: insErr } = await supabase.from('step_output').insert({
+            workspace_id: orgId,
+            step_id: '38',
+            version: 1,
+            status: targetStatus,
+            content: {},
+            copilot_assisted: false,
+            last_updated_at: now,
+            last_reviewed_at: now,
+          })
+          if (insErr) throw insErr
+        }
+
+        setAutoBannerState({
+          kind: 'success',
+          message: STEP_38_REQUIRE_APPROVAL
+            ? 'Both plans generated. Step 38 submitted for review.'
+            : 'Both plans generated. Step 38 marked complete — Gate 4 unlocked.',
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Plan generation failed'
+        setAutoBannerState({
+          kind: 'error',
+          message: `Plan generation failed — Step 38 not marked complete. ${msg}`,
+        })
+      } finally {
+        router.replace('/dashboard/journeys/report')
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerateParam, loading, orgId, dcpStatus, insightsContent])
 
   function formatApprovalDate(iso: string): string {
     try {
@@ -2175,6 +2279,48 @@ export default function ReportPage() {
             Reports for {org?.name ?? 'your workspace'}
           </span>
         </div>
+
+        {autoBannerState && (
+          <div
+            className="no-print"
+            style={{
+              maxWidth: '1280px',
+              margin: '76px auto 0',
+              padding: '0 32px',
+            }}
+          >
+            <div style={{
+              padding: '14px 18px',
+              backgroundColor: autoBannerState.kind === 'success' ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)',
+              border: `1px solid ${autoBannerState.kind === 'success' ? 'rgba(22,163,74,0.45)' : 'rgba(220,38,38,0.45)'}`,
+              borderRadius: '8px',
+              color: autoBannerState.kind === 'success' ? '#86EFAC' : '#FCA5A5',
+              fontSize: '13px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+            }}>
+              <span>{autoBannerState.message}</span>
+              <Link
+                href="/dashboard/journeys"
+                style={{
+                  color: '#FFFFFF',
+                  backgroundColor: '#0EA5E9',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  flexShrink: 0,
+                }}
+              >
+                Back to Journeys
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Two report sections — Action Plan and Future State Plan */}
         <div
