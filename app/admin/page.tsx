@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronDown, ChevronRight, CheckCircle2, Copy, Check, ExternalLink, Trash2 } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronRight, CheckCircle2, Copy, Check, ExternalLink, Trash2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type {
   AdminDataResponse,
@@ -873,9 +873,22 @@ function LeadsTab({ leads }: { leads: AdminWhitepaperLead[] }) {
 
 // ── Demo Requests Tab ─────────────────────────────────────────────────────────
 
+type ProvisionResult = {
+  org_id: string
+  user_id: string
+  temporary_password: string
+  client_name: string
+  client_company: string
+  login_url: string
+}
+
 function DemoRequestsTab({ demoRequests }: { demoRequests: AdminDemoRequest[] }) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [provisioningId, setProvisioningId] = useState<string | null>(null)
+  const [provisionedIds, setProvisionedIds] = useState<Set<string>>(new Set())
+  const [provisionError, setProvisionError] = useState<string | null>(null)
+  const [provisionResult, setProvisionResult] = useState<ProvisionResult | null>(null)
 
   const visible = useMemo(
     () => demoRequests.filter(d => !deletedIds.has(d.id)),
@@ -900,42 +913,327 @@ function DemoRequestsTab({ demoRequests }: { demoRequests: AdminDemoRequest[] })
     }
   }
 
+  async function handleProvision(d: AdminDemoRequest) {
+    if (!d.company) {
+      window.alert('Demo request is missing a company name; cannot provision.')
+      return
+    }
+    const fullName = [d.first_name, d.last_name].filter(Boolean).join(' ') || d.email
+    if (!window.confirm(`Provision a beta workspace for ${fullName} (${d.company})?`)) return
+
+    setProvisioningId(d.id)
+    setProvisionError(null)
+    try {
+      const res = await fetch('/api/admin/provision-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          demoRequestId: d.id,
+          firstName: d.first_name ?? '',
+          lastName: d.last_name ?? '',
+          email: d.email,
+          company: d.company,
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        org_id?: string
+        user_id?: string
+        temporary_password?: string
+        error?: string
+      }
+      if (!res.ok || !payload.org_id || !payload.user_id || !payload.temporary_password) {
+        throw new Error(payload.error ?? `Provisioning failed (${res.status})`)
+      }
+      setProvisionedIds(prev => {
+        const next = new Set(prev)
+        next.add(d.id)
+        return next
+      })
+      setProvisionResult({
+        org_id: payload.org_id,
+        user_id: payload.user_id,
+        temporary_password: payload.temporary_password,
+        client_name: fullName,
+        client_company: d.company,
+        login_url: 'https://assemblyai.net/auth/login',
+      })
+    } catch (err) {
+      setProvisionError(err instanceof Error ? err.message : 'Provisioning failed')
+    } finally {
+      setProvisioningId(null)
+    }
+  }
+
   if (visible.length === 0) {
     return <div style={{ ...CARD, color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>No demo requests yet.</div>
   }
   return (
-    <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#0F2140' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <th style={TH}>Name</th>
-            <th style={TH}>Email</th>
-            <th style={TH}>Company</th>
-            <th style={TH}>Job Title</th>
-            <th style={TH}>Message</th>
-            <th style={TH}>Date</th>
-            <th style={TH}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map(d => {
-            const name = [d.first_name, d.last_name].filter(Boolean).join(' ') || '—'
-            return (
-              <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <td style={{ ...TD, fontWeight: 600 }}>{name}</td>
-                <td style={SUBTLE}>{d.email}</td>
-                <td style={SUBTLE}>{d.company ?? '—'}</td>
-                <td style={SUBTLE}>{d.job_title ?? '—'}</td>
-                <td style={{ ...SUBTLE, maxWidth: '360px', whiteSpace: 'pre-wrap' }}>{d.goals ?? '—'}</td>
-                <td style={SUBTLE}>{formatDate(d.submitted_at)}</td>
-                <td style={TD}>
-                  <DeleteButton onClick={() => handleDelete(d.id)} busy={deletingId === d.id} />
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <>
+      {provisionError && (
+        <div style={{ ...CARD, borderLeft: '3px solid #EF4444', color: '#FCA5A5', fontSize: '13px', marginBottom: '16px' }}>
+          {provisionError}
+        </div>
+      )}
+      <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#0F2140' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <th style={TH}>Name</th>
+              <th style={TH}>Email</th>
+              <th style={TH}>Company</th>
+              <th style={TH}>Job Title</th>
+              <th style={TH}>Message</th>
+              <th style={TH}>Date</th>
+              <th style={TH}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(d => {
+              const name = [d.first_name, d.last_name].filter(Boolean).join(' ') || '—'
+              const isProvisioned = !!d.provisioned_at || provisionedIds.has(d.id)
+              return (
+                <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ ...TD, fontWeight: 600 }}>{name}</td>
+                  <td style={SUBTLE}>{d.email}</td>
+                  <td style={SUBTLE}>{d.company ?? '—'}</td>
+                  <td style={SUBTLE}>{d.job_title ?? '—'}</td>
+                  <td style={{ ...SUBTLE, maxWidth: '360px', whiteSpace: 'pre-wrap' }}>{d.goals ?? '—'}</td>
+                  <td style={SUBTLE}>{formatDate(d.submitted_at)}</td>
+                  <td style={TD}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {isProvisioned ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          backgroundColor: 'rgba(34,197,94,0.18)',
+                          color: '#86EFAC',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                        }}>
+                          <CheckCircle2 size={11} /> Provisioned
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleProvision(d)}
+                          disabled={provisioningId === d.id || !d.company}
+                          title={!d.company ? 'Missing company name' : 'Provision beta workspace'}
+                          style={{
+                            minHeight: '32px',
+                            padding: '0 12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            borderRadius: '6px',
+                            border: '1px solid #E8520A',
+                            backgroundColor: '#E8520A',
+                            color: '#FFFFFF',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            cursor: provisioningId === d.id || !d.company ? 'not-allowed' : 'pointer',
+                            opacity: provisioningId === d.id || !d.company ? 0.6 : 1,
+                          }}
+                        >
+                          {provisioningId === d.id
+                            ? <><Loader2 size={12} className="animate-spin" /> Provisioning…</>
+                            : 'Provision'}
+                        </button>
+                      )}
+                      <DeleteButton onClick={() => handleDelete(d.id)} busy={deletingId === d.id} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      {provisionResult && (
+        <ProvisionSuccessModal result={provisionResult} onClose={() => setProvisionResult(null)} />
+      )}
+    </>
+  )
+}
+
+function ProvisionSuccessModal({
+  result,
+  onClose,
+}: {
+  result: ProvisionResult
+  onClose: () => void
+}) {
+  const [copiedField, setCopiedField] = useState<'url' | 'password' | null>(null)
+
+  async function copy(field: 'url' | 'password', value: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(prev => (prev === field ? null : prev)), 1500)
+    } catch (err) {
+      console.error('[admin] copy failed', err)
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          backgroundColor: '#0F2140',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '12px',
+          padding: '28px',
+          maxWidth: '520px',
+          width: '100%',
+          color: '#FFFFFF',
+          position: 'relative',
+        }}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            minHeight: '32px',
+            minWidth: '32px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: 'rgba(255,255,255,0.6)',
+            cursor: 'pointer',
+          }}
+        >
+          <X size={18} />
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <CheckCircle2 size={28} color="#22C55E" />
+          <div>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Beta client provisioned</h2>
+            <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.65)', fontSize: '13px' }}>
+              {result.client_name} — {result.client_company}
+            </p>
+          </div>
+        </div>
+
+        <CredentialRow
+          label="Login URL"
+          value={result.login_url}
+          copied={copiedField === 'url'}
+          onCopy={() => copy('url', result.login_url)}
+        />
+        <CredentialRow
+          label="Temporary password"
+          value={result.temporary_password}
+          copied={copiedField === 'password'}
+          onCopy={() => copy('password', result.temporary_password)}
+          mono
+        />
+
+        <div
+          style={{
+            marginTop: '18px',
+            padding: '12px 14px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(232,82,10,0.08)',
+            border: '1px solid rgba(232,82,10,0.35)',
+            color: '#FDBA74',
+            fontSize: '12px',
+            lineHeight: 1.5,
+          }}
+        >
+          Send them their credentials and ask them to change their password on first login.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CredentialRow({
+  label,
+  value,
+  copied,
+  onCopy,
+  mono = false,
+}: {
+  label: string
+  value: string
+  copied: boolean
+  onCopy: () => void
+  mono?: boolean
+}) {
+  return (
+    <div style={{ marginBottom: '10px' }}>
+      <p style={{
+        margin: '0 0 4px',
+        fontSize: '11px',
+        fontWeight: 700,
+        color: 'rgba(255,255,255,0.5)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+      }}>
+        {label}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <code style={{
+          flex: 1,
+          padding: '8px 10px',
+          borderRadius: '6px',
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          color: '#FFFFFF',
+          fontSize: '13px',
+          fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : undefined,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {value}
+        </code>
+        <button
+          onClick={onCopy}
+          style={{
+            minHeight: '32px',
+            padding: '0 10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            borderRadius: '6px',
+            border: '1px solid rgba(255,255,255,0.18)',
+            backgroundColor: 'transparent',
+            color: copied ? '#86EFAC' : 'rgba(255,255,255,0.75)',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
     </div>
   )
 }

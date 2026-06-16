@@ -76,6 +76,8 @@ export type AdminDemoRequest = {
   job_title: string | null
   goals: string | null
   submitted_at: string
+  provisioned_at: string | null
+  provisioned_org_id: string | null
 }
 
 export type AdminDataResponse = {
@@ -141,7 +143,7 @@ export async function GET(): Promise<Response> {
       service.from('copilot_run').select('id, workspace_id, step_id, status, error_code, model, created_at').order('created_at', { ascending: false }).limit(2000),
       service.from('step_output').select('workspace_id, step_id, status, last_updated_at, last_saved_at'),
       service.from('whitepaper_leads').select('id, first_name, last_name, email, company, job_title, situation, downloaded_at').order('downloaded_at', { ascending: false }).limit(1000),
-      service.from('demo_requests').select('id, first_name, last_name, email, company, job_title, goals, submitted_at').order('submitted_at', { ascending: false }).limit(1000),
+      service.from('demo_requests').select('id, first_name, last_name, email, company, job_title, goals, submitted_at, provisioned_at, provisioned_org_id').order('submitted_at', { ascending: false }).limit(1000),
     ])
 
     if (orgsRes.error)        return NextResponse.json({ error: orgsRes.error.message }, { status: 500 })
