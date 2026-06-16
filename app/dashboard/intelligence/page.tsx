@@ -78,6 +78,30 @@ function StepDot({ done, inProgress = false }: { done: boolean; inProgress?: boo
   )
 }
 
+// ── Tile "done" rules (lenient, activity-based) ───────────────────────────────
+// Each tile decides Complete / In Progress / Not started via the constants
+// below. Adjust these to tighten the rules later without hunting through query
+// logic. Gate 1 is a separate signal (dcp_analysis.status) and is NOT changed
+// by these constants.
+
+// Survey Builder: tile flips to Complete once a real per-audience survey row
+// has meaningful question content. Both 'draft' and 'approved' rows count —
+// formal approval is not required. Flip to true to require explicit approval.
+const SURVEY_BUILDER_REQUIRE_APPROVAL = false
+
+// step_ids written by the survey-builder workflow that are NOT real surveys
+// (auto-wording suggestions, interview probes). Excluded from the tile check
+// so they can never satisfy or override the real per-audience rows.
+const SURVEY_BUILDER_SCRATCH_STEP_IDS = [
+  'survey-builder-autowording',
+  'survey-builder-interview-probes',
+]
+
+// Response Manager: tile flips to Complete once at least this many responses
+// exist in survey_link_responses for the workspace. Raise to require a minimum
+// sample size later.
+const RESPONSE_MANAGER_MIN_RESPONSES = 1
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function hasMeaningfulSurveyContent(content: Record<string, unknown>): boolean {
@@ -138,9 +162,20 @@ export default function IntelligencePage() {
         if (!userRow) return
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
+        // Survey Builder: fetch every per-audience row, exclude scratch ids,
+        // and DO NOT use LIMIT 1 — we must inspect all real rows to decide.
+        const scratchListLiteral = `(${SURVEY_BUILDER_SCRATCH_STEP_IDS.map(s => `"${s}"`).join(',')})`
+
         const [surveyRes, responsesRes, dcpRes, insightsRes, icpRes] = await Promise.all([
-          supabase.from('step_output').select('id, content, status').eq('workspace_id', orgId).like('step_id', 'survey-builder%').limit(1),
-          supabase.from('dcp_imports').select('id').eq('org_id', orgId).limit(1),
+          supabase
+            .from('step_output')
+            .select('id, content, status, step_id')
+            .eq('workspace_id', orgId)
+            .like('step_id', 'survey-builder-%')
+            .not('step_id', 'in', scratchListLiteral),
+          // Response Manager reads from survey_link_responses (the canonical
+          // source used by Responses page, DCP Map, and analyze-dcp).
+          supabase.from('survey_link_responses').select('id', { count: 'exact', head: true }).eq('org_id', orgId),
           supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
           supabase.from('step_output').select('id, content').eq('workspace_id', orgId).eq('step_id', 'insights').maybeSingle(),
           supabase.from('icp_definition').select('id').eq('org_id', orgId).limit(1),
@@ -151,13 +186,18 @@ export default function IntelligencePage() {
         const dcpRow = dcpRes.data as Record<string, unknown> | null
         const dcpStatus = dcpRow ? String(dcpRow['status'] ?? 'draft') : null
 
-        const surveyRow = surveyRes.data && surveyRes.data.length > 0
-          ? (surveyRes.data[0] as Record<string, unknown>)
-          : null
-        const surveyContent = surveyRow ? (surveyRow['content'] as Record<string, unknown> | null) : null
-        const surveyRowStatus = surveyRow ? String(surveyRow['status'] ?? 'draft') : null
-        const surveyBuilt = surveyRowStatus === 'approved'
-        const surveyInProgress = !surveyBuilt && !!(surveyContent && hasMeaningfulSurveyContent(surveyContent))
+        // Survey Builder tile: Complete if any real per-audience row has
+        // meaningful question content. In Progress only kicks in when the
+        // tile is gated on formal approval (SURVEY_BUILDER_REQUIRE_APPROVAL).
+        const surveyRows = (surveyRes.data ?? []) as Array<Record<string, unknown>>
+        const surveyRowsWithContent = surveyRows.filter(row => {
+          const c = row['content'] as Record<string, unknown> | null
+          return !!c && hasMeaningfulSurveyContent(c)
+        })
+        const surveyHasContent = surveyRowsWithContent.length > 0
+        const surveyHasApproved = surveyRowsWithContent.some(row => row['status'] === 'approved')
+        const surveyBuilt = SURVEY_BUILDER_REQUIRE_APPROVAL ? surveyHasApproved : surveyHasContent
+        const surveyInProgress = !surveyBuilt && surveyHasContent
 
         const insightsRow = insightsRes.data as Record<string, unknown> | null
         const insightsContent = insightsRow ? (insightsRow['content'] as Record<string, unknown> | null) : null
@@ -166,7 +206,7 @@ export default function IntelligencePage() {
         setStatus({
           surveyBuilt,
           surveyInProgress,
-          responsesImported: !!(responsesRes.data && responsesRes.data.length > 0),
+          responsesImported: (responsesRes.count ?? 0) >= RESPONSE_MANAGER_MIN_RESPONSES,
           dcpMapGenerated: dcpStatus === 'approved',
           dcpMapInProgress: dcpStatus === 'draft' || dcpStatus === 'pending_approval',
           insightsGenerated,
@@ -193,6 +233,7 @@ export default function IntelligencePage() {
       inProgress: status.surveyInProgress,
       step: 1,
       domId: 'intelligence-survey',
+      bonus: false,
     },
     {
       icon: Upload,
@@ -203,6 +244,7 @@ export default function IntelligencePage() {
       inProgress: false,
       step: 2,
       domId: undefined,
+      bonus: false,
     },
     {
       icon: Map,
@@ -213,6 +255,7 @@ export default function IntelligencePage() {
       inProgress: status.dcpMapInProgress,
       step: 3,
       domId: 'intelligence-dcp',
+      bonus: false,
     },
     {
       icon: Lightbulb,
@@ -223,6 +266,7 @@ export default function IntelligencePage() {
       inProgress: false,
       step: 4,
       domId: 'intelligence-insights',
+      bonus: true,
     },
   ]
 
@@ -304,7 +348,7 @@ export default function IntelligencePage() {
 
         {/* Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-          {cards.map(({ icon: Icon, title, description, href, done, inProgress, step, domId }) => (
+          {cards.map(({ icon: Icon, title, description, href, done, inProgress, step, domId, bonus }) => (
             <div
               key={href}
               id={domId}
@@ -319,9 +363,21 @@ export default function IntelligencePage() {
                   <Icon size={20} color={done ? '#16A34A' : inProgress ? '#E8520A' : '#0EA5E9'} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
-                    Step {step}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                      Step {step}
+                    </p>
+                    {bonus && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '2px 8px', borderRadius: '999px',
+                        backgroundColor: 'rgba(14,165,233,0.15)', color: '#0EA5E9',
+                        fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>
+                        Optional
+                      </span>
+                    )}
+                  </div>
                   <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>{title}</p>
                 </div>
               </div>
