@@ -491,7 +491,7 @@ export default function DashboardPage() {
   const journeyNotStarted = latestOutputs.size === 0
   const recommended = sortedDefs
     .filter(s => !latestOutputs.has(s.id))
-    .filter(s => s.id !== '4.5' && !(phase1Complete && PHASE1_STEPS.includes(s.id)))
+    .filter(s => !(phase1Complete && PHASE1_STEPS.includes(s.id)))
     .filter(s => (depsMap.get(s.id) ?? []).every(p => approvedSet.has(p)))
     .slice(0, 3)
 

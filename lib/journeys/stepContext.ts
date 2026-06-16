@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDecayedConfidence } from '@/lib/context/confidenceDecay'
+import { isJourneyStep } from '@/lib/journey/canonicalSteps'
 import {
   DEFAULT_DM,
   DEFAULT_PAIN_POINTS,
@@ -358,16 +359,21 @@ export function useStepContext(stepId: string): StepContext {
           setPrereqContent(prereqMap)
         }
 
-        // Load all steps for prev/next navigation
+        // Load all steps for prev/next navigation. Filter through isJourneyStep
+        // so the linear sequence (and the "Step X of N" footer total) covers
+        // only the 38 canonical steps — sub-steps like 3.5 are reachable by
+        // direct URL but skipped by prev/next.
         const { data: allStepRows } = await supabase
           .from('step_definition')
           .select('id, phase')
           .order('phase', { ascending: true })
         if (allStepRows) {
-          const steps = (allStepRows as Array<Record<string, unknown>>).map(r => ({
-            id: String(r['id'] ?? ''),
-            phase: Number(r['phase'] ?? 0),
-          }))
+          const steps = (allStepRows as Array<Record<string, unknown>>)
+            .map(r => ({
+              id: String(r['id'] ?? ''),
+              phase: Number(r['phase'] ?? 0),
+            }))
+            .filter(s => isJourneyStep(s.id))
           steps.sort((a, b) => a.phase - b.phase || parseFloat(a.id) - parseFloat(b.id))
           setAllSteps(steps)
         }
