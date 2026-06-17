@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense, Fragment } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
@@ -788,7 +788,7 @@ function ReportPageInner() {
           filename: `C3-Strategic-Plan-${companySlug}.pdf`,
           image: { type: 'jpeg' as const, quality: 0.98 },
           html2canvas: {
-            scale: 2,
+            scale: 1.5,
             useCORS: true,
             onclone: (doc: Document) => {
               doc.querySelectorAll('.screen-only').forEach(el => {
@@ -802,7 +802,7 @@ function ReportPageInner() {
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
           // pagebreak is supported at runtime by html2pdf.js but missing from its
           // shipped .d.ts — cast through unknown to widen the options type.
-          ...({ pagebreak: { mode: ['css', 'legacy'], avoid: '.report-subsection' } } as unknown as Record<string, never>),
+          ...({ pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: '.report-subsection' } } as unknown as Record<string, never>),
         })
         .from(reportRef.current)
         .toPdf()
@@ -2251,6 +2251,8 @@ function ReportPageInner() {
           }
         }
         .report-subsection {
+          display: block;
+          padding-top: 0.01px;
           page-break-inside: avoid;
           break-inside: avoid;
           -webkit-column-break-inside: avoid;
@@ -2546,11 +2548,13 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
                     {COMP_STEP_IDS.map((sid, i) => (
-                      <div key={sid} className="report-subsection">
-                        <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
-                        {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
+                      <Fragment key={sid}>
+                        <div className="report-subsection">
+                          <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
+                          {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
+                        </div>
                         {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
-                      </div>
+                      </Fragment>
                     ))}
                   </div>
 
@@ -2559,11 +2563,13 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
                     {(['27', '28', '29', '30'] as const).map((sid, i) => (
-                      <div key={sid} className="report-subsection">
-                        <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                        <StrategicMessageContent id={sid} />
+                      <Fragment key={sid}>
+                        <div className="report-subsection">
+                          <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                          <StrategicMessageContent id={sid} />
+                        </div>
                         {i < 3 && <div style={dividerStyle} />}
-                      </div>
+                      </Fragment>
                     ))}
                   </div>
 
@@ -2572,11 +2578,13 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>4. Action Plan</h2>
                     {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
-                      <div key={sid} className="report-subsection">
-                        <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
-                        <ActionPlanSummary id={sid} />
+                      <Fragment key={sid}>
+                        <div className="report-subsection">
+                          <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
+                          <ActionPlanSummary id={sid} />
+                        </div>
                         {i < 6 && <div style={dividerStyle} />}
-                      </div>
+                      </Fragment>
                     ))}
                   </div>
 
