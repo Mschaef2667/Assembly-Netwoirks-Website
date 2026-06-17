@@ -510,12 +510,38 @@ export default function StepPage() {
     setCopilotError(null)
     setStreamBuffer('')
 
-    const currentContent = stepId === '4'
+    const activePainPoint = stepId === '4'
+      ? painPoints.find(pp => pp.index === activeTab)
+      : null
+    const otherPainPoints = stepId === '4'
       ? painPoints
           .slice(0, activeCount)
-          .map(pp => `Pain Point ${pp.index}:\nTitle: ${pp.title}\nDescription: ${pp.description}`)
-          .join('\n\n')
+          .filter(pp => pp.index !== activeTab)
+      : []
+
+    const currentContent = stepId === '4'
+      ? [
+          `Pain Point ${activeTab} (current focus):`,
+          `Title: ${activePainPoint?.title ?? ''}`,
+          `Description: ${activePainPoint?.description ?? ''}`,
+        ].join('\n')
       : content
+
+    const step4ExtraContext = stepId === '4'
+      ? [
+          `IMPORTANT: This is Pain Point ${activeTab} of ${activeCount}. Generate UNIQUE content specifically for this pain point number. Do NOT repeat content from the other pain points. Each pain point should represent a different aspect of the endemic problem.`,
+          '',
+          ...(otherPainPoints.length > 0
+            ? [
+                'OTHER PAIN POINTS (already drafted — do NOT duplicate these):',
+                ...otherPainPoints.map(pp =>
+                  `Pain Point ${pp.index}: ${pp.title?.trim() || '(untitled)'}${pp.description?.trim() ? `\n${pp.description.trim()}` : ''}`,
+                ),
+                '',
+              ]
+            : []),
+        ].join('\n')
+      : ''
 
     if (action === 'draft') {
       originalContentRef.current = content
@@ -536,7 +562,9 @@ export default function StepPage() {
           stepDescription: stepDef?.description ?? '',
           currentContent,
           preferredModel,
-          ...(action === 'improve' ? { extraContext: 'Improve this draft' } : {}),
+          ...(stepId === '4'
+            ? { extraContext: action === 'improve' ? `Improve this draft.\n\n${step4ExtraContext}` : step4ExtraContext }
+            : action === 'improve' ? { extraContext: 'Improve this draft' } : {}),
         }),
       })
 
@@ -1180,7 +1208,7 @@ export default function StepPage() {
                     }}
                   >
                     <Wand2 size={16} />
-                    {`Draft for ${painPoints.find(pp => pp.index === activeTab)?.title || `Pain Point ${activeTab}`}`}
+                    Draft
                   </button>
                 )
               ) : (

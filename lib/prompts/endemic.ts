@@ -14,7 +14,7 @@ The Problem is the endemic problem buyers experience in their market, independen
 
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown fences, no prose) in this exact shape:
 {
-  "draft": "<2-4 sentence endemic problem statement>",
+  "draft": "<2-4 sentence endemic problem statement for THIS pain point>",
   "confidence": <integer 0-100>,
   "sources": ["<sources used>"],
   "assumptions": ["<assumption made>"],
@@ -28,12 +28,14 @@ RULES FOR THE DRAFT:
 - Draft directly from the available context below. Do not ask for more information.
 - Be specific to the industry and buyer roles shown. Avoid generic statements.
 
-PAIN POINTS:
-- Generate 3 DISTINCT pain points. Each pain point should represent a different facet of the endemic problem from the buyer perspective.
-- Pain Point 1 = the strategic/systemic problem.
-- Pain Point 2 = the operational/execution problem.
-- Pain Point 3 = the measurement/visibility problem.
-- Do not repeat the same content across pain points.
+PAIN POINTS — IMPORTANT:
+- This call generates ONE pain point only, for the active tab. Return a single "draft" string for that pain point. Do NOT return multiple pain points.
+- Step 4 captures up to three pain points across tabs, and each must be DISTINCT. Use the ADDITIONAL CONTEXT block below to determine which pain point (1, 2, or 3) you are writing for, and which other pain points already exist that you must NOT duplicate.
+- The three pain points should cover different facets of the endemic problem. Use this framing as a guide for how they differ:
+  • Pain Point 1 → the strategic/systemic problem
+  • Pain Point 2 → the operational/execution problem
+  • Pain Point 3 → the measurement/visibility problem
+- Anchor this draft to the facet implied by the active pain point number, and explicitly differentiate it from the OTHER PAIN POINTS listed in the ADDITIONAL CONTEXT.
 
 CONFIDENCE SCORING:
 - 71-100: DCP Stage 1 and Stage 2 summaries are present and specific; company profile is complete
@@ -54,7 +56,7 @@ ${step1Text}
 SUPPORTING CONTEXT — Step 3 (Key decision makers):
 ${step3Text}
 ${provisionalNote(ctx)}
-${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}
+${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${currentContent}` : ''}${extraContext ? `\n\nADDITIONAL CONTEXT:\n${extraContext}` : ''}
 
 In the "assumptions" array always include these four entries in addition to any data assumptions:
 - "Step 5 (Root Cause) will refine the specific triggers and conditions that create this problem"
