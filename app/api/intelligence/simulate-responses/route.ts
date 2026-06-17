@@ -236,14 +236,16 @@ Generate ${count} simulated response${count !== 1 ? 's' : ''}. The "answers" obj
   const startMs = Date.now()
   let rawText = ''
   let claudeError: string | null = null
+  let stopReason: string | null = null
 
   try {
     const message = await anthropic.messages.create({
       model,
-      max_tokens: 5000,
+      max_tokens: 16000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })
+    stopReason = message.stop_reason ?? null
     rawText = message.content
       .filter(b => b.type === 'text')
       .map(b => (b as { type: 'text'; text: string }).text)
@@ -267,6 +269,13 @@ Generate ${count} simulated response${count !== 1 ? 's' : ''}. The "answers" obj
 
   if (claudeError) return NextResponse.json({ error: claudeError }, { status: 502 })
 
+  if (stopReason === 'max_tokens') {
+    console.error('[simulate-responses] hit max_tokens cap; rawText length:', rawText.length)
+    return NextResponse.json({
+      error: 'The response was too long to generate. Try selecting fewer responses.',
+    }, { status: 502 })
+  }
+
   let parsed: ClaudePayload
   try {
     const firstBrace = rawText.indexOf('{')
@@ -277,8 +286,9 @@ Generate ${count} simulated response${count !== 1 ? 's' : ''}. The "answers" obj
     parsed = JSON.parse(rawText.slice(firstBrace, lastBrace + 1)) as ClaudePayload
   } catch (parseErr) {
     console.error('[simulate-responses] JSON parse error:', parseErr instanceof Error ? parseErr.message : String(parseErr))
-    console.error('[simulate-responses] Raw response (first 500 chars):', rawText.slice(0, 500))
-    return NextResponse.json({ error: 'Copilot returned invalid JSON', raw: rawText.slice(0, 500) }, { status: 502 })
+    console.error('[simulate-responses] Raw response length:', rawText.length)
+    console.error('[simulate-responses] Raw response (last 500 chars):', rawText.slice(-500))
+    return NextResponse.json({ error: 'Copilot returned invalid JSON', raw: rawText.slice(-500) }, { status: 502 })
   }
 
   if (!Array.isArray(parsed.responses)) {
