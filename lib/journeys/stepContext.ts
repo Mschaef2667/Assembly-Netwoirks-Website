@@ -329,7 +329,7 @@ export function useStepContext(stepId: string): StepContext {
                   stage_number: dcpStageNumber,
                   stage_name: String(raw['stage_name'] ?? ''),
                   summary: String(raw['summary'] ?? ''),
-                  confidence_score: Number(raw['confidence_score'] ?? 0),
+                  confidence_score: Number(raw['confidence'] ?? raw['confidence_score'] ?? 0),
                 }
               }
             }
