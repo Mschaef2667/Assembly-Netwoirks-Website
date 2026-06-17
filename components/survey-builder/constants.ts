@@ -102,5 +102,8 @@ export function uid(): string {
 }
 
 export function countAll(s: SurveyState): number {
-  return Object.values(s).reduce((n, qs) => n + qs.length, 0)
+  return Object.values(s).reduce(
+    (n, qs) => n + qs.filter(q => q.text.trim().length > 0).length,
+    0,
+  )
 }

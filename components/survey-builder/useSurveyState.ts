@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import type { Question, SurveyState, CopilotStatus, Audience, QuestionType, Segment } from './types'
 import {
   STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, DEFAULT_SURVEY_QUESTIONS, LOCKED_QUESTIONS,
-  uid, countAll,
+  uid,
 } from './constants'
 
 function parseSegmentsFromStep2(content: Record<string, unknown>): Segment[] {
@@ -33,6 +33,21 @@ function parseSegmentsFromStep2(content: Record<string, unknown>): Segment[] {
 function computeStepId(audience: Audience, segment: Segment | null): string {
   const slug = segment?.slug ?? 'all-segments'
   return `survey-builder-${audience}-${slug}`
+}
+
+// Hydrate questions loaded from the DB so stale `modified` flags don't
+// surface "Modified / Restore" badges on slots the user hasn't edited
+// in this session. `originalText` is backfilled from the current text
+// when missing, so future in-session edits compute `modified` correctly.
+function hydrateLoadedQuestions(raw: Record<string, unknown[]>): SurveyState {
+  const parsed: SurveyState = {}
+  for (const [k, v] of Object.entries(raw)) {
+    parsed[parseInt(k, 10)] = (v as Question[]).map(q => {
+      if (!q.locked) return q
+      return { ...q, modified: false, originalText: q.originalText ?? q.text }
+    })
+  }
+  return parsed
 }
 
 export function useSurveyState() {
@@ -136,11 +151,7 @@ export function useSurveyState() {
         if (row['status'] === 'approved') setIsApproved(true)
         const content = row['content'] as Record<string, unknown> | null
         if (content?.['questions']) {
-          const raw = content['questions'] as Record<string, unknown[]>
-          const parsed: SurveyState = {}
-          for (const [k, v] of Object.entries(raw)) {
-            parsed[parseInt(k, 10)] = v as Question[]
-          }
+          const parsed = hydrateLoadedQuestions(content['questions'] as Record<string, unknown[]>)
           surveyRef.current = parsed
           setSurvey(parsed)
           return
@@ -323,11 +334,7 @@ export function useSurveyState() {
         if (row['status'] === 'approved') setIsApproved(true)
         const content = row['content'] as Record<string, unknown> | null
         if (content?.['questions']) {
-          const raw = content['questions'] as Record<string, unknown[]>
-          const parsed: SurveyState = {}
-          for (const [k, v] of Object.entries(raw)) {
-            parsed[parseInt(k, 10)] = v as Question[]
-          }
+          const parsed = hydrateLoadedQuestions(content['questions'] as Record<string, unknown[]>)
           surveyRef.current = parsed
           setSurvey(parsed)
           return
@@ -363,7 +370,6 @@ export function useSurveyState() {
   }
 
   function addQuestion(stageId: number) {
-    if (countAll(survey) >= 20) return
     const q: Question = { id: uid(), text: '', type: 'open', stageId }
     const updated = { ...survey, [stageId]: [...(survey[stageId] ?? []), q] }
     updateSurvey(updated)

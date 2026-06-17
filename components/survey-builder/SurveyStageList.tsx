@@ -13,7 +13,6 @@ interface Props {
   editText: string
   hoveringQId: string | null
   isApproved: boolean
-  total: number
   mode: 'survey' | 'interview'
   probes: Map<string, string[]>
   onToggleStage: (id: number) => void
@@ -34,7 +33,6 @@ export default function SurveyStageList({
   editText,
   hoveringQId,
   isApproved,
-  total,
   mode,
   probes,
   onToggleStage,
@@ -47,8 +45,6 @@ export default function SurveyStageList({
   onSetEditText,
   onSetHoveringQId,
 }: Props) {
-  const atLimit = total >= 20
-
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -170,15 +166,13 @@ export default function SurveyStageList({
                     <div style={{ padding: '10px 20px' }}>
                       <button
                         onClick={() => onAddQuestion(stage.id)}
-                        disabled={atLimit}
-                        title={atLimit ? 'Maximum 20 questions reached' : undefined}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '6px',
                           padding: '6px 14px', minHeight: '36px',
-                          backgroundColor: atLimit ? 'rgba(255,255,255,0.03)' : 'rgba(14,165,233,0.07)',
-                          color: atLimit ? 'rgba(255,255,255,0.2)' : '#0EA5E9',
-                          border: `1px solid ${atLimit ? 'rgba(255,255,255,0.06)' : 'rgba(14,165,233,0.2)'}`,
-                          borderRadius: '6px', cursor: atLimit ? 'not-allowed' : 'pointer',
+                          backgroundColor: 'rgba(14,165,233,0.07)',
+                          color: '#0EA5E9',
+                          border: '1px solid rgba(14,165,233,0.2)',
+                          borderRadius: '6px', cursor: 'pointer',
                           fontSize: '13px', fontWeight: 600,
                         }}
                       >

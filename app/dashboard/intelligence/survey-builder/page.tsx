@@ -42,11 +42,14 @@ export default function SurveyBuilderPage() {
     )
   }
 
-  const total            = countAll(survey)
-  const aboveRecommended = total > 15
-  const counterColor     = aboveRecommended ? '#EAB308' : total > 12 ? '#E8520A' : 'rgba(255,255,255,0.7)'
-  const progressPct      = Math.min((total / 20) * 100, 100)
-  const progressColor    = aboveRecommended ? '#EAB308' : total > 12 ? '#E8520A' : '#0EA5E9'
+  // Counts only filled questions (empty placeholder slots don't count).
+  // 15-20 per audience is the ideal range; above 20 is a soft warning, not a block.
+  const total           = countAll(survey)
+  const inIdealRange    = total >= 15 && total <= 20
+  const aboveSoftCap    = total > 20
+  const counterColor    = aboveSoftCap ? '#EAB308' : inIdealRange ? '#16A34A' : 'rgba(255,255,255,0.7)'
+  const progressPct     = Math.min((total / 20) * 100, 100)
+  const progressColor   = aboveSoftCap ? '#EAB308' : inIdealRange ? '#16A34A' : '#0EA5E9'
 
   return (
     <div style={{ backgroundColor: '#0A1628', minHeight: '100vh' }}>
@@ -58,7 +61,7 @@ export default function SurveyBuilderPage() {
               Decision Clarity Process Survey Builder
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-              Generate buyer research questions across all 7 buying stages. Keep it under 15 questions for best completion rates.
+              Generate buyer research questions across all 7 buying stages. Aim for 15–20 questions per audience.
             </p>
           </div>
           <span style={{
@@ -116,11 +119,11 @@ export default function SurveyBuilderPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span style={{ fontSize: '14px', fontWeight: 700, color: counterColor }}>
-                {aboveRecommended ? `${total} questions (above recommended)` : `${total} of 15 recommended`}
+                {total} {total === 1 ? 'question' : 'questions'} · ideal range 15–20
               </span>
-              {!aboveRecommended && (
+              {total < 15 && (
                 <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                  {Math.max(0, 15 - total)} remaining
+                  {15 - total} to reach 15
                 </span>
               )}
             </div>
@@ -130,13 +133,13 @@ export default function SurveyBuilderPage() {
                 backgroundColor: progressColor, borderRadius: '3px', transition: 'width 0.3s ease',
               }} />
             </div>
-            {total >= 15 && (
+            {aboveSoftCap && (
               <div style={{
                 marginTop: '10px', padding: '8px 10px', borderRadius: '6px',
                 backgroundColor: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)',
               }}>
                 <p style={{ fontSize: '12px', color: '#EAB308', margin: 0, lineHeight: '1.5' }}>
-                  You have reached the recommended maximum of 15 questions. Additional questions may reduce completion rates.
+                  Past 20 questions, completion rates drop — consider trimming.
                 </p>
               </div>
             )}
@@ -162,7 +165,6 @@ export default function SurveyBuilderPage() {
               editText={editText}
               hoveringQId={hoveringQId}
               isApproved={isApproved}
-              total={total}
               mode={selectedMode}
               probes={probes}
               onToggleStage={toggleStage}
