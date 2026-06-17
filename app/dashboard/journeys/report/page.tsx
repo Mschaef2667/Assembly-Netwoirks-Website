@@ -800,6 +800,9 @@ function ReportPageInner() {
             },
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+          // pagebreak is supported at runtime by html2pdf.js but missing from its
+          // shipped .d.ts — cast through unknown to widen the options type.
+          ...({ pagebreak: { mode: ['css', 'legacy'], avoid: '.report-subsection' } } as unknown as Record<string, never>),
         })
         .from(reportRef.current)
         .toPdf()
@@ -2247,6 +2250,11 @@ function ReportPageInner() {
             page-break-after: always;
           }
         }
+        .report-subsection {
+          page-break-inside: avoid;
+          break-inside: avoid;
+          -webkit-column-break-inside: avoid;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
@@ -2507,30 +2515,38 @@ function ReportPageInner() {
                   {/* ── Section 1: Company Foundation ── */}
                   <h2 style={sectionHeadStyle}>1. Company Foundation</h2>
 
-                  <p style={subheadStyle}>1a. {getStep('1')?.title ?? 'Product / Service Profile'}</p>
-                  <StepContent id="1" />
+                  <div className="report-subsection">
+                    <p style={subheadStyle}>1a. {getStep('1')?.title ?? 'Product / Service Profile'}</p>
+                    <StepContent id="1" />
+                  </div>
 
                   <div style={dividerStyle} />
 
-                  <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Key Decision Makers'}</p>
-                  <KeyDecisionMakersContent id="3" />
+                  <div className="report-subsection">
+                    <p style={subheadStyle}>1b. {getStep('3')?.title ?? 'Key Decision Makers'}</p>
+                    <KeyDecisionMakersContent id="3" />
+                  </div>
 
                   <div style={dividerStyle} />
 
-                  <p style={subheadStyle}>1c. Compelling Value Propositions</p>
-                  <ByPainPointContent id="11" />
+                  <div className="report-subsection">
+                    <p style={subheadStyle}>1c. Compelling Value Propositions</p>
+                    <ByPainPointContent id="11" />
+                  </div>
 
                   <div style={dividerStyle} />
 
-                  <p style={subheadStyle}>1d. {getStep('15')?.title ?? 'Key Selling Points'}</p>
-                  <ByPainPointContent id="15" />
+                  <div className="report-subsection">
+                    <p style={subheadStyle}>1d. {getStep('15')?.title ?? 'Key Selling Points'}</p>
+                    <ByPainPointContent id="15" />
+                  </div>
 
                   {/* ── Section 2: Competitive Environment ── */}
                   <div data-empty={sec2Empty ? 'true' : undefined}>
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>2. Competitive Environment</h2>
                     {COMP_STEP_IDS.map((sid, i) => (
-                      <div key={sid}>
+                      <div key={sid} className="report-subsection">
                         <p style={subheadStyle}>{`2${String.fromCharCode(97 + i)}`}. {getStep(sid)?.title ?? `Step ${sid}`}</p>
                         {sid === '17' ? <Step17CompetitorContent id={sid} /> : <PainPointLabeledContent id={sid} />}
                         {i < COMP_STEP_IDS.length - 1 && <div style={dividerStyle} />}
@@ -2543,7 +2559,7 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>3. Strategic Messages</h2>
                     {(['27', '28', '29', '30'] as const).map((sid, i) => (
-                      <div key={sid}>
+                      <div key={sid} className="report-subsection">
                         <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
                         <StrategicMessageContent id={sid} />
                         {i < 3 && <div style={dividerStyle} />}
@@ -2556,7 +2572,7 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>4. Action Plan</h2>
                     {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
-                      <div key={sid}>
+                      <div key={sid} className="report-subsection">
                         <p style={subheadStyle}>{getStep(sid)?.title ?? `Step ${sid}`}</p>
                         <ActionPlanSummary id={sid} />
                         {i < 6 && <div style={dividerStyle} />}
@@ -2569,18 +2585,24 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>5. 30/60/90 Day Action Plan</h2>
 
-                    <p style={subheadStyle}>First 30 Days</p>
-                    <TimeBucketContent stepIds={['31', '32']} />
+                    <div className="report-subsection">
+                      <p style={subheadStyle}>First 30 Days</p>
+                      <TimeBucketContent stepIds={['31', '32']} />
+                    </div>
 
                     <div style={dividerStyle} />
 
-                    <p style={subheadStyle}>Days 31-60</p>
-                    <TimeBucketContent stepIds={['33', '34']} />
+                    <div className="report-subsection">
+                      <p style={subheadStyle}>Days 31-60</p>
+                      <TimeBucketContent stepIds={['33', '34']} />
+                    </div>
 
                     <div style={dividerStyle} />
 
-                    <p style={subheadStyle}>Days 61-90</p>
-                    <TimeBucketContent stepIds={['35', '36']} />
+                    <div className="report-subsection">
+                      <p style={subheadStyle}>Days 61-90</p>
+                      <TimeBucketContent stepIds={['35', '36']} />
+                    </div>
                   </div>
 
                   {/* Footer */}
