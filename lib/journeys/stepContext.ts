@@ -13,6 +13,7 @@ import {
   prereqIdsForStep,
   valuesLongerThan,
   extractStepContent,
+  DCP_STAGE_FOR_STEP,
   type AllStep,
   type BuyingCenterEntry,
   type DcpStageSummary,
@@ -303,8 +304,9 @@ export function useStepContext(stepId: string): StepContext {
           setHasDcpAnalysis(Boolean(dcpExistsRow))
         }
 
-        // Step 9 — load approved DCP analysis, Stage 3
-        if (stepId === '9') {
+        // Steps 4 / 7 / 8 / 9 — load approved DCP analysis for the stage that grounds this step's transparency panel
+        const dcpStageNumber = DCP_STAGE_FOR_STEP[stepId]
+        if (dcpStageNumber !== undefined) {
           const { data: dcpRow } = await supabase
             .from('dcp_analysis')
             .select('stage_summaries, updated_at')
@@ -313,25 +315,25 @@ export function useStepContext(stepId: string): StepContext {
             .maybeSingle()
 
           if (!dcpRow) {
-            setStep9Data({ gateApproved: false, stage: null, updatedAt: '' })
+            setStep9Data({ gateApproved: false, stageNumber: dcpStageNumber, stage: null, updatedAt: '' })
           } else {
             const r = dcpRow as Record<string, unknown>
             const summaries = r['stage_summaries']
             let stage: DcpStageSummary | null = null
             if (Array.isArray(summaries)) {
               const raw = (summaries as Array<Record<string, unknown>>).find(
-                s => Number(s['stage_number']) === 3,
+                s => Number(s['stage_number']) === dcpStageNumber,
               )
               if (raw) {
                 stage = {
-                  stage_number: 3,
+                  stage_number: dcpStageNumber,
                   stage_name: String(raw['stage_name'] ?? ''),
                   summary: String(raw['summary'] ?? ''),
                   confidence_score: Number(raw['confidence_score'] ?? 0),
                 }
               }
             }
-            setStep9Data({ gateApproved: true, stage, updatedAt: String(r['updated_at'] ?? '') })
+            setStep9Data({ gateApproved: true, stageNumber: dcpStageNumber, stage, updatedAt: String(r['updated_at'] ?? '') })
           }
         }
 

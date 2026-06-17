@@ -3,7 +3,7 @@
 import { AlertTriangle } from 'lucide-react'
 import { PANEL_CARD, type Step9State } from '@/lib/journeys/stepHelpers'
 
-export function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
+export function Step9Display({ gateApproved, stageNumber, stage, updatedAt }: Step9State) {
   if (!gateApproved) {
     return (
       <div style={{
@@ -35,7 +35,7 @@ export function Step9Display({ gateApproved, stage, updatedAt }: Step9State) {
         color: 'rgba(255,255,255,0.5)',
         fontSize: '14px',
       }}>
-        No Stage 3 data found in your DCP analysis.
+        No Stage {stageNumber} data found in your DCP analysis.
       </div>
     )
   }

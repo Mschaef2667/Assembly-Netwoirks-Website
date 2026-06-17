@@ -45,8 +45,17 @@ export interface DcpStageSummary {
 
 export interface Step9State {
   gateApproved: boolean
+  stageNumber: number
   stage: DcpStageSummary | null
   updatedAt: string
+}
+
+// Maps each Endemic-Problem step to the DCP stage that grounds its transparency panel.
+export const DCP_STAGE_FOR_STEP: Record<string, number> = {
+  '4': 1, // The Problem      → Stage 1 (Need)
+  '7': 2, // The Realization  → Stage 2 (Motivation)
+  '8': 4, // The Solution     → Stage 4 (Evaluation)
+  '9': 3, // The Search       → Stage 3 (Search)
 }
 
 export interface AllStep {

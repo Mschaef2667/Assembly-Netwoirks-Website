@@ -972,7 +972,7 @@ export default function StepPage() {
         >
           {warningBanner}
           {dcpBanner}
-          {stepId === '9' && step9Data && (
+          {(stepId === '7' || stepId === '8' || stepId === '9') && step9Data && (
             <div style={{ marginBottom: '16px' }}>
               <Step9Display {...step9Data} />
             </div>
@@ -1086,6 +1086,11 @@ export default function StepPage() {
         <div>
           {warningBanner}
           {dcpBanner}
+          {isStep4 && step9Data && (
+            <div style={{ marginBottom: '16px' }}>
+              <Step9Display {...step9Data} />
+            </div>
+          )}
           {isStep4 ? (
             <div id="step-pain-points" style={PANEL_CARD}>
               <Step4Editor
