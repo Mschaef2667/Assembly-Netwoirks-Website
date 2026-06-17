@@ -114,6 +114,7 @@ export default function DcpMapPage() {
   const [submitting, setSubmitting] = useState(false)
   const [approving, setApproving] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingDocx, setDownloadingDocx] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // ── Load ─────────────────────────────────────────────────────────────────────
@@ -467,6 +468,170 @@ export default function DcpMapPage() {
     }
   }
 
+  // ── DOCX Download ─────────────────────────────────────────────────────────────
+
+  async function downloadDocx() {
+    if (downloadingDocx || stages.length === 0) return
+    setDownloadingDocx(true)
+    try {
+      const lib = await import('docx')
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel } = lib
+
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      const company = orgName || 'Your Company'
+
+      const children: InstanceType<typeof Paragraph>[] = []
+
+      // Cover
+      children.push(new Paragraph({
+        children: [new TextRun({ text: 'ASSEMBLY AI', bold: true, size: 18, color: 'E8520A' })],
+        spacing: { after: 200 },
+      }))
+      children.push(new Paragraph({
+        text: company,
+        heading: HeadingLevel.TITLE,
+        spacing: { after: 120 },
+      }))
+      children.push(new Paragraph({
+        children: [new TextRun({ text: 'Decision Clarity Profile', bold: true, size: 36 })],
+        spacing: { after: 200 },
+      }))
+      children.push(new Paragraph({
+        children: [new TextRun({ text: today, size: 22, color: '6B7280' })],
+        spacing: { after: 240 },
+      }))
+
+      const metaRows: [string, string][] = [
+        ['Company', company],
+        ['Date', today],
+        ['Overall Confidence', `${dcpRow?.overall_confidence ?? 0}/100`],
+        ['Status', dcpRow?.status ?? 'draft'],
+        ['Version', `v${dcpRow?.analysis_version ?? 1}`],
+      ]
+      for (const [label, value] of metaRows) {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${label}: `, bold: true, size: 22, color: '6B7280' }),
+            new TextRun({ text: value, size: 22, color: '0D0D0D' }),
+          ],
+          spacing: { after: 80 },
+        }))
+      }
+      children.push(new Paragraph({ text: '', spacing: { after: 240 } }))
+
+      // Stage sections
+      for (const stage of stages) {
+        const conf = stageConfidence(stage)
+        const confLabel = conf >= 70 ? 'High' : conf >= 40 ? 'Moderate' : 'Low'
+        const confColorHex = conf >= 70 ? '16A34A' : conf >= 40 ? 'D97706' : 'DC2626'
+
+        children.push(new Paragraph({
+          text: `Stage ${stage.stage_number}: ${stage.stage_name}`,
+          heading: HeadingLevel.HEADING_1,
+          spacing: { before: 400, after: 120 },
+        }))
+
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${confLabel} Confidence · ${conf}/100`, bold: true, size: 22, color: confColorHex }),
+          ],
+          spacing: { after: 80 },
+        }))
+
+        if (stage.response_count !== undefined) {
+          children.push(new Paragraph({
+            children: [
+              new TextRun({
+                text: `${stage.response_count} response${stage.response_count !== 1 ? 's' : ''}`,
+                size: 20, color: '9CA3AF',
+              }),
+            ],
+            spacing: { after: 160 },
+          }))
+        }
+
+        // Summary
+        children.push(new Paragraph({
+          children: [new TextRun({ text: 'Summary', bold: true, size: 24, color: '0A1628' })],
+          spacing: { before: 160, after: 80 },
+        }))
+        children.push(new Paragraph({
+          children: [new TextRun({ text: stage.summary, size: 22 })],
+          spacing: { after: 160 },
+        }))
+
+        // Key Signals
+        if (stage.key_signals && stage.key_signals.length > 0) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: 'Key Signals', bold: true, size: 24, color: '0EA5E9' })],
+            spacing: { before: 160, after: 80 },
+          }))
+          for (const signal of stage.key_signals) {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: `• ${signal}`, size: 22 })],
+              indent: { left: 360 },
+              spacing: { after: 80 },
+            }))
+          }
+        }
+
+        // Gaps Identified
+        if (stage.gaps && stage.gaps.length > 0) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: 'Gaps Identified', bold: true, size: 24, color: 'D97706' })],
+            spacing: { before: 160, after: 80 },
+          }))
+          for (const gap of stage.gaps) {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: `• ${gap}`, size: 22 })],
+              indent: { left: 360 },
+              spacing: { after: 80 },
+            }))
+          }
+        }
+
+        // Recommended Actions
+        if (stage.recommended_actions && stage.recommended_actions.length > 0) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: 'Recommended Actions', bold: true, size: 24, color: 'E8520A' })],
+            spacing: { before: 160, after: 80 },
+          }))
+          for (const action of stage.recommended_actions) {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: `• ${action}`, size: 22 })],
+              indent: { left: 360 },
+              spacing: { after: 80 },
+            }))
+          }
+        }
+      }
+
+      const doc = new Document({
+        creator: 'Assembly AI',
+        title: `${company} — Decision Clarity Profile`,
+        description: 'Generated by Assembly AI',
+        sections: [{ children }],
+        styles: {
+          paragraphStyles: [
+            { id: 'Normal', name: 'Normal', run: { font: 'Calibri', size: 22 } },
+          ],
+        },
+      })
+
+      const blob = await Packer.toBlob(doc)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${company.toLowerCase().replace(/\s+/g, '-')}-decision-clarity-profile.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[downloadDocx]', err)
+    } finally {
+      setDownloadingDocx(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -496,20 +661,36 @@ export default function DcpMapPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             {stages.length > 0 && (
-              <button
-                onClick={() => void downloadPdf()}
-                disabled={downloading}
-                style={{
-                  minHeight: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px',
-                  backgroundColor: downloading ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)',
-                  color: downloading ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)',
-                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
-                  cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600,
-                }}
-              >
-                {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                {downloading ? 'Generating…' : 'Download PDF'}
-              </button>
+              <>
+                <button
+                  onClick={() => void downloadPdf()}
+                  disabled={downloading}
+                  style={{
+                    minHeight: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px',
+                    backgroundColor: downloading ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)',
+                    color: downloading ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                    cursor: downloading ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600,
+                  }}
+                >
+                  {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  {downloading ? 'Generating…' : 'Download PDF'}
+                </button>
+                <button
+                  onClick={() => void downloadDocx()}
+                  disabled={downloadingDocx}
+                  style={{
+                    minHeight: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px',
+                    backgroundColor: downloadingDocx ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)',
+                    color: downloadingDocx ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                    cursor: downloadingDocx ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600,
+                  }}
+                >
+                  {downloadingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  {downloadingDocx ? 'Generating…' : 'Download Word'}
+                </button>
+              </>
             )}
           </div>
         </div>
