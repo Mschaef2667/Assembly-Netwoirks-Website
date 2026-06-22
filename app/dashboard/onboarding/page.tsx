@@ -193,7 +193,7 @@ export default function OnboardingPage() {
             .from('step_output')
             .select('step_id,status')
             .eq('workspace_id', wsId)
-            .in('step_id', ['1', '2', '3', '3.5']),
+            .in('step_id', ['1', '2', '3']),
           supabase
             .from('organizations')
             .select('website')
@@ -236,13 +236,6 @@ export default function OnboardingPage() {
             href: '/dashboard/journeys/step/3',
             stepStatus: getStatus('3'),
           },
-          {
-            badge: '3.5',
-            title: 'Step 3.5 — The Yes Criteria',
-            description: 'Identify the ultimate decision maker and what will make them say yes',
-            href: '/dashboard/journeys/step/3.5',
-            stepStatus: getStatus('3.5'),
-          },
         ])
       } finally {
         setLoading(false)
@@ -255,7 +248,7 @@ export default function OnboardingPage() {
     if (!orgId) return
     setApprovalState('approving')
     try {
-      for (const stepId of ['1', '2', '3', '3.5']) {
+      for (const stepId of ['1', '2', '3']) {
         const { error } = await supabase
           .from('step_output')
           .update({ status: 'approved' })
@@ -304,7 +297,7 @@ export default function OnboardingPage() {
   // ── Derived state ─────────────────────────────────────────────────────────────
 
   const allPhase1Complete = phase1Steps.every(s => s.stepStatus === 'approved')
-  const allPhase1HaveContent = phase1Steps.length === 4 && phase1Steps.every(s => s.stepStatus !== 'not_started')
+  const allPhase1HaveContent = phase1Steps.length === 3 && phase1Steps.every(s => s.stepStatus !== 'not_started')
   const showSuccessState = allPhase1Complete || approvalState === 'success'
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -460,7 +453,7 @@ export default function OnboardingPage() {
               )}
             </div>
             <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px', lineHeight: 1.5 }}>
-              Complete these four steps to establish your company foundation before building your strategy.
+              Complete these three steps to establish your company foundation before building your strategy.
             </p>
             {phase1Steps.map((step, i) => (
               <Phase1Row key={i} step={step} />
