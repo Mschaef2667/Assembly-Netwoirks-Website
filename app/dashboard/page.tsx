@@ -1052,7 +1052,10 @@ export default function DashboardPage() {
                     <>
                       <Link href="/dashboard/intelligence/dcp-map" style={linkBtnSecondary}>Open</Link>
                       {dcpRow?.status === 'approved' && (
-                        <Link href="/dashboard/intelligence/dcp-map" style={linkBtn}>Download PDF</Link>
+                        <>
+                          <Link href="/dashboard/intelligence/dcp-map" style={linkBtn}>Download PDF</Link>
+                          <Link href="/dashboard/intelligence/dcp-map" style={linkBtnSecondary}>Download Word</Link>
+                        </>
                       )}
                     </>
                   }
@@ -1070,7 +1073,10 @@ export default function DashboardPage() {
                     <>
                       <Link href="/dashboard/intelligence/insights" style={linkBtnSecondary}>Open</Link>
                       {insightsGenerated && (
-                        <Link href="/dashboard/intelligence/insights" style={linkBtn}>Download PDF</Link>
+                        <>
+                          <Link href="/dashboard/intelligence/insights" style={linkBtn}>Download PDF</Link>
+                          <Link href="/dashboard/intelligence/insights" style={linkBtnSecondary}>Download Word</Link>
+                        </>
                       )}
                     </>
                   }
@@ -1115,7 +1121,10 @@ export default function DashboardPage() {
                       <>
                         <Link href="/dashboard/journeys/report" style={linkBtnSecondary}>Open</Link>
                         {futureStateGenerated && (
-                          <Link href="/dashboard/journeys/report" style={linkBtn}>Download PDF</Link>
+                          <>
+                            <Link href="/dashboard/journeys/report" style={linkBtn}>Download PDF</Link>
+                            <Link href="/dashboard/journeys/report" style={linkBtnSecondary}>Download Word</Link>
+                          </>
                         )}
                       </>
                     )
