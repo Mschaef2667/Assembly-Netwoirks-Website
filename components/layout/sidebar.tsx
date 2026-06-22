@@ -24,7 +24,7 @@ import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 
 const navItems = [
   { label: 'Onboarding',      href: '/dashboard/onboarding',         icon: BookOpen  },
-  { label: 'Workspace',       href: '/dashboard',                    icon: Building2 },
+  { label: 'Dashboard',       href: '/dashboard',                    icon: Building2 },
   { label: 'Intelligence',    href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
   { label: 'ICP Development', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
   { label: 'Journeys',        href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },

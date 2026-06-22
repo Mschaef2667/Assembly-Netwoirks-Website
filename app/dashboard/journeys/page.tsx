@@ -455,7 +455,7 @@ export default function JourneysPage() {
           <div>
             <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Journeys</h1>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-              {`Complete all ${JOURNEY_TOTAL} C3 Method steps to build your go-to-market operating system.`}
+              {`Complete all ${JOURNEY_TOTAL} C3 Method steps across 6 phases to build your go-to-market operating system.`}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
@@ -604,7 +604,7 @@ export default function JourneysPage() {
                         <span style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 700 }}>{item.phase}</span>
                       </div>
                       <div style={{ flex: 1, textAlign: 'left' }}>
-                        <p style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 700, margin: 0 }}>{item.section}</p>
+                        <p style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 700, margin: 0 }}>{`Phase ${item.phase} of 6 · ${item.section}`}</p>
                         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', margin: '2px 0 0' }}>
                           {approvedCount} of {phaseSteps.length} approved
                         </p>

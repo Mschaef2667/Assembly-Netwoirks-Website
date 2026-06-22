@@ -401,7 +401,7 @@ export default function DashboardPage() {
         />
       )}
       <h1 style={{ color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: 0 }}>
-        {orgName ?? 'Workspace Dashboard'}
+        {orgName ?? 'Dashboard'}
       </h1>
     </header>
   )
