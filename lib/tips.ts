@@ -100,6 +100,12 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'Evidence that works: peer references from similar companies, pilot results, methodology previews', body: 'Buyers trust proof from people like them more than any pitch deck.' },
     { headline: 'Use your DCP Stage 4 research -- buyers told you exactly what proof they require', body: 'The evidence buyers asked for is the evidence you must produce.' },
   ],
+  '21': [
+    { headline: 'What this step measures', body: 'Acid Test 2 asks one question about each key competitor: do the decision-makers believe that competitor has the core competencies to deliver on their critical success formulas? It\'s about perceived ability to deliver, not whether they technically can.' },
+    { headline: 'Why it matters', body: 'Every competitor has a solution. Deals are won on believed ability to deliver, not on features. This test surfaces how credible each competitor looks to the people actually making the decision.' },
+    { headline: 'The mirror of Acid Test 1', body: 'Acid Test 1 measured the decision-makers\' confidence in you. Acid Test 2 measures their confidence in each competitor. Comparing the two is where you see whether you\'re positioned to win, and where you\'re exposed.' },
+    { headline: 'The takeaway', body: 'Whoever earns the decision-makers\' confidence in their core competencies and critical success formulas wins the delivery evaluation. Use this step to judge, competitor by competitor, who currently holds that confidence.' },
+  ],
   '27': [
     { headline: 'Instruction', body: 'The company strategic messaging should heighten the awareness of the causes and effects of the endemic problems the key decision makers experience.' },
     { headline: 'Write from the buyer perspective', body: 'Describe their world, not your solution.' },
