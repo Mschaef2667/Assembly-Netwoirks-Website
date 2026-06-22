@@ -342,6 +342,7 @@ export default function TargetMarketsPage() {
   const [preferredModel, setPreferredModel] = useState('claude-sonnet-4-5')
   const [loading, setLoading] = useState(true)
   const [gate1Approved, setGate1Approved] = useState<boolean | null>(null)
+  const [missingEndemicSteps, setMissingEndemicSteps] = useState<string[]>([])
 
   // Segments (from Step 2)
   const [segments, setSegments] = useState<Segment[]>([
@@ -455,6 +456,32 @@ export default function TargetMarketsPage() {
             setSegments(loaded)
           }
         }
+
+        // Endemic Problems readiness (Steps 4-8) — soft warning, never blocks
+        const { data: endemicRows } = await supabase
+          .from('step_output')
+          .select('step_id, content')
+          .eq('workspace_id', wsId)
+          .in('step_id', ['4', '5', '6', '7', '8'])
+          .order('version', { ascending: false })
+        const latestEndemicByStep = new Map<string, Record<string, unknown> | null>()
+        for (const raw of (endemicRows ?? []) as Array<Record<string, unknown>>) {
+          const sid = String(raw['step_id'] ?? '')
+          if (latestEndemicByStep.has(sid)) continue
+          latestEndemicByStep.set(sid, (raw['content'] as Record<string, unknown> | null) ?? null)
+        }
+        const missing: string[] = []
+        for (const sid of ['4', '5', '6', '7', '8']) {
+          const content = latestEndemicByStep.get(sid) ?? null
+          // Mirror runCopilot's journeyContext construction: use content.text if present,
+          // otherwise JSON.stringify(content). Treat empty/blank result as missing.
+          const text = content?.['text'] ? String(content['text']) : JSON.stringify(content ?? {})
+          const trimmed = text.trim()
+          if (!content || trimmed === '' || trimmed === '{}' || trimmed === 'null') {
+            missing.push(sid)
+          }
+        }
+        setMissingEndemicSteps(missing)
 
         // Existing ICP records
         const { data: icpRows } = await supabase
@@ -1018,6 +1045,39 @@ export default function TargetMarketsPage() {
       <div style={{ flex: 1, padding: '28px 32px', maxWidth: '960px' }}>
         {tab === 'markets' ? (
           <div id="target-markets-segments" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {missingEndemicSteps.length > 0 && (
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#FEF3C7',
+                borderRadius: '8px',
+                border: '1px solid #FCD34D',
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'flex-start',
+              }}>
+                <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: '1px' }} />
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', margin: '0 0 2px' }}>
+                    For the most grounded ICP, complete Endemic Problems first
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#78350F', margin: 0 }}>
+                    {missingEndemicSteps.length === 1 ? 'Step ' : 'Steps '}
+                    {missingEndemicSteps.map((sid, idx) => (
+                      <span key={sid}>
+                        <Link
+                          href={`/dashboard/journeys/step/${sid}`}
+                          style={{ color: '#78350F', textDecoration: 'underline', fontWeight: 600 }}
+                        >
+                          Step {sid}
+                        </Link>
+                        {idx < missingEndemicSteps.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}
+                    {missingEndemicSteps.length === 1 ? " doesn't" : " don't"} have content yet — your ICP will be thinner without {missingEndemicSteps.length === 1 ? 'it' : 'them'}.
+                  </p>
+                </div>
+              </div>
+            )}
             {segments.map((seg, i) => (
               <div key={i} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#0F2140' }}>
                 {/* Accordion header */}
