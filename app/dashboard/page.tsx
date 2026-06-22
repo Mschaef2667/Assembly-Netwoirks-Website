@@ -403,6 +403,22 @@ export default function DashboardPage() {
       <h1 style={{ color: '#FFFFFF', fontSize: '32px', fontWeight: 700, margin: 0 }}>
         {orgName ?? 'Dashboard'}
       </h1>
+      <Link
+        href="/dashboard/decision-journey"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          marginTop: '10px',
+          fontSize: '13px',
+          color: '#0EA5E9',
+          textDecoration: 'none',
+          fontWeight: 600,
+        }}
+      >
+        The 7 Stages of Buyer Decision Making
+        <ChevronRight size={14} />
+      </Link>
     </header>
   )
 

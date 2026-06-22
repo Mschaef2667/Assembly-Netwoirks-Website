@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, Circle, Play, ExternalLink, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import DecisionJourneyVisual from '@/components/c3/DecisionJourneyVisual'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -426,7 +427,10 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          {/* Section 2 — Phase 1 Checklist */}
+          {/* How the C3 Method Works — framing before the Phase 1 checklist */}
+          <DecisionJourneyVisual />
+
+          {/* Phase 1 Checklist */}
           <div style={CARD}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <h2 style={{
