@@ -1050,9 +1050,10 @@ export default function StepPage() {
               Generate Plans
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', margin: '0 0 22px', lineHeight: '1.6' }}>
-              This is the final step. Click below to generate both your Strategic Plan (current state)
-              and your Future State Strategic Plan (6-18 month roadmap) as PDFs. When generation
-              succeeds, Step 38 will be marked complete and Gate 4 will unlock.
+              This is the final step. Click below to open both your Strategic Plan (current state)
+              and your Future State Strategic Plan (6-18 month roadmap) for on-screen review.
+              Step 38 will be marked complete and Gate 4 will unlock. You can then download
+              each plan individually as PDF or Word from its section.
             </p>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', margin: '0 0 22px', lineHeight: '1.5' }}>
               Note: the Future State Plan requires Gate 1 approval and generated Insights. If those

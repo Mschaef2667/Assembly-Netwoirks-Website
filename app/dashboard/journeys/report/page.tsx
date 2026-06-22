@@ -511,9 +511,11 @@ function ReportPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [futureStateLastGenerated, dcpStatus, insightsContent, outputs, dcpStageSummaries, dcpOverallConfidence, org])
 
-  // Step 38 auto-trigger: when the user clicks "Generate Plans" on Step 38, they
-  // land here with ?autoGenerate=both. Run both PDF generators sequentially, then
-  // mark Step 38 complete on success. The ref guard ensures exactly-once firing
+  // Step 38 entry path: when the user clicks "Generate Plans" on Step 38, they
+  // land here with ?autoGenerate=both. Populate the Future State preview so both
+  // plans render on screen, then mark Step 38 complete. No PDFs are downloaded —
+  // the user reviews on screen and downloads each plan individually via the
+  // per-section PDF/Word buttons. The ref guard ensures exactly-once firing
   // across re-renders and React strict-mode double-invokes.
   useEffect(() => {
     if (autoGenerateParam !== 'both') return
@@ -521,13 +523,13 @@ function ReportPageInner() {
     if (loading) return
     if (!orgId) return
 
-    // Both plans must be generatable; Future State needs Gate 1 + Insights.
+    // Both plans must be ready for review; Future State needs Gate 1 + Insights.
     if (dcpStatus !== 'approved' || !insightsContent) {
       autoGenerateFiredRef.current = true
       setAutoBannerState({
         kind: 'error',
         message:
-          'Cannot auto-generate both plans yet. Complete Intelligence (Gate 1) and generate Insights first, then return to Step 38.',
+          'Cannot prepare both plans yet. Complete Intelligence (Gate 1) and generate Insights first, then return to Step 38.',
       })
       router.replace('/dashboard/journeys/report')
       return
@@ -536,8 +538,17 @@ function ReportPageInner() {
     autoGenerateFiredRef.current = true
     ;(async () => {
       try {
-        await handlePdf()
-        await handleFutureStatePdf()
+        // Populate the Future State preview so a user with no prior data still
+        // sees both plans rendered for review on landing.
+        const builtData = buildFutureStateData()
+        if (builtData) {
+          setFutureStateData(builtData)
+          if (typeof window !== 'undefined') {
+            const ts = new Date().toISOString()
+            localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+            setFutureStateLastGenerated(ts)
+          }
+        }
 
         const targetStatus = STEP_38_REQUIRE_APPROVAL ? 'pending_approval' : 'approved'
         const now = new Date().toISOString()
@@ -574,14 +585,14 @@ function ReportPageInner() {
         setAutoBannerState({
           kind: 'success',
           message: STEP_38_REQUIRE_APPROVAL
-            ? 'Both plans generated. Step 38 submitted for review.'
-            : 'Both plans generated. Step 38 marked complete — Gate 4 unlocked.',
+            ? 'Both plans are ready for review below. Step 38 submitted for review. Download each plan as PDF or Word using the buttons on each section.'
+            : 'Both plans are ready for review below. Step 38 marked complete — Gate 4 unlocked. Download each plan as PDF or Word using the buttons on each section.',
         })
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Plan generation failed'
+        const msg = err instanceof Error ? err.message : 'Plan preparation failed'
         setAutoBannerState({
           kind: 'error',
-          message: `Plan generation failed — Step 38 not marked complete. ${msg}`,
+          message: `Step 38 was not marked complete. ${msg}`,
         })
       } finally {
         router.replace('/dashboard/journeys/report')
