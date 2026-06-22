@@ -695,7 +695,7 @@ export default function CompetitorStepEditor({
             fontSize: '14px', fontWeight: 600, cursor: 'pointer',
           }}
         >
-          <Search size={15} /> {discoveryOpen ? 'Hide Select Set Discovery' : 'Open Select Set Discovery'}
+          <Search size={15} /> {discoveryOpen ? 'Hide Competitor Discovery' : 'Open Competitor Discovery'}
         </button>
         <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.55)', maxWidth: '520px' }}>
           Identify the 3-4 competitors your buyers most often compare you against in final evaluations.
@@ -710,7 +710,7 @@ export default function CompetitorStepEditor({
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
             <div style={{ flex: 1, minWidth: '260px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
-                Select Set Discovery
+                Competitor Discovery
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.55)' }}>
                 Identify the 3-4 competitors your buyers most often compare you against in final evaluations.
