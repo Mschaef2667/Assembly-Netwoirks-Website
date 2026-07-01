@@ -36,7 +36,7 @@ const navItems = [
   { label: 'Support',         href: '/dashboard/support',            icon: LifeBuoy  },
 ]
 
-function formatRole(role: string): string {
+export function formatRole(role: string): string {
   return role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
@@ -171,12 +171,20 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
-        {/* User avatar */}
+        {/* User avatar — links to profile */}
         {userInitial && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '8px 12px', marginBottom: '4px',
-          }}>
+          <Link
+            href="/dashboard/profile"
+            aria-label="View your profile"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '8px 12px', marginBottom: '4px',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              backgroundColor: pathname === '/dashboard/profile' ? 'rgba(14,165,233,0.1)' : 'transparent',
+            }}
+            className="hover:bg-white/5"
+          >
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
               backgroundColor: '#0EA5E9',
@@ -200,7 +208,7 @@ export default function Sidebar() {
                 </p>
               )}
             </div>
-          </div>
+          </Link>
         )}
 
         <p className="px-3 text-xs" style={{ color: '#6B7280' }}>{orgName ?? 'C3 Method OS'}</p>
@@ -219,6 +227,18 @@ export default function Sidebar() {
             {userEmail}
           </p>
         )}
+        <Link
+          href="/dashboard/profile"
+          style={{
+            padding: '2px 12px 4px',
+            color: '#0EA5E9',
+            fontSize: '11px',
+            textDecoration: 'none',
+            display: 'block',
+          }}
+        >
+          Profile
+        </Link>
         <button
           type="button"
           onClick={() => setShowChangePassword(true)}
