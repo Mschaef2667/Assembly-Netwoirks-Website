@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { formatRole } from '@/components/layout/sidebar'
 
@@ -24,6 +24,7 @@ interface ProfileState {
   lastName: string
   org: OrgSummary | null
   isOrgAdmin: boolean
+  isSuperAdmin: boolean
 }
 
 const INPUT: CSSProperties = {
@@ -155,7 +156,7 @@ export default function ProfilePage() {
 
         const { data: row, error: rowError } = await supabase
           .from('users')
-          .select('id, first_name, last_name, email, role, org_id, created_at')
+          .select('id, first_name, last_name, email, role, org_id, created_at, is_super_admin')
           .eq('id', user.id)
           .single()
 
@@ -197,6 +198,7 @@ export default function ProfilePage() {
           lastName: last,
           org,
           isOrgAdmin: role === 'org_admin' || role === 'super_admin',
+          isSuperAdmin: Boolean(r['is_super_admin']),
         })
         setFirstName(first)
         setLastName(last)
@@ -373,6 +375,27 @@ export default function ProfilePage() {
                 >
                   {profile.role ? formatRole(profile.role) : '—'}
                 </span>
+                {profile.isSuperAdmin && (
+                  <span
+                    aria-label="Super Admin"
+                    title="Super Admin — platform-level privileges"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '999px',
+                      backgroundColor: 'rgba(232,82,10,0.12)',
+                      color: '#E8520A',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      border: '1px solid rgba(232,82,10,0.35)',
+                    }}
+                  >
+                    <ShieldCheck size={13} strokeWidth={2} />
+                    Super Admin
+                  </span>
+                )}
               </div>
               <p style={HINT}>Contact your admin to change your role.</p>
             </div>
