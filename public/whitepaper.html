@@ -60,6 +60,8 @@
   .nav-brand span { color: var(--orange); }
 
   .print-btn {
+    display: inline-block;
+    text-decoration: none;
     background: var(--navy);
     color: #fff;
     border: 0;
@@ -89,6 +91,8 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  .cover-logo-print { display: none; }
 
   .cover-logo {
     display: block;
@@ -316,7 +320,9 @@
   @media (max-width: 720px) {
     .paper { padding: 40px 24px; }
     .cover { padding: 40px 20px; }
-    .cover-logo { height: 70px; margin-bottom: 24px; }
+    .cover-logo-print { display: none; }
+
+  .cover-logo { height: 70px; margin-bottom: 24px; }
     h1.title { font-size: 30px; }
     .subtitle { font-size: 17px; }
     h2.section-title { font-size: 24px; }
@@ -324,26 +330,181 @@
     .cta { padding: 32px 28px; }
   }
 
-  /* PRINT */
+  /* PRINT — tuned for WeasyPrint (build.sh) and for Cmd+P */
   @media print {
-    .nav-bar { display: none; }
-    body { background: #fff; font-size: 11pt; }
+
+    @page {
+      size: letter;
+      margin: 0.7in 0.75in 0.8in;
+      @bottom-center {
+        content: counter(page);
+        font-size: 8pt;
+        color: #9CA3AF;
+      }
+      @bottom-right {
+        content: "The Buyer Truth Gap";
+        font-size: 7.5pt;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #C4C9D2;
+      }
+    }
+    /* Cover page: no margin box, no page number */
+    @page :first {
+      margin: 0.9in 0.9in 0.8in;
+      @bottom-center { content: none; }
+      @bottom-right  { content: none; }
+    }
+
+    .nav-bar { display: none !important; }
+
+    html, body {
+      background: #fff;
+      font-size: 10.5pt;
+      line-height: 1.5;
+    }
+
+    /* --- Cover: light, ink-friendly, its own page --- */
+    .cover {
+      background: #fff !important;
+      padding: 1.6in 0 0;
+      break-after: page;
+      page-break-after: always;
+      border-bottom: 0;
+    }
+    .cover-logo-print { display: none; }
+
+  .cover-logo { display: none; }
+    .cover-logo-print {
+      display: block;
+      margin: 0 auto 46px;
+      height: 78px;
+      width: auto;
+    }
+    h1.title {
+      color: var(--navy) !important;
+      font-size: 34pt;
+      margin-bottom: 14px;
+    }
+    .subtitle {
+      color: var(--orange) !important;
+      font-size: 14pt;
+      max-width: 5.6in;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .byline {
+      color: var(--grey) !important;
+      margin-top: 34px;
+      padding-top: 20px;
+      border-top: 2px solid var(--orange);
+      display: inline-block;
+    }
+
     .paper {
       max-width: 100%;
       box-shadow: none;
       padding: 0;
       margin: 0;
+      background: #fff;
     }
-    .section { page-break-inside: avoid; margin: 36px 0; }
-    .figure { page-break-inside: avoid; border: 1px solid #ccc; }
-    h1.title { font-size: 28pt; }
-    h2.section-title { font-size: 18pt; page-break-after: avoid; }
-    .pullquote { font-size: 14pt; page-break-inside: avoid; }
-    .cta { background: #fff !important; color: var(--navy) !important; border: 2px solid var(--orange); }
-    .cta h3, .cta p { color: var(--navy) !important; }
-    .cta-btn { background: var(--navy) !important; color: #fff !important; }
+
+    /* --- THE KEY FIX ---
+       Sections are long (up to ~2 pages). Forbidding breaks inside them
+       forced each one onto a fresh page and left the previous page half
+       empty. Let them flow; protect only the small units that must stay
+       whole. */
+    .section {
+      break-inside: auto;
+      page-break-inside: auto;
+      margin: 22px 0 0;
+    }
+    .section:first-of-type { margin-top: 0; }
+
+    p, li { orphans: 3; widows: 3; }
+    p { margin-bottom: 11px; }
+    .lead { font-size: 11.5pt; line-height: 1.5; }
+
+    /* Keep a kicker with its heading, and a heading with its text */
+    .section-number {
+      break-after: avoid;
+      page-break-after: avoid;
+      margin-bottom: 7px;
+      font-size: 8pt;
+    }
+    h2.section-title {
+      font-size: 16pt;
+      margin-bottom: 12px;
+      break-after: avoid;
+      page-break-after: avoid;
+      break-inside: avoid;
+    }
+
+    /* Units that must never be split */
+    .figure {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border: 1px solid #D9DDE3;
+      margin: 20px 0;
+      padding: 16px 18px;
+    }
+    .figure-caption {
+      break-before: avoid;
+      page-break-before: avoid;
+      margin-top: 12px;
+      font-size: 8pt;
+    }
+    .pullquote {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      font-size: 13pt;
+      margin: 22px 0;
+      padding-left: 20px;
+    }
+    .alt-card, .outputs-grid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .alternatives {
+      break-inside: auto;
+      page-break-inside: auto;
+    }
+    .alternatives { gap: 12px; margin: 18px 0; }
+    .alt-card { padding: 14px 16px; }
+    .outputs-grid { padding: 16px 18px; margin: 18px 0 10px; }
+    .grid-intro { break-after: avoid; page-break-after: avoid; }
+    ul.clean { margin: 12px 0; }
+    ul.clean li { padding: 3px 0 3px 20px; break-inside: avoid; }
+    ul.clean li::before { top: 11px; width: 6px; height: 6px; }
+
+    /* CTA: outlined instead of a solid orange ink block */
+    .cta {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      background: #fff !important;
+      color: var(--navy) !important;
+      border: 2px solid var(--orange);
+      padding: 24px 28px;
+      margin: 24px 0 14px;
+    }
+    .cta h3 { color: var(--navy) !important; font-size: 17pt; }
+    .cta p  { color: #374151 !important; font-size: 10.5pt; }
+    .cta-btn {
+      background: #fff !important;
+      color: var(--navy) !important;
+      border: 1.5px solid var(--navy);
+      padding: 10px 20px;
+    }
+    .cta-secondary { color: var(--grey) !important; }
+
+    footer {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-top: 26px;
+      padding-top: 18px;
+      font-size: 9pt;
+    }
     a { color: inherit; text-decoration: none; }
-    @page { margin: 0.6in; }
   }
 </style>
 </head>
@@ -352,13 +513,14 @@
 <nav class="nav-bar">
   <div class="nav-inner">
     <div class="nav-brand">Assembly<span>AI</span> &nbsp;·&nbsp; White Paper</div>
-    <button class="print-btn" onclick="window.print()">Download PDF</button>
+    <a class="print-btn" href="/the-buyer-truth-gap.pdf" download>Download PDF</a>
   </div>
 </nav>
 
 <!-- COVER -->
 <header class="cover">
-  <img class="cover-logo" src="/images/logo.png" alt="Assembly AI" />
+  <img class="cover-logo" src="images/assembly-ai-logo.svg" alt="Assembly AI" />
+  <img class="cover-logo-print" src="images/assembly-ai-logo-on-light.svg" alt="Assembly AI" />
   <h1 class="title">The Buyer Truth Gap</h1>
   <p class="subtitle">Why B2B GTM Teams Miss the Market — and How Assembly AI Fixes It</p>
   <p class="byline">A White Paper by Assembly Networks and Assembly AI</p>
@@ -821,7 +983,7 @@
       <p class="figure-caption">Figure 6 · Insight to Execution Chain</p>
     </div>
 
-    <p style="margin-top: 32px; font-weight: 600; color: var(--navy);">Example Strategic Plan outputs:</p>
+    <p class="grid-intro" style="margin-top: 32px; font-weight: 600; color: var(--navy);">Example Strategic Plan outputs:</p>
     <div class="outputs-grid">
       <div>Validated ICP definition</div>
       <div>Endemic problem statement</div>
