@@ -309,7 +309,7 @@ export default function IntelligencePage() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Go to ICP Development
+              Go to ICP Calibrator
             </Link>
             <button
               onClick={dismissIcpSuccessBanner}

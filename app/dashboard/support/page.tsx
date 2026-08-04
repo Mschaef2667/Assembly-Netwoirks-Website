@@ -307,7 +307,7 @@ const tipCategories: TipCategory[] = [
         body: 'The Decision Clarity Profile is the buyer-research backbone for the entire methodology. Steps 4–9 (Endemic Problems) are populated directly from DCP stage data.',
       },
       {
-        title: 'Approve Gate 1 to unlock ICP Development and Journeys',
+        title: 'Approve Gate 1 to unlock ICP Calibrator and Journeys',
         body: 'Without Gate 1 approval on the DCP Map, Target Markets & Offers and Phase 2 steps stay locked. Submit the DCP Map for approval once the stage summaries feel solid.',
       },
     ],

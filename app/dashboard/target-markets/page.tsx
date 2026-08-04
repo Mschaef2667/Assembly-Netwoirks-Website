@@ -423,7 +423,7 @@ export default function TargetMarketsPage() {
         const { data: org } = await supabase.from('organizations').select('preferred_model').eq('id', wsId).single()
         if (org) setPreferredModel(String((org as Record<string, unknown>)['preferred_model'] ?? 'claude-sonnet-4-5'))
 
-        // Gate 1 status — required to unlock ICP Development
+        // Gate 1 status — required to unlock ICP Calibrator
         const { data: dcpRow } = await supabase
           .from('dcp_analysis')
           .select('status')
@@ -984,7 +984,7 @@ export default function TargetMarketsPage() {
             <Lock size={26} color="#E8520A" />
           </div>
           <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: '0 0 12px' }}>
-            ICP Development Locked
+            ICP Calibrator Locked
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
             Complete the Decision Clarity Process and receive Gate 1 approval before building your Ideal Customer Profiles. Your ICP should be grounded in real buyer research, not assumptions.
