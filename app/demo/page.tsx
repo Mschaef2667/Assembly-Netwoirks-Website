@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD } from '@/lib/forms/options'
+import { trackLead } from '@/lib/analytics/ga'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -344,6 +345,14 @@ export default function DemoPage() {
         setError(message)
         return
       }
+
+      trackLead({
+        form_name: 'Request Demo',
+        industry,
+        annual_revenue: annualRevenue,
+        situation,
+        how_heard: howHeard || undefined,
+      })
 
       setSuccess(true)
     } catch (err) {

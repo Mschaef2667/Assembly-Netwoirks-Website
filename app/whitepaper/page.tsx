@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties, type FormEvent } from 'react'
 import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD } from '@/lib/forms/options'
+import { trackLead } from '@/lib/analytics/ga'
 import Link from 'next/link'
 import Image from 'next/image'
 import { WHITEPAPER } from '@/lib/whitepaper/content'
@@ -374,6 +375,14 @@ export default function WhitepaperPage() {
         setError(message)
         return
       }
+
+      trackLead({
+        form_name: 'Download Whitepaper',
+        industry: industry || undefined,
+        annual_revenue: annualRevenue || undefined,
+        situation,
+        how_heard: howHeard || undefined,
+      })
 
       window.open('/whitepaper.html', '_blank')
 
