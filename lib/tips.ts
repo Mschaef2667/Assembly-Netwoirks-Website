@@ -179,8 +179,20 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'A qualified opportunity should match your ICP on at least 3 of the top 5 criteria', body: 'Use a clear threshold so the team scores consistently.' },
   ],
   'survey-builder': [
-    { headline: 'Keep it under 15 questions', body: 'Surveys over 15 questions see significantly lower completion rates. Prioritize the questions that reveal buying behavior, not product feedback.' },
+    { headline: 'Aim for 15 to 20 questions per audience', body: 'Fewer than 15 and you will not cover all seven stages. More than 20 and completion rates drop sharply. Prioritize questions that reveal buying behavior, not product feedback.' },
     { headline: 'Mix question types for richer data', body: 'Open-ended questions reveal the why. Scale questions reveal intensity. Use both for a complete picture.' },
     { headline: 'Send to all four audiences', body: 'The gap between how your team thinks buyers decide and how buyers actually decide is where messaging goes wrong. All four audiences reveal that gap.' },
+  ],
+
+  // Shown in place of the survey tips when Interview Mode is selected. Interviews
+  // fail for different reasons than surveys: the risk is not completion rate, it is
+  // losing the link between an answer and the stage its question belongs to.
+  'survey-builder-interview': [
+    { headline: 'Read each question out loud, word for word', body: 'Reading the question verbatim before the answer puts it into the transcript, which is what lets every answer be matched back to the right buying stage. Probe and follow up freely after that.' },
+    { headline: 'Upload transcripts, not recordings', body: 'A text transcript is what the system reads. Use .docx, .txt, or the .vtt or .srt file your meeting tool exports. Leave speaker labels on. Timestamps are fine.' },
+    { headline: 'One file per interview, and note who it was', body: 'Keep each conversation in its own file and record which audience the person belongs to: your team, a current customer, a lost customer, or a prospect. That grouping drives the entire analysis and cannot be guessed from the transcript.' },
+    { headline: 'Do not clean up the transcript', body: 'The instinct is to tidy the grammar and tighten the rambling. Resist it. The analysis looks for how your buyer actually phrases things, so a polished paraphrase replaces their language with yours.' },
+    { headline: 'Ask for consent on the recording itself', body: 'Get verbal permission to record at the top of the call, while already recording. Some states require every participant to agree.' },
+    { headline: 'Plan for 45 to 60 minutes', body: 'The exported guide covers all seven stages with three probes per question. Rushing produces thin answers in the later stages, which are usually the most valuable ones.' },
   ],
 }

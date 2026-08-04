@@ -750,7 +750,7 @@ export default function SurveyCopilotPanel({
         )}
       </div>
 
-      <TipsPanel tips={STEP_TIPS['survey-builder']} />
+      <TipsPanel tips={STEP_TIPS[mode === 'interview' ? 'survey-builder-interview' : 'survey-builder']} />
 
       {/* Missing questions warning modal */}
       {showWarning && (
