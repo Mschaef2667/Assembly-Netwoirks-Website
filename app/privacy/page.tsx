@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export const metadata = {
-  title: 'Privacy Policy — Assembly AI',
+  title: 'Privacy Policy',
   description: 'Privacy Policy for Assembly AI by Assembly Networks, LLC.',
 }
 

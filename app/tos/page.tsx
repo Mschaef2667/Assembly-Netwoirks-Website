@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export const metadata = {
-  title: 'Terms of Service — Assembly AI',
+  title: 'Terms of Service',
   description: 'Terms of Service for Assembly AI by Assembly Networks, LLC.',
 }
 

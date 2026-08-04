@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export const metadata = {
-  title: 'Assembly AI — Go-to-Market Strategy Built on Buyer Truth',
+  title: { absolute: 'Assembly AI — Go-to-Market Strategy Built on Buyer Truth' },
   description:
     'An AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, in the right order, then turn what they say into your positioning, messaging, and action plan.',
 }

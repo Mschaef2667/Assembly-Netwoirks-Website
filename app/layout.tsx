@@ -15,8 +15,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Assembly AI",
-  description: "C3 Method Operating System",
+  // metadataBase is required for Next.js to emit absolute URLs for the
+  // opengraph image. Without it, LinkedIn and iMessage receive a relative path
+  // and render a blank card.
+  metadataBase: new URL("https://www.assemblyai.net"),
+  title: {
+    default: "Assembly AI — Go-to-Market Strategy Built on Buyer Truth",
+    template: "%s — Assembly AI",
+  },
+  description:
+    "Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, then turn what they say into your positioning, messaging, and action plan.",
+  applicationName: "Assembly AI",
+  openGraph: {
+    type: "website",
+    siteName: "Assembly AI",
+    url: "https://www.assemblyai.net",
+    title: "Assembly AI — Go-to-Market Strategy Built on Buyer Truth",
+    description:
+      "Your buyers already told you how to win. Assembly AI turns what they said into positioning, messaging, and a 30/60/90 day plan.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Assembly AI — Go-to-Market Strategy Built on Buyer Truth",
+    description:
+      "Your buyers already told you how to win. Assembly AI turns what they said into positioning, messaging, and a 30/60/90 day plan.",
+  },
+  // app/opengraph-image.png, app/icon.png, app/apple-icon.png, and
+  // app/favicon.ico are picked up automatically by the Next.js file
+  // conventions, so the image tags do not need to be declared here.
 };
 
 export default function RootLayout({
