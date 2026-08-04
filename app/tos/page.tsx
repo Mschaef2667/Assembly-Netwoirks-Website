@@ -130,7 +130,7 @@ export default function TermsOfServicePage() {
 
       <main style={CONTENT}>
         <h1 style={H1}>Assembly AI — Terms of Service (B2B)</h1>
-        <p style={META}>Effective Date: July 1, 2026</p>
+        <p style={META}>Effective Date: August 4, 2026</p>
 
         <p style={P}>
           These Terms of Service (&ldquo;Terms&rdquo;) govern access to and use of the Assembly AI website,
@@ -167,6 +167,10 @@ export default function TermsOfServicePage() {
           that is designated as confidential or that reasonably should be understood to be confidential
           given its nature and the circumstances of disclosure, including Customer Content and information
           about business operations, products, technology, and security practices.
+        </p>
+        <p style={P}>
+          &ldquo;Feedback&rdquo; means suggestions, enhancement requests, bug reports, ideas, or other commentary
+          about the Services submitted by Customer or its users, including through in-product feedback tools.
         </p>
         <p style={P}>
           &ldquo;Order Form&rdquo; means an order form, online checkout, statement of work, or other purchasing
@@ -226,14 +230,27 @@ export default function TermsOfServicePage() {
           implementing appropriate internal policies for handling sensitive information.
         </p>
         <p style={P}>
-          <strong>6.4 No Regulated Data.</strong> Customer agrees not to submit regulated data unless the
-          parties sign a separate written agreement covering such data (e.g., HIPAA/BAA). Without limiting
-          the foregoing, do not submit protected health information, children&rsquo;s data, or similarly
-          regulated content.
+          <strong>6.4 Restricted Data.</strong> Customer agrees not to submit data subject to heightened
+          legal obligations unless the parties sign a separate written agreement covering such data (e.g., a
+          HIPAA Business Associate Agreement). Restricted data includes protected health information (PHI),
+          children&rsquo;s personal information (including data subject to COPPA or similar laws), payment card
+          data subject to PCI DSS (except as handled directly by Stripe or another payment processor), and
+          government-issued identifiers such as Social Security or driver&rsquo;s license numbers, except where
+          strictly necessary and lawfully obtained. These categories are described further in Section 3 of
+          the Acceptable Use Policy (Appendix 1).
         </p>
         <p style={P}>
           <strong>6.5 Prohibited Content.</strong> Customer will not submit content that is unlawful, harmful,
           infringing, deceptive, or that violates third-party rights.
+        </p>
+        <p style={P}>
+          <strong>6.6 Feedback.</strong> Customer and its users may choose to submit Feedback, including
+          through in-product feedback tools. Feedback is provided voluntarily and is not Customer Content or
+          Confidential Information. Customer grants Company a perpetual, irrevocable, worldwide,
+          royalty-free, sublicensable, and transferable license to use, reproduce, modify, and incorporate
+          Feedback into the Services and Company&rsquo;s products and business without restriction, attribution,
+          or compensation. Company will not publicly attribute Feedback to Customer or to any individual
+          without Customer&rsquo;s prior consent.
         </p>
 
         <h2 style={H2}>7) Confidentiality; Non-Disclosure</h2>
@@ -313,9 +330,12 @@ export default function TermsOfServicePage() {
         </p>
         <p style={P}>
           <strong>8A.3 Subprocessors.</strong> Customer authorizes Company to use subprocessors (including
-          hosting, analytics, and payment providers) to process Customer Content solely for the purposes
-          described in these Terms. Company will require subprocessors to maintain confidentiality and
-          security obligations that are commercially reasonable and appropriate for the Services.
+          hosting, analytics, email delivery, security, and payment providers) to process Customer Content
+          solely for the purposes described in these Terms. A current list of subprocessors is maintained in
+          our <Link href="/privacy" style={{ color: '#0EA5E9' }}>Privacy Policy</Link>. Company will update
+          that list before or promptly after engaging a new subprocessor, and will require each subprocessor
+          to maintain confidentiality and security obligations that are commercially reasonable and
+          appropriate for the Services.
         </p>
         <p style={P}>
           <strong>8A.4 Security Incident Notice.</strong> If Company becomes aware of a confirmed
@@ -336,8 +356,10 @@ export default function TermsOfServicePage() {
 
         <h2 style={H2}>10) Fees; Taxes; No Refunds</h2>
         <p style={P}>
-          <strong>10.1 Fees.</strong> Some features require payment as described in an Order Form or on our
-          pricing page at www.assemblyai.net/pricing.
+          <strong>10.1 Fees.</strong> Some features require payment. Applicable fees, billing frequency, and
+          subscription term are as described in the applicable Order Form. Any pricing information we publish
+          on our website or in marketing materials is provided for general information only; if it conflicts
+          with an Order Form, the Order Form controls.
         </p>
         <p style={P}>
           <strong>10.2 No Refunds.</strong> All fees are non-refundable unless required by applicable law or
@@ -362,8 +384,38 @@ export default function TermsOfServicePage() {
 
         <h2 style={H2}>12) Service Changes; Beta Features</h2>
         <p style={P}>
-          We may modify or discontinue parts of the Services. If we offer beta, preview, or experimental
-          features, they are provided &ldquo;as is&rdquo; and may be changed or discontinued at any time.
+          <strong>12.1 Service Changes.</strong> We may modify or discontinue parts of the Services. If a
+          change materially reduces core functionality Customer is paying for, we will use commercially
+          reasonable efforts to provide advance notice.
+        </p>
+        <p style={P}>
+          <strong>12.2 Beta Features.</strong> From time to time we may offer features, modules, or programs
+          identified as beta, preview, early access, pilot, or experimental (&ldquo;Beta Features&rdquo;). Beta Features
+          are provided &ldquo;AS IS&rdquo; and &ldquo;AS AVAILABLE,&rdquo; without warranty of any kind, and are excluded from any
+          service level, uptime, or support commitment. We may change, suspend, or discontinue a Beta Feature
+          at any time, with or without notice.
+        </p>
+        <p style={P}>
+          <strong>12.3 Beta Fees.</strong> Beta Features are provided at no charge unless an Order Form states
+          otherwise. Providing a Beta Feature at no charge does not entitle Customer to continued free access
+          once the feature becomes generally available.
+        </p>
+        <p style={P}>
+          <strong>12.4 Beta Data.</strong> Data and outputs created solely within a Beta Feature may not be
+          preserved when that Beta Feature changes or is discontinued. Before deleting data created within a
+          Beta Feature, we will use commercially reasonable efforts to notify Customer and provide a
+          reasonable opportunity to export it. Customer is responsible for maintaining its own copies of
+          anything it cannot afford to lose.
+        </p>
+        <p style={P}>
+          <strong>12.5 Beta Confidentiality.</strong> Non-public Beta Features, and any performance or
+          evaluation information about them, are Company Confidential Information under Section 7 until we
+          make them generally available.
+        </p>
+        <p style={P}>
+          <strong>12.6 Separate Beta Agreements.</strong> If Customer accepts a separate beta, pilot, or
+          early-access agreement (including one presented and accepted within the Services), that agreement
+          governs Beta Features to the extent it conflicts with this Section 12.
         </p>
 
         <h2 style={H2}>13) Disclaimers</h2>
@@ -396,10 +448,10 @@ export default function TermsOfServicePage() {
           PROFITS, REVENUE, DATA, BUSINESS INTERRUPTION, OR GOODWILL, EVEN IF ADVISED OF THE POSSIBILITY.
         </p>
         <p style={P}>
-          <strong>14.2 Liability Cap.</strong> COMPANY&rsquo;S TOTAL LIABILITY ARISING OUT OF OR RELATED TO THE
-          SERVICES OR THESE TERMS WILL NOT EXCEED THE GREATER OF (A) $500 OR ONE MONTH OF FEES PAID BY
-          CUSTOMER TO COMPANY FOR THE SERVICES, WHICHEVER IS GREATER, OR (B) THE AMOUNTS PAID BY CUSTOMER TO
-          COMPANY FOR THE SERVICES IN THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM.
+          <strong>14.2 Liability Cap.</strong> COMPANY&rsquo;S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR
+          RELATED TO THE SERVICES OR THESE TERMS WILL NOT EXCEED THE GREATER OF: (A) FIVE HUNDRED DOLLARS
+          ($500); OR (B) THE TOTAL AMOUNTS PAID BY CUSTOMER TO COMPANY FOR THE SERVICES IN THE TWELVE (12)
+          MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
         </p>
         <p style={P}>
           <strong>14.3 Basis of Bargain.</strong> The limitations in this Section are a fundamental basis of
@@ -437,6 +489,10 @@ export default function TermsOfServicePage() {
         <p style={P}>
           <strong>16.4 Effect of Termination.</strong> Upon termination, your right to use the Services
           stops. Customer Content handling after termination is described in Section 8.
+        </p>
+        <p style={P}>
+          <strong>16.5 Survival.</strong> Sections 3, 5.2, 6.1, 6.6, 7, 8, 10, 13, 13A, 14, 15, 17, and 20
+          survive termination.
         </p>
 
         <h2 style={H2}>17) Dispute Resolution; Arbitration; Governing Law</h2>
@@ -493,9 +549,14 @@ export default function TermsOfServicePage() {
           <strong>20.3 Waiver.</strong> Failure to enforce a provision is not a waiver.
         </p>
         <p style={P}>
-          <strong>20.4 Entire Agreement; Order of Precedence.</strong> These Terms (and any Order Form) are
-          the entire agreement regarding the Services. If there is a conflict, an Order Form controls for
-          the subject matter it covers, then these Terms.
+          <strong>20.4 Entire Agreement; Order of Precedence.</strong> These Terms, including Appendix 1
+          (Acceptable Use Policy), together with our{' '}
+          <Link href="/privacy" style={{ color: '#0EA5E9' }}>Privacy Policy</Link> and any Order Form,
+          constitute the entire agreement regarding the Services and supersede all prior or contemporaneous
+          understandings on that subject. In the event of a conflict, the following order of precedence
+          applies: (1) an Order Form, for the subject matter it covers; (2) any separate beta or early-access
+          agreement, for Beta Features; (3) these Terms, including the Acceptable Use Policy; and (4) the
+          Privacy Policy.
         </p>
         <p style={P}>
           <strong>20.5 Contact.</strong> Assembly Networks, LLC — 2443 S. University Blvd, Suite 281,
