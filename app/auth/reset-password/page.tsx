@@ -73,11 +73,11 @@ export default function ResetPasswordPage() {
           </span>
         ) : (
           <Image
-            src="/images/logo.png"
+            src="/images/assembly-ai-logo.svg"
             alt="Assembly AI"
-            width={160}
+            width={217}
             height={40}
-            style={{ maxHeight: '40px', width: 'auto' }}
+            style={{ maxHeight: '40px', width: 'auto', height: 'auto' }}
             onError={() => setLogoError(true)}
           />
         )}

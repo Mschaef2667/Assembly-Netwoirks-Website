@@ -110,11 +110,11 @@ export default function TermsOfServicePage() {
         <div style={HEADER_INNER}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
             <Image
-              src="/images/logo.png"
+              src="/images/assembly-ai-logo.svg"
               alt="Assembly AI"
-              width={160}
+              width={217}
               height={40}
-              style={{ maxHeight: '40px', width: 'auto' }}
+              style={{ maxHeight: '40px', width: 'auto', height: 'auto' }}
             />
           </Link>
           <nav style={{ display: 'flex', gap: '20px', fontSize: '13px' }}>

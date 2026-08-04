@@ -75,11 +75,11 @@ export default function BetaAgreementModal({ userId, orgId, onAgreed }: BetaAgre
       >
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
           <Image
-            src="/images/logo.png"
+            src="/images/assembly-ai-logo.svg"
             alt="Assembly AI"
-            width={180}
+            width={239}
             height={44}
-            style={{ maxHeight: '44px', width: 'auto' }}
+            style={{ maxHeight: '44px', width: 'auto', height: 'auto' }}
             priority
           />
         </div>
