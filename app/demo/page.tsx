@@ -197,16 +197,13 @@ const INPUT: CSSProperties = {
 }
 
 const SELECT: CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.14)',
-  backgroundColor: 'rgba(255,255,255,0.04)',
-  color: '#FFFFFF',
-  fontSize: 15,
-  outline: 'none',
+  ...INPUT,
   appearance: 'none',
-  minHeight: 46,
+  backgroundImage:
+    'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\' viewBox=\'0 0 12 8\' fill=\'none\'><path d=\'M1 1l5 5 5-5\' stroke=\'%2364748B\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/></svg>")',
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 14px center',
+  paddingRight: 38,
 }
 
 const TEXTAREA: CSSProperties = {
