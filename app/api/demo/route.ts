@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { resend } from '@/lib/email/resend'
+import { verifyTurnstile } from '@/lib/security/turnstile'
 import { mirrorLeadToNotion } from '@/lib/notion/lead'
 import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD, allowed } from '@/lib/forms/options'
 
 interface DemoBody {
+  turnstileToken?: string
   firstName?: string
   lastName?: string
   email?: string
@@ -135,12 +137,23 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
   }
 
+  const ip = clientIp(req)
+
+  // Bot check before anything is written or emailed. Skipped automatically when
+  // TURNSTILE_SECRET_KEY is not configured, so this is safe to deploy first.
+  const captcha = await verifyTurnstile(body.turnstileToken, ip)
+  if (!captcha.ok) {
+    console.warn('[api/demo] turnstile rejected:', captcha.reason)
+    return NextResponse.json(
+      { error: 'We could not verify that you are human. Please reload the page and try again.' },
+      { status: 400 },
+    )
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
-
-  const ip = clientIp(req)
   const { error: insertError } = await supabase
     .from('demo_requests')
     .insert({

@@ -3,11 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { WHITEPAPER, type WhitepaperSection } from '@/lib/whitepaper/content'
 import { resend } from '@/lib/email/resend'
 import { mirrorLeadToNotion } from '@/lib/notion/lead'
+import { verifyTurnstile } from '@/lib/security/turnstile'
 import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD, allowed } from '@/lib/forms/options'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DownloadBody {
+  turnstileToken?: string
   firstName?: string
   lastName?: string
   email?: string
@@ -380,12 +382,23 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Invalid situation value.' }, { status: 400 })
   }
 
+  const ip = clientIp(req)
+
+  // Bot check before anything is written or emailed. Skipped automatically when
+  // TURNSTILE_SECRET_KEY is not configured, so this is safe to deploy first.
+  const captcha = await verifyTurnstile(body.turnstileToken, ip)
+  if (!captcha.ok) {
+    console.warn('[whitepaper/download] turnstile rejected:', captcha.reason)
+    return NextResponse.json(
+      { error: 'We could not verify that you are human. Please reload the page and try again.' },
+      { status: 400 },
+    )
+  }
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
-
-  const ip = clientIp(req)
   const { error: insertError } = await supabase
     .from('whitepaper_leads')
     .insert({

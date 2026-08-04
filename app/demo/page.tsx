@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD } from '@/lib/forms/options'
 import { trackLead } from '@/lib/analytics/ga'
+import Turnstile, { type TurnstileHandle } from '@/components/ui/Turnstile'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -296,6 +297,7 @@ export default function DemoPage() {
   const [annualRevenue, setAnnualRevenue] = useState('')
   const [situation, setSituation] = useState('')
   const [howHeard, setHowHeard] = useState('')
+  const turnstileRef = useRef<TurnstileHandle | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -316,10 +318,15 @@ export default function DemoPage() {
 
     setSubmitting(true)
     try {
+      // Resolve the Turnstile token before posting. Resolves to '' when the
+      // widget is unavailable; the server decides whether that is acceptable.
+      const turnstileToken = (await turnstileRef.current?.getToken()) ?? ''
+
       const res = await fetch('/api/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          turnstileToken,
           firstName: fullName.trim().split(/\s+/)[0] ?? '',
           lastName: fullName.trim().split(/\s+/).slice(1).join(' '),
           email: email.trim(),
@@ -359,6 +366,8 @@ export default function DemoPage() {
       console.error('[demo] submit failed', err)
       setError('Network error. Please try again.')
     } finally {
+      // Turnstile tokens are single use, so clear it whatever the outcome.
+      turnstileRef.current?.reset()
       setSubmitting(false)
     }
   }
@@ -575,6 +584,8 @@ export default function DemoPage() {
                   rows={5}
                 />
               </div>
+
+              <Turnstile ref={turnstileRef} />
 
               <button type="submit" style={SUBMIT_BTN} disabled={submitting}>
                 {submitting ? 'Submitting…' : 'Request a Demo'}
