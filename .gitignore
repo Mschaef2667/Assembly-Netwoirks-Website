@@ -3,3 +3,12 @@ node_modules
 .env.local
 *.png
 *.jpg
+
+# A blanket *.png above means every image is ignored by default, which silently
+# skips assets that must ship. These are required in the deployed build: Next.js
+# reads them by filename to emit the favicon, app icons, and social preview card.
+# Without these exceptions the social card 404s and link previews render blank.
+!app/icon.png
+!app/apple-icon.png
+!app/opengraph-image.png
+!public/images/icon-192.png
