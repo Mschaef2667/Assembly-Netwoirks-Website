@@ -34,9 +34,9 @@ export default function RootLayout({
 
         {/*
           Google Analytics 4. `afterInteractive` lets the page paint first, so
-          analytics never delays first render. Cross-domain measurement is
-          configured in the GA4 admin, not here: assemblynetworks.net runs a
-          separate property (G-ZG44BWSYVQ).
+          analytics never delays first render. This is the SAME measurement ID
+          the marketing site uses, which is what makes cross-domain measurement
+          possible. The domain pairing itself is configured in the GA4 admin.
         */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}

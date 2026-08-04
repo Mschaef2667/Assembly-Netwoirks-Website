@@ -20,24 +20,6 @@ interface DownloadBody {
   howHeard?: string
 }
 
-const PERSONAL_DOMAINS = new Set([
-  'gmail.com',
-  'googlemail.com',
-  'yahoo.com',
-  'ymail.com',
-  'rocketmail.com',
-  'hotmail.com',
-  'outlook.com',
-  'live.com',
-  'msn.com',
-  'aol.com',
-  'icloud.com',
-  'me.com',
-  'mac.com',
-  'proton.me',
-  'protonmail.com',
-])
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,18 +29,6 @@ function clean(value: unknown, max: number): string | null {
   const trimmed = value.trim()
   if (!trimmed) return null
   return trimmed.slice(0, max)
-}
-
-function extractDomain(email: string): string | null {
-  const at = email.lastIndexOf('@')
-  if (at < 0 || at === email.length - 1) return null
-  return email.slice(at + 1).toLowerCase()
-}
-
-function isWorkEmail(email: string): boolean {
-  const domain = extractDomain(email)
-  if (!domain) return false
-  return !PERSONAL_DOMAINS.has(domain)
 }
 
 function clientIp(req: NextRequest): string | null {
@@ -398,12 +368,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
   }
-  if (!isWorkEmail(email)) {
-    return NextResponse.json(
-      { error: 'Please use your work email address (not a personal email).' },
-      { status: 400 },
-    )
-  }
+  // No personal-domain gate here on purpose. The audience is SMB, where owners
+  // and heads of sales routinely run on Gmail or Outlook. Blocking them at the
+  // top of the funnel costs more real leads than the junk it prevents, and the
+  // demo form never had this gate, so keeping it here made the lower-commitment
+  // form the stricter one.
   // Validate against the single shared list in lib/forms/options, which is also
   // what the form renders and what the Notion select accepts. Do not reintroduce
   // a local copy here: a second list is how this silently broke before.

@@ -1,17 +1,23 @@
 /**
- * Google Analytics 4 helpers for assemblyai.net (measurement ID G-WWS69LPR4J).
+ * Google Analytics 4 helpers for assemblyai.net.
  *
  * PRIVACY RULE, do not break it: never pass personal data to GA4. No name, no
  * email, no phone, no job title, no free-text message. Google's terms forbid
  * sending personally identifiable information, and it is not needed here.
  * Categorical fields only.
  *
- * The marketing site (assemblynetworks.net, G-ZG44BWSYVQ) fires the same
- * `generate_lead` event with the same parameter names, so the two properties
- * stay comparable.
+ * BOTH SITES SHARE ONE MEASUREMENT ID ON PURPOSE. Cross-domain measurement
+ * requires the same G- ID from the same web data stream, so assemblyai.net
+ * reports into the marketing site's property. This keeps a visitor who moves
+ * from assemblynetworks.net to assemblyai.net as one user on one session, and
+ * preserves the original traffic source instead of recording a self-referral.
+ * Split reports by the Hostname dimension when you want per-site numbers.
+ *
+ * The separate property G-WWS69LPR4J is intentionally unused. Do not switch
+ * back to it without also accepting broken cross-domain attribution.
  */
 
-export const GA_MEASUREMENT_ID = 'G-WWS69LPR4J'
+export const GA_MEASUREMENT_ID = 'G-ZG44BWSYVQ'
 
 declare global {
   interface Window {
