@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { WHITEPAPER, type WhitepaperSection } from '@/lib/whitepaper/content'
 import { resend } from '@/lib/email/resend'
+import { mirrorLeadToNotion } from '@/lib/notion/lead'
+import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD, allowed } from '@/lib/forms/options'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,6 +14,10 @@ interface DownloadBody {
   company?: string
   jobTitle?: string
   situation?: string
+  phone?: string
+  industry?: string
+  annualRevenue?: string
+  howHeard?: string
 }
 
 const ALLOWED_SITUATIONS = new Set([
@@ -434,6 +440,22 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const lead: LeadRecord = { firstName, lastName, email, company, jobTitle, situation }
   void sendNotificationEmail(lead)
+
+  // Mirror into the Notion CRM. Fire and forget: Supabase is the system of
+  // record, so a Notion failure must never affect the download.
+  void mirrorLeadToNotion({
+    form: 'Download Whitepaper',
+    firstName,
+    lastName,
+    email,
+    company,
+    jobTitle,
+    situation: allowed(situation, SITUATIONS),
+    phone: clean(body.phone, 60),
+    industry: allowed(clean(body.industry, 100), INDUSTRIES),
+    annualRevenue: allowed(clean(body.annualRevenue, 60), ANNUAL_REVENUES),
+    howHeard: allowed(clean(body.howHeard, 100), HOW_HEARD),
+  })
 
   let pdf: Uint8Array
   try {

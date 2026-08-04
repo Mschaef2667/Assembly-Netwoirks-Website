@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { resend } from '@/lib/email/resend'
+import { mirrorLeadToNotion } from '@/lib/notion/lead'
+import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD, allowed } from '@/lib/forms/options'
 
 interface DemoBody {
   firstName?: string
@@ -9,6 +11,11 @@ interface DemoBody {
   company?: string
   jobTitle?: string
   goals?: string
+  phone?: string
+  industry?: string
+  annualRevenue?: string
+  situation?: string
+  howHeard?: string
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,6 +42,11 @@ interface LeadRecord {
   company: string | null
   jobTitle: string | null
   goals: string | null
+  phone: string | null
+  industry: string | null
+  annualRevenue: string | null
+  situation: string | null
+  howHeard: string | null
 }
 
 function escapeHtml(value: string): string {
@@ -63,6 +75,11 @@ async function sendNotificationEmail(lead: LeadRecord): Promise<void> {
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Email</td><td>${escapeHtml(lead.email)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Company</td><td>${escapeHtml(company)}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Job Title</td><td>${escapeHtml(lead.jobTitle ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Phone</td><td>${escapeHtml(lead.phone ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Industry</td><td>${escapeHtml(lead.industry ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Annual Revenue</td><td>${escapeHtml(lead.annualRevenue ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Situation</td><td>${escapeHtml(lead.situation ?? '—')}</td></tr>
+      <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">How Heard</td><td>${escapeHtml(lead.howHeard ?? '—')}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280; vertical-align:top;">Message</td><td style="white-space:pre-wrap;">${escapeHtml(lead.goals ?? '—')}</td></tr>
       <tr><td style="padding:6px 14px 6px 0; color:#6B7280;">Date</td><td>${escapeHtml(date)}</td></tr>
     </table>
@@ -97,8 +114,19 @@ export async function POST(req: NextRequest): Promise<Response> {
   const company   = clean(body.company, 200)
   const jobTitle  = clean(body.jobTitle, 200)
   const goals     = clean(body.goals, 2000)
+  const phone     = clean(body.phone, 60)
 
-  if (!firstName || !lastName || !emailRaw || !company || !jobTitle) {
+  // Qualification fields. The demo_requests table predates these columns, so
+  // they are mirrored to Notion rather than inserted into Supabase. Anything
+  // not on the shared allow-list is dropped instead of being stored.
+  const industry      = allowed(clean(body.industry, 100), INDUSTRIES)
+  const annualRevenue = allowed(clean(body.annualRevenue, 60), ANNUAL_REVENUES)
+  const situation     = allowed(clean(body.situation, 200), SITUATIONS)
+  const howHeard      = allowed(clean(body.howHeard, 100), HOW_HEARD)
+
+  // lastName is optional: the form now collects a single "Full name" and splits
+  // it, so a mononym or a one-word entry must still be accepted.
+  if (!firstName || !emailRaw || !company || !jobTitle) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 })
   }
 
@@ -130,8 +158,28 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Failed to save your request. Please try again.' }, { status: 500 })
   }
 
-  const lead: LeadRecord = { firstName, lastName, email, company, jobTitle, goals }
+  const lead: LeadRecord = {
+    firstName, lastName, email, company, jobTitle, goals,
+    phone, industry, annualRevenue, situation, howHeard,
+  }
   void sendNotificationEmail(lead)
+
+  // Mirror into the Notion CRM. Fire and forget: Supabase is the system of
+  // record, so a Notion failure must never affect the response.
+  void mirrorLeadToNotion({
+    form: 'Request Demo',
+    firstName,
+    lastName,
+    email,
+    company,
+    jobTitle,
+    goal: goals,
+    phone,
+    industry,
+    annualRevenue,
+    situation,
+    howHeard,
+  })
 
   return NextResponse.json({ ok: true })
 }

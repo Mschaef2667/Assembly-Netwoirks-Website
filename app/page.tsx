@@ -3,9 +3,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export const metadata = {
-  title: 'Assembly AI — Stop Guessing. Start Winning.',
+  title: 'Assembly AI — Go-to-Market Strategy Built on Buyer Truth',
   description:
-    'Assembly AI transforms real buyer research into a complete go-to-market strategy. The only platform that makes you earn your strategy before you execute it.',
+    'An AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, in the right order, then turn what they say into your positioning, messaging, and action plan.',
 }
 
 const NAVY = '#0A1628'
@@ -178,6 +178,53 @@ const HERO_CTAS: CSSProperties = {
   flexWrap: 'wrap',
 }
 
+const HERO_NOTE: CSSProperties = {
+  fontSize: 13,
+  color: TEXT_DIMMER,
+  marginTop: 18,
+  maxWidth: 560,
+  marginLeft: 'auto',
+  marginRight: 'auto',
+  lineHeight: 1.6,
+}
+
+const SECTION_FOOTNOTE: CSSProperties = {
+  fontSize: 15,
+  lineHeight: 1.6,
+  color: TEXT_MUTED,
+  maxWidth: 680,
+  margin: '32px auto 0',
+  textAlign: 'center',
+}
+
+const C3_STAGE_ROW: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  gap: 10,
+  marginTop: 40,
+}
+
+const C3_STAGE: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '10px 16px',
+  borderRadius: 999,
+  border: `1px solid ${BORDER}`,
+  backgroundColor: SURFACE,
+  fontSize: 14,
+  color: WHITE,
+  whiteSpace: 'nowrap',
+}
+
+const C3_STAGE_NUM: CSSProperties = {
+  color: ORANGE,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: 1,
+}
+
 const SECTION: CSSProperties = {
   padding: '96px 32px',
   borderTop: `1px solid ${BORDER}`,
@@ -238,10 +285,10 @@ const PROBLEM_NUM: CSSProperties = {
 }
 
 const PROBLEM_TEXT: CSSProperties = {
-  fontSize: 18,
-  lineHeight: 1.5,
-  fontWeight: 600,
-  color: WHITE,
+  fontSize: 15,
+  lineHeight: 1.65,
+  fontWeight: 400,
+  color: TEXT_MUTED,
   margin: 0,
 }
 
@@ -390,53 +437,158 @@ const LOGO_TEXT: CSSProperties = {
 }
 
 const PROBLEMS = [
-  'You build ICPs from guesswork, not buyer research',
-  'Your messaging misses what buyers actually care about',
-  'Your strategy changes every quarter because it was never grounded in reality',
+  {
+    persona: 'Head of Sales',
+    title: 'Every deal needs a different story, and you are making them up.',
+    body:
+      'Marketing sends leads that do not convert. You build your own pitch on the fly, deal by deal. Nobody can tell you why you won the last one or lost the one before it.',
+  },
+  {
+    persona: 'Head of Marketing',
+    title: 'You are guessing at what buyers care about.',
+    body:
+      'Campaigns get built from what the team thinks resonates. Some months work, some do not, and there is no reliable way to know which lever moved anything.',
+  },
+  {
+    persona: 'Owner',
+    title: 'Growth depends on you being in the room.',
+    body:
+      'Nothing is written down, so the story changes depending on who tells it. You cannot hand this to anyone because it lives in your head.',
+  },
 ]
+
+const REASSURANCE = [
+  {
+    title: 'Nothing to learn',
+    body: 'Every question is asked in plain language. If you know your business, you can answer it.',
+  },
+  {
+    title: 'Nothing to schedule',
+    body: 'Work through it at your pace. Stop, come back, pick up where you left off.',
+  },
+  {
+    title: 'Nothing to build',
+    body: 'The plan writes itself as you answer, then exports finished.',
+  },
+]
+
+type Stage = 'live' | 'building' | 'service'
+
+const FLYWHEEL = [
+  { n: 1, label: 'Strategy',       x: 380, y: 110, lx: 380, ly: 54,  anchor: 'middle' as const, stage: 'live'     as Stage, note: 'Available now' },
+  { n: 2, label: 'ICP Calibrator', x: 545, y: 205, lx: 590, ly: 185, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
+  { n: 3, label: 'Lead Generator', x: 545, y: 395, lx: 590, ly: 427, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
+  { n: 4, label: 'Asset Studio',   x: 380, y: 490, lx: 380, ly: 560, anchor: 'middle' as const, stage: 'service'  as Stage, note: '' },
+  { n: 5, label: 'Integrations',   x: 215, y: 395, lx: 170, ly: 427, anchor: 'end'    as const, stage: 'service'  as Stage, note: '' },
+  { n: 6, label: 'Performance',    x: 215, y: 205, lx: 170, ly: 185, anchor: 'end'    as const, stage: 'service'  as Stage, note: '' },
+]
+
+const FLYWHEEL_ARROWS = [
+  { x: 475, y: 135, rot: 30 },
+  { x: 570, y: 300, rot: 90 },
+  { x: 475, y: 465, rot: 150 },
+  { x: 285, y: 465, rot: 210 },
+  { x: 190, y: 300, rot: 270 },
+  { x: 285, y: 135, rot: 330 },
+]
+
+const C3_STAGES = [
+  'Need',
+  'Motivation',
+  'Search',
+  'Evaluation',
+  'Select Set',
+  'Decision',
+  'Confirmation',
+]
+
+const MODULES = [
+  {
+    title: '1. Strategy',
+    body:
+      'The C3 Method journey you can run today. Buyer research in, a complete go-to-market plan out.',
+    tag: 'Available now',
+    stage: 'live' as Stage,
+  },
+  {
+    title: '2. ICP Calibrator',
+    body:
+      'Sharpen exactly who you should be selling to, using what your buyers told you rather than a guess.',
+    tag: 'In development',
+    stage: 'building' as Stage,
+  },
+  {
+    title: '3. Lead Generator',
+    body: 'Find and qualify real companies that match the calibrated profile.',
+    tag: 'In development',
+    stage: 'building' as Stage,
+  },
+  {
+    title: '4. Asset Studio',
+    body:
+      'Turn your strategic messages into the content you actually send. Our team can build these for you today while the module is in progress.',
+    tag: 'Available as a service',
+    stage: 'service' as Stage,
+  },
+  {
+    title: '5. Integrations',
+    body:
+      'Push all of it into your CRM and marketing automation so the work happens where your team already works. Can be set up manually in the meantime.',
+    tag: 'Available as a service',
+    stage: 'service' as Stage,
+  },
+  {
+    title: '6. Performance',
+    body:
+      'Measure what happened and feed it back into the strategy. Designed to show a problem four to six weeks before it reaches revenue, while there is still time to fix it.',
+    tag: 'Available as a service',
+    stage: 'service' as Stage,
+  },
+]
+
 
 const STEPS = [
   {
-    title: 'Intelligence',
+    title: 'Ask your buyers',
     body:
-      'Survey your buyers across 4 audiences. Our Decision Clarity Process maps exactly how they make decisions.',
+      'Surveys go out to four groups: your team, current customers, customers you lost, and prospects. You do not write them. Assembly AI does, based on your business. This is the part almost nobody does, and it is why most strategy is guesswork.',
   },
   {
-    title: 'Strategy',
+    title: 'Answer the questions',
     body:
-      'Complete 38 structured steps. Copilot uses your buyer research to generate positioning, messaging, and competitive strategy.',
+      'Guided steps, each one drafted for you by AI Copilot using what your buyers actually said. You review, adjust, and move on. Thirty-eight in total, so nothing important gets skipped.',
   },
   {
-    title: 'Plan',
+    title: 'Get the plan',
     body:
-      'Generate your complete Strategic Plan. A full GTM playbook grounded in real buyer intelligence.',
+      'A complete go-to-market playbook in PDF and Word. ICP, positioning, messaging, competitive strategy, and a 30/60/90 day action plan. Board-ready, and more importantly, team-ready.',
   },
 ]
 
 const FEATURES = [
   {
     title: 'Decision Clarity Process',
-    body: 'Map your buyer’s 7-stage decision journey.',
+    body: 'The record of how your buyers actually decide, across all seven stages.',
   },
   {
     title: 'AI Copilot',
-    body: 'Every step guided by Claude-powered intelligence.',
+    body: 'Drafts every step for you using your buyer research, not generic advice.',
   },
   {
     title: 'Competitive Intelligence',
-    body: 'Discover and position against your Select Set.',
+    body: 'Find out who you are really being compared against, and position against them.',
   },
   {
     title: 'Strategic Messages',
-    body: 'Set-Up, Jab, Knock-Out, Clean-Up messaging system.',
+    body: 'What to say at each stage of the decision, and in what order.',
   },
   {
     title: 'Action Plan',
-    body: '38-step journey from research to executable strategy.',
+    body: 'A 30/60/90 day plan your team can pick up and run.',
   },
   {
-    title: 'Strategic Plan PDF',
-    body: 'Download your complete GTM playbook.',
+    title: 'Your Plan, Exported',
+    body: 'The whole playbook in PDF and Word, ready to share.',
   },
 ]
 
@@ -444,14 +596,100 @@ function Logo({ size = 28 }: { size?: number }) {
   return (
     <Link href="/" style={LOGO_WRAP}>
       <Image
-        src="/images/logo.png"
+        src="/images/assembly-ai-logo.svg"
         alt="Assembly AI"
         width={size}
-        height={size}
-        style={{ borderRadius: 6, objectFit: 'contain' }}
+        height={Math.round(size / 5.4252)}
+        style={{ objectFit: 'contain', height: 'auto' }}
         priority
       />
     </Link>
+  )
+}
+
+function Flywheel() {
+  return (
+    <svg
+      viewBox="0 0 760 600"
+      role="img"
+      aria-label="The Assembly AI loop: Strategy, ICP Calibrator, Lead Generator, Asset Studio, Integrations, Performance, and back to Strategy"
+      style={{ width: '100%', maxWidth: 720, height: 'auto', display: 'block', margin: '0 auto' }}
+    >
+      {/* the loop itself */}
+      <circle cx="380" cy="300" r="190" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2" strokeDasharray="6 8" />
+
+      {/* direction of travel */}
+      {FLYWHEEL_ARROWS.map((a, i) => (
+        <path
+          key={i}
+          d="M -7 -6 L 7 0 L -7 6 Z"
+          fill="rgba(255,255,255,0.28)"
+          transform={`translate(${a.x} ${a.y}) rotate(${a.rot})`}
+        />
+      ))}
+
+      {/* centre */}
+      <text x="380" y="292" textAnchor="middle" fill={ORANGE} fontSize="13" fontWeight="700" letterSpacing="2.4">
+        ASSEMBLY AI
+      </text>
+      <text x="380" y="316" textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="13">
+        every loop sharpens the next
+      </text>
+
+      {/* stages */}
+      {FLYWHEEL.map((s) => (
+        <g key={s.n}>
+          <circle
+            cx={s.x}
+            cy={s.y}
+            r="30"
+            fill={s.stage === 'live' ? ORANGE : 'rgba(10,22,40,1)'}
+            stroke={
+              s.stage === 'live'
+                ? ORANGE
+                : s.stage === 'building'
+                  ? 'rgba(232,82,10,0.7)'
+                  : 'rgba(255,255,255,0.28)'
+            }
+            strokeWidth="2"
+            strokeDasharray={s.stage === 'building' ? '5 4' : undefined}
+          />
+          <text
+            x={s.x}
+            y={s.y + 6}
+            textAnchor="middle"
+            fill={s.stage === 'live' ? WHITE : 'rgba(255,255,255,0.75)'}
+            fontSize="16"
+            fontWeight="700"
+          >
+            {s.n}
+          </text>
+          <text
+            x={s.lx}
+            y={s.ly}
+            textAnchor={s.anchor}
+            fill={s.stage === 'service' ? 'rgba(255,255,255,0.7)' : WHITE}
+            fontSize="15"
+            fontWeight={s.stage === 'live' ? 700 : 500}
+          >
+            {s.label}
+          </text>
+          {s.note && (
+            <text
+              x={s.lx}
+              y={s.ly + 18}
+              textAnchor={s.anchor}
+              fill={s.stage === 'live' ? ORANGE : 'rgba(232,82,10,0.8)'}
+              fontSize="11"
+              fontWeight="700"
+              letterSpacing="1.4"
+            >
+              {s.note.toUpperCase()}
+            </text>
+          )}
+        </g>
+      ))}
+    </svg>
   )
 }
 
@@ -553,11 +791,19 @@ export default function LandingPage() {
             <a href="#how-it-works" style={NAV_LINK}>
               How It Works
             </a>
-            <a href="#features" style={NAV_LINK}>
-              Features
+            <a href="#c3-method" style={NAV_LINK}>
+              The C3 Method
             </a>
-            <a href="#pricing" style={NAV_LINK}>
-              Pricing
+            <a href="#coming-next" style={NAV_LINK}>
+              Coming Next
+            </a>
+            <a
+              href="https://assemblynetworks.net/contact.html"
+              target="_blank"
+              rel="noopener"
+              style={NAV_LINK}
+            >
+              Contact
             </a>
           </div>
           <div style={NAV_ACTIONS}>
@@ -573,40 +819,69 @@ export default function LandingPage() {
 
       <section style={HERO}>
         <div style={HERO_INNER}>
-          <span style={EYEBROW}>The C3 Method Operating System</span>
-          <h1 style={H1}>Stop Guessing. Start Winning.</h1>
+          <span style={EYEBROW}>Now in Beta · Limited Seats</span>
+          <h1 style={H1}>Your buyers already know why you win. Now it is time to ask them.</h1>
           <p style={HERO_SUB}>
-            Assembly AI transforms real buyer research into a complete go-to-market strategy —
-            automatically. The only platform that makes you earn your strategy before you execute it.
+            Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask
+            your buyers the right questions, in the right order, then turn what they say into your
+            positioning, messaging, and action plan. You do not need a GTM expert on staff. You need
+            the questions answered.
           </p>
           <div style={HERO_CTAS}>
             <Link href="/demo" style={BTN_HERO_PRIMARY}>
               Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
-              Download White Paper
+              Download the White Paper
             </Link>
-            <a href="#how-it-works" style={BTN_OUTLINE}>
-              See How It Works
-            </a>
           </div>
+          <p style={HERO_NOTE}>30-minute walkthrough. No credit card required.</p>
         </div>
       </section>
 
       <section style={SECTION} id="problem">
         <div style={SECTION_INNER}>
           <div style={SECTION_HEADER}>
-            <h2 style={H2}>Most GTM strategies are built on assumptions</h2>
+            <h2 style={H2}>Three ways this shows up. Same root cause.</h2>
+          </div>
+          <div style={GRID_3}>
+            {PROBLEMS.map((p) => (
+              <div key={p.persona} style={CARD}>
+                <div style={PROBLEM_NUM}>{p.persona}</div>
+                <h3 style={STEP_TITLE}>{p.title}</h3>
+                <p style={PROBLEM_TEXT}>{p.body}</p>
+              </div>
+            ))}
+          </div>
+          <p style={SECTION_FOOTNOTE}>
+            Underneath all three is the same thing. Your go-to-market is built on what your team
+            assumes rather than what your buyers said.
+          </p>
+        </div>
+      </section>
+
+      <section style={SECTION} id="guided">
+        <div style={SECTION_INNER}>
+          <div style={SECTION_HEADER}>
+            <h2 style={H2}>You do not have to be a strategist. You have to answer the questions.</h2>
             <p style={SECTION_SUB}>
-              The result: positioning that doesn’t land, messaging that misses, and roadmaps that get
-              rewritten every quarter.
+              Strategy work usually fails at small companies for a simple reason. It arrives as a
+              blank page. Nobody knows where to start, so it stays a project for someday.
+            </p>
+            <p style={SECTION_SUB}>
+              Assembly AI removes the blank page. It asks one clear question at a time, in plain
+              language, in an order refined over twenty years. You answer using what you already know
+              about your business. The strategy assembles itself as you go.
+            </p>
+            <p style={SECTION_SUB}>
+              No frameworks to learn. No consultant to translate. No deck to build from scratch.
             </p>
           </div>
           <div style={GRID_3}>
-            {PROBLEMS.map((text, i) => (
-              <div key={i} style={CARD}>
-                <div style={PROBLEM_NUM}>Problem {i + 1}</div>
-                <p style={PROBLEM_TEXT}>{text}</p>
+            {REASSURANCE.map((r) => (
+              <div key={r.title} style={CARD}>
+                <h3 style={FEATURE_TITLE}>{r.title}</h3>
+                <p style={FEATURE_BODY}>{r.body}</p>
               </div>
             ))}
           </div>
@@ -616,9 +891,9 @@ export default function LandingPage() {
       <section style={SECTION} id="how-it-works">
         <div style={SECTION_INNER}>
           <div style={SECTION_HEADER}>
-            <h2 style={H2}>Earn your strategy. Ground every decision in buyer truth.</h2>
+            <h2 style={H2}>Three phases. One complete strategy.</h2>
             <p style={SECTION_SUB}>
-              Three phases that move you from buyer research to executable GTM strategy.
+              From asking your buyers to a finished plan your team can run.
             </p>
           </div>
           <div style={GRID_3}>
@@ -632,15 +907,26 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <div style={{ ...CARD, marginTop: 24 }}>
+            <h3 style={FEATURE_TITLE}>About asking the ones you lost</h3>
+            <p style={FEATURE_BODY}>
+              Most people assume that conversation will be awkward. It rarely is. Buyers who chose
+              someone else are often the most willing to talk and the most honest, and many
+              appreciate being asked, because it leaves the door open for next time. It is usually
+              the most valuable feedback you will get all year. If reaching out still feels
+              uncomfortable, we can run those conversations for you.
+            </p>
+          </div>
         </div>
       </section>
 
       <section style={SECTION} id="features">
         <div style={SECTION_INNER}>
           <div style={SECTION_HEADER}>
-            <h2 style={H2}>Everything you need to build a buyer-led GTM strategy</h2>
+            <h2 style={H2}>Not another marketing tool.</h2>
             <p style={SECTION_SUB}>
-              A complete operating system for the C3 Method — from research to Strategic Plan.
+              Every output traces back to what your buyers actually said, not to best practices
+              pulled from someone else&rsquo;s business.
             </p>
           </div>
           <div style={GRID_3_FEATURES}>
@@ -655,36 +941,125 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section style={SECTION} id="pricing">
+      <section style={SECTION} id="c3-method">
         <div style={SECTION_INNER}>
           <div style={SECTION_HEADER}>
-            <h2 style={H2}>Built on 20+ years of B2B GTM expertise</h2>
+            <h2 style={H2}>
+              What the <span style={{ color: ORANGE }}>C3 Method</span> actually is
+            </h2>
+            <p style={SECTION_SUB}>
+              Customer-Centric Communication. A structured way of mapping how B2B buyers really
+              decide, refined over twenty years of go-to-market work. It says a buying decision
+              moves through seven stages, and that each stage needs different proof from you.
+            </p>
+            <p style={SECTION_SUB}>
+              Most companies pitch the same way at every stage. The C3 Method is how you stop doing
+              that, and it is the framework every step of Assembly AI is built on.
+            </p>
           </div>
+
+          <div style={C3_STAGE_ROW}>
+            {C3_STAGES.map((stage, i) => (
+              <div key={stage} style={C3_STAGE}>
+                <span style={C3_STAGE_NUM}>{String(i + 1).padStart(2, '0')}</span>
+                <span>{stage}</span>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ ...SECTION_FOOTNOTE, marginBottom: 48 }}>
+            <a
+              href="https://assemblynetworks.net/c3-method.html"
+              target="_blank"
+              rel="noopener"
+              style={{ color: BLUE, textDecoration: 'none', fontWeight: 600 }}
+            >
+              See the full C3 Method, including the walkthrough video →
+            </a>
+          </p>
+
           <div style={QUOTE_CARD}>
             <div style={QUOTE_MARK}>“</div>
             <p style={QUOTE_TEXT}>
-              Assembly AI operationalizes the C3 Method — a proven go-to-market framework developed
-              over two decades of B2B sales and marketing consulting.
+              Traditional GTM consulting runs $75K to $225K over three to six months. For most
+              companies that is not expensive, it is impossible. Assembly AI puts the same method
+              in your hands in two to four weeks.
             </p>
             <div style={QUOTE_CITE}>— Michael Schaefer, Founder</div>
           </div>
         </div>
       </section>
 
+      <section style={SECTION} id="coming-next">
+        <div style={SECTION_INNER}>
+          <div style={SECTION_HEADER}>
+            <h2 style={H2}>One loop. Each turn sharper than the last.</h2>
+            <p style={SECTION_SUB}>
+              Strategy tells you who to sell to and what to say. Execution tells you whether you
+              were right. Assembly AI is being built as a closed loop, so what you learn in market
+              feeds straight back into the strategy instead of getting lost.
+            </p>
+            <p style={SECTION_SUB}>
+              Step one is in the platform today and steps two and three are in development. The rest
+              is not software yet, but the loop still closes. Our team or your agency can run those
+              stages by hand while the modules are built. Nothing waits on a release date.
+            </p>
+            <p style={{ ...SECTION_SUB, marginTop: 16, color: WHITE }}>
+              You do not buy the whole loop at once. Everyone starts with Strategy, then adds the
+              next module when they are ready. Each one runs on what the one before it produced,
+              which is why a lead list from here is built on evidence instead of a filter.
+            </p>
+          </div>
+
+          <div style={{ margin: '48px 0 8px' }}>
+            <Flywheel />
+          </div>
+
+          <div style={GRID_3_FEATURES}>
+            {MODULES.map((m) => (
+              <div
+                key={m.title}
+                style={{
+                  ...CARD,
+                  borderColor: m.stage === 'live' ? 'rgba(232,82,10,0.45)' : BORDER,
+                }}
+              >
+                <div
+                  style={{
+                    ...PROBLEM_NUM,
+                    color: m.stage === 'service' ? TEXT_DIMMER : ORANGE,
+                  }}
+                >
+                  {m.tag}
+                </div>
+                <h3 style={FEATURE_TITLE}>{m.title}</h3>
+                <p style={FEATURE_BODY}>{m.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section style={CTA_SECTION}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <h2 style={H2}>Ready to build a strategy your buyers actually respond to?</h2>
+          <h2 style={H2}>See it on your business.</h2>
           <p style={{ ...SECTION_SUB, marginBottom: 32 }}>
-            Request a Demo and get early access to Assembly AI.
+            A 30-minute walkthrough using your industry, your buyers, and your competitors. Not a
+            canned tour. You will leave knowing whether this fits, either way.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/demo" style={BTN_HERO_PRIMARY}>
               Request a Demo
             </Link>
             <Link href="/whitepaper" style={BTN_OUTLINE}>
-              Download White Paper
+              Download the White Paper
             </Link>
           </div>
+          <p style={{ ...HERO_NOTE, marginTop: 24 }}>
+            Everyone starts with Strategy. Add modules when you are ready. Rather not do it alone?
+            We can pair you with a practitioner who knows the system, or run the whole thing as your
+            agency. Ask about it on the demo.
+          </p>
         </div>
       </section>
 
@@ -698,7 +1073,12 @@ export default function LandingPage() {
             <Link href="/privacy" style={FOOTER_LINK}>
               Privacy Policy
             </Link>
-            <a href="mailto:info@assemblynetworks.net" style={FOOTER_LINK}>
+            <a
+              href="https://assemblynetworks.net/contact.html"
+              target="_blank"
+              rel="noopener"
+              style={FOOTER_LINK}
+            >
               Contact
             </a>
           </div>

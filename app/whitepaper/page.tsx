@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type CSSProperties, type FormEvent } from 'react'
+import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD } from '@/lib/forms/options'
 import Link from 'next/link'
 import Image from 'next/image'
 import { WHITEPAPER } from '@/lib/whitepaper/content'
@@ -16,12 +17,6 @@ const TEXT_DIMMER = 'rgba(255,255,255,0.5)'
 const BORDER = 'rgba(255,255,255,0.1)'
 const SURFACE = 'rgba(255,255,255,0.03)'
 
-const SITUATIONS = [
-  'Building new',
-  'Validating existing',
-  'Refreshing stale',
-  'Just exploring',
-] as const
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -330,6 +325,10 @@ export default function WhitepaperPage() {
   const [company, setCompany] = useState('')
   const [jobTitle, setJobTitle] = useState('')
   const [situation, setSituation] = useState<string>('')
+  const [phone, setPhone] = useState('')
+  const [industry, setIndustry] = useState('')
+  const [annualRevenue, setAnnualRevenue] = useState('')
+  const [howHeard, setHowHeard] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -357,6 +356,10 @@ export default function WhitepaperPage() {
           company: company.trim(),
           jobTitle: jobTitle.trim(),
           situation,
+          phone: phone.trim(),
+          industry,
+          annualRevenue,
+          howHeard,
         }),
       })
 
@@ -389,11 +392,11 @@ export default function WhitepaperPage() {
         <div style={NAV_INNER}>
           <Link href="/" style={LOGO_WRAP}>
             <Image
-              src="/images/logo.png"
+              src="/images/assembly-ai-logo.svg"
               alt="Assembly AI"
               width={180}
-              height={36}
-              style={{ objectFit: 'contain' }}
+              height={33}
+              style={{ objectFit: 'contain', height: 'auto' }}
               priority
             />
           </Link>
@@ -507,7 +510,66 @@ export default function WhitepaperPage() {
               </div>
 
               <div style={FIELD}>
-                <label htmlFor="wp-situation" style={LABEL}>What best describes your situation?</label>
+                <label htmlFor="wp-phone" style={LABEL}>Phone <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                <input
+                  id="wp-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  style={INPUT}
+                  autoComplete="tel"
+                />
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="wp-industry" style={LABEL}>Industry</label>
+                <select
+                  id="wp-industry"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  style={SELECT}
+                  required
+                >
+                  <option value="">Select an industry</option>
+                  {INDUSTRIES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="wp-revenue" style={LABEL}>Annual Revenue</label>
+                <select
+                  id="wp-revenue"
+                  value={annualRevenue}
+                  onChange={(e) => setAnnualRevenue(e.target.value)}
+                  style={SELECT}
+                  required
+                >
+                  <option value="">Select a range</option>
+                  {ANNUAL_REVENUES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="wp-heard" style={LABEL}>How did you hear about us? <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                <select
+                  id="wp-heard"
+                  value={howHeard}
+                  onChange={(e) => setHowHeard(e.target.value)}
+                  style={SELECT}
+                >
+                  <option value="">Select one</option>
+                  {HOW_HEARD.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="wp-situation" style={LABEL}>Which best describes your situation?</label>
                 <select
                   id="wp-situation"
                   value={situation}
@@ -540,11 +602,11 @@ export default function WhitepaperPage() {
         <div style={FOOTER_INNER}>
           <Link href="/" style={LOGO_WRAP}>
             <Image
-              src="/images/logo.png"
+              src="/images/assembly-ai-logo.svg"
               alt="Assembly AI"
               width={150}
-              height={30}
-              style={{ objectFit: 'contain' }}
+              height={28}
+              style={{ objectFit: 'contain', height: 'auto' }}
             />
           </Link>
           <div style={FOOTER_LINKS}>

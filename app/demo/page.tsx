@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type CSSProperties, type FormEvent } from 'react'
+import { INDUSTRIES, ANNUAL_REVENUES, SITUATIONS, HOW_HEARD } from '@/lib/forms/options'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -54,9 +55,8 @@ const HERO: CSSProperties = {
 }
 
 const CONTAINER: CSSProperties = {
-  maxWidth: 640,
+  maxWidth: 1200,
   margin: '0 auto',
-  textAlign: 'center',
 }
 
 const EYEBROW: CSSProperties = {
@@ -88,6 +88,69 @@ const SUBTITLE: CSSProperties = {
   color: TEXT_MUTED,
   margin: '0 auto 36px',
   maxWidth: 560,
+}
+
+const TWO_COL: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+  gap: 48,
+  alignItems: 'start',
+  textAlign: 'left',
+}
+
+const INFO_COL: CSSProperties = {
+  paddingTop: 8,
+}
+
+const CHECK_ROW: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
+  marginBottom: 14,
+  fontSize: 15,
+  color: TEXT_MUTED,
+}
+
+const CHECK_ICON: CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  flexShrink: 0,
+  backgroundColor: 'rgba(14,165,233,0.12)',
+  border: '1px solid rgba(14,165,233,0.3)',
+  color: BLUE,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}
+
+const QUOTE_BLOCK: CSSProperties = {
+  marginTop: 36,
+  padding: '20px 24px',
+  borderLeft: `3px solid ${BLUE}`,
+  backgroundColor: 'rgba(255,255,255,0.03)',
+  borderRadius: '0 10px 10px 0',
+}
+
+const QUOTE_TXT: CSSProperties = {
+  fontSize: 15,
+  lineHeight: 1.6,
+  fontStyle: 'italic',
+  color: WHITE,
+  margin: '0 0 10px',
+}
+
+const QUOTE_ATTR: CSSProperties = {
+  fontSize: 13,
+  color: TEXT_DIMMER,
+}
+
+const FORM_NOTE: CSSProperties = {
+  fontSize: 12.5,
+  color: TEXT_DIMMER,
+  textAlign: 'center',
+  marginTop: 16,
+  lineHeight: 1.6,
 }
 
 const FORM_CARD: CSSProperties = {
@@ -131,6 +194,19 @@ const INPUT: CSSProperties = {
   color: BLACK,
   backgroundColor: WHITE,
   outline: 'none',
+}
+
+const SELECT: CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.14)',
+  backgroundColor: 'rgba(255,255,255,0.04)',
+  color: '#FFFFFF',
+  fontSize: 15,
+  outline: 'none',
+  appearance: 'none',
+  minHeight: 46,
 }
 
 const TEXTAREA: CSSProperties = {
@@ -212,12 +288,16 @@ const COPYRIGHT: CSSProperties = {
 }
 
 export default function DemoPage() {
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [company, setCompany] = useState('')
   const [jobTitle, setJobTitle] = useState('')
   const [goals, setGoals] = useState('')
+  const [phone, setPhone] = useState('')
+  const [industry, setIndustry] = useState('')
+  const [annualRevenue, setAnnualRevenue] = useState('')
+  const [situation, setSituation] = useState('')
+  const [howHeard, setHowHeard] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -227,8 +307,12 @@ export default function DemoPage() {
     if (submitting) return
     setError(null)
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !company.trim() || !jobTitle.trim()) {
+    if (!fullName.trim() || !email.trim() || !company.trim() || !jobTitle.trim()) {
       setError('Please complete every required field.')
+      return
+    }
+    if (!industry || !annualRevenue || !situation) {
+      setError('Please choose an industry, revenue range, and situation.')
       return
     }
 
@@ -238,12 +322,17 @@ export default function DemoPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
+          firstName: fullName.trim().split(/\s+/)[0] ?? '',
+          lastName: fullName.trim().split(/\s+/).slice(1).join(' '),
           email: email.trim(),
           company: company.trim(),
           jobTitle: jobTitle.trim(),
           goals: goals.trim(),
+          phone: phone.trim(),
+          industry,
+          annualRevenue,
+          situation,
+          howHeard,
         }),
       })
 
@@ -274,11 +363,11 @@ export default function DemoPage() {
         <div style={NAV_INNER}>
           <Link href="/" style={LOGO_WRAP}>
             <Image
-              src="/images/logo.png"
+              src="/images/assembly-ai-logo.svg"
               alt="Assembly AI"
               width={180}
-              height={36}
-              style={{ objectFit: 'contain' }}
+              height={33}
+              style={{ objectFit: 'contain', height: 'auto' }}
               priority
             />
           </Link>
@@ -287,12 +376,51 @@ export default function DemoPage() {
 
       <section style={HERO}>
         <div style={CONTAINER}>
-          <span style={EYEBROW}>Assembly AI</span>
-          <h1 style={H1}>Request a Demo</h1>
-          <p style={SUBTITLE}>
-            See how Assembly AI turns buyer research into a complete GTM strategy in 2-4 weeks.
-          </p>
+          <div style={TWO_COL}>
+            <div style={INFO_COL}>
+              <span style={EYEBROW}>Assembly AI&trade;</span>
+              <h1 style={{ ...H1, textAlign: 'left' }}>See it on your business.</h1>
+              <p style={{ ...SUBTITLE, textAlign: 'left', margin: '0 0 32px' }}>
+                A 30-minute walkthrough using your industry, your buyers, and your competitive set.
+                Not a canned tour. You will leave knowing whether this fits, either way.
+              </p>
 
+              {[
+                '30 minutes, live, no recording required',
+                'No credit card, no obligation',
+                'We respond within one business day',
+              ].map((t) => (
+                <div key={t} style={CHECK_ROW}>
+                  <span style={CHECK_ICON}>
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="2,7 6,11 12,3" />
+                    </svg>
+                  </span>
+                  {t}
+                </div>
+              ))}
+              <div style={CHECK_ROW}>
+                <span style={CHECK_ICON}>
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="2" width="12" height="10" rx="1" />
+                    <polyline points="1,3 7,8 13,3" />
+                  </svg>
+                </span>
+                <a href="mailto:info@assemblynetworks.net" style={{ color: TEXT_MUTED, textDecoration: 'none' }}>
+                  info@assemblynetworks.net
+                </a>
+              </div>
+
+              <div style={QUOTE_BLOCK}>
+                <p style={QUOTE_TXT}>
+                  &ldquo;Not another tool. A complete system designed to think, align, and execute
+                  the way your customers want you to.&rdquo;
+                </p>
+                <div style={QUOTE_ATTR}>Assembly AI&trade;</div>
+              </div>
+            </div>
+
+            <div>
           {success ? (
             <div style={SUCCESS_CARD}>
               Thank you! We will be in touch within 1 business day.
@@ -303,56 +431,56 @@ export default function DemoPage() {
 
               <div style={FORM_ROW}>
                 <div>
-                  <label htmlFor="demo-first" style={LABEL}>First Name</label>
+                  <label htmlFor="demo-name" style={LABEL}>Full Name</label>
                   <input
-                    id="demo-first"
+                    id="demo-name"
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     style={INPUT}
-                    autoComplete="given-name"
+                    autoComplete="name"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="demo-last" style={LABEL}>Last Name</label>
+                  <label htmlFor="demo-company" style={LABEL}>Company</label>
                   <input
-                    id="demo-last"
+                    id="demo-company"
                     type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
                     style={INPUT}
-                    autoComplete="family-name"
+                    autoComplete="organization"
                     required
                   />
                 </div>
               </div>
 
-              <div style={FIELD}>
-                <label htmlFor="demo-email" style={LABEL}>Work Email</label>
-                <input
-                  id="demo-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={INPUT}
-                  autoComplete="email"
-                  placeholder="you@company.com"
-                  required
-                />
-              </div>
-
-              <div style={FIELD}>
-                <label htmlFor="demo-company" style={LABEL}>Company</label>
-                <input
-                  id="demo-company"
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  style={INPUT}
-                  autoComplete="organization"
-                  required
-                />
+              <div style={FORM_ROW}>
+                <div>
+                  <label htmlFor="demo-email" style={LABEL}>Work Email</label>
+                  <input
+                    id="demo-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={INPUT}
+                    autoComplete="email"
+                    placeholder="you@company.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="demo-phone" style={LABEL}>Phone <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                  <input
+                    id="demo-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    style={INPUT}
+                    autoComplete="tel"
+                  />
+                </div>
               </div>
 
               <div style={FIELD}>
@@ -369,6 +497,69 @@ export default function DemoPage() {
               </div>
 
               <div style={FIELD}>
+                <label htmlFor="demo-industry" style={LABEL}>Industry</label>
+                <select
+                  id="demo-industry"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  style={SELECT}
+                  required
+                >
+                  <option value="">Select an industry</option>
+                  {INDUSTRIES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="demo-revenue" style={LABEL}>Annual Revenue</label>
+                <select
+                  id="demo-revenue"
+                  value={annualRevenue}
+                  onChange={(e) => setAnnualRevenue(e.target.value)}
+                  style={SELECT}
+                  required
+                >
+                  <option value="">Select a range</option>
+                  {ANNUAL_REVENUES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="demo-situation" style={LABEL}>Which best describes your situation?</label>
+                <select
+                  id="demo-situation"
+                  value={situation}
+                  onChange={(e) => setSituation(e.target.value)}
+                  style={SELECT}
+                  required
+                >
+                  <option value="">Select one</option>
+                  {SITUATIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
+                <label htmlFor="demo-heard" style={LABEL}>How did you hear about us? <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                <select
+                  id="demo-heard"
+                  value={howHeard}
+                  onChange={(e) => setHowHeard(e.target.value)}
+                  style={SELECT}
+                >
+                  <option value="">Select one</option>
+                  {HOW_HEARD.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={FIELD}>
                 <label htmlFor="demo-goals" style={LABEL}>What are you hoping to accomplish?</label>
                 <textarea
                   id="demo-goals"
@@ -382,8 +573,17 @@ export default function DemoPage() {
               <button type="submit" style={SUBMIT_BTN} disabled={submitting}>
                 {submitting ? 'Submitting…' : 'Request a Demo'}
               </button>
+
+              <p style={FORM_NOTE}>
+                30-minute walkthrough. No credit card required.
+                <br />
+                We respect your privacy. No spam, ever.{' '}
+                <Link href="/privacy" style={{ color: TEXT_DIMMER }}>Privacy Policy</Link>.
+              </p>
             </form>
           )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -391,11 +591,11 @@ export default function DemoPage() {
         <div style={FOOTER_INNER}>
           <Link href="/" style={LOGO_WRAP}>
             <Image
-              src="/images/logo.png"
+              src="/images/assembly-ai-logo.svg"
               alt="Assembly AI"
               width={150}
-              height={30}
-              style={{ objectFit: 'contain' }}
+              height={28}
+              style={{ objectFit: 'contain', height: 'auto' }}
             />
           </Link>
           <div style={FOOTER_LINKS}>
