@@ -20,13 +20,6 @@ interface DownloadBody {
   howHeard?: string
 }
 
-const ALLOWED_SITUATIONS = new Set([
-  'Building new',
-  'Validating existing',
-  'Refreshing stale',
-  'Just exploring',
-])
-
 const PERSONAL_DOMAINS = new Set([
   'gmail.com',
   'googlemail.com',
@@ -411,7 +404,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       { status: 400 },
     )
   }
-  if (situation && !ALLOWED_SITUATIONS.has(situation)) {
+  // Validate against the single shared list in lib/forms/options, which is also
+  // what the form renders and what the Notion select accepts. Do not reintroduce
+  // a local copy here: a second list is how this silently broke before.
+  if (situation && !allowed(situation, SITUATIONS)) {
     return NextResponse.json({ error: 'Invalid situation value.' }, { status: 400 })
   }
 
