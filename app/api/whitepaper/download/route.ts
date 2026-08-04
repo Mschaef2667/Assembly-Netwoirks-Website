@@ -417,11 +417,19 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const lead: LeadRecord = { firstName, lastName, email, company, jobTitle, situation }
-  void sendNotificationEmail(lead)
-
-  // Mirror into the Notion CRM. Fire and forget: Supabase is the system of
-  // record, so a Notion failure must never affect the download.
-  void mirrorLeadToNotion({
+  // AWAIT THESE. Do not switch back to fire-and-forget `void`.
+  //
+  // On Vercel the runtime may suspend a serverless function the moment it sends
+  // its response, killing any in-flight work. A `void`-ed promise here is a
+  // coin flip: sometimes the email and the Notion write land, sometimes they are
+  // silently dropped and the lead only ever exists in Supabase.
+  //
+  // Both helpers swallow their own errors and never reject, so awaiting them
+  // cannot fail the request. allSettled runs them concurrently, so the cost is
+  // one round trip (typically a few hundred ms), not two.
+  await Promise.allSettled([
+    sendNotificationEmail(lead),
+    mirrorLeadToNotion({
     form: 'Download Whitepaper',
     firstName,
     lastName,
@@ -433,7 +441,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     industry: allowed(clean(body.industry, 100), INDUSTRIES),
     annualRevenue: allowed(clean(body.annualRevenue, 60), ANNUAL_REVENUES),
     howHeard: allowed(clean(body.howHeard, 100), HOW_HEARD),
-  })
+    }),
+  ])
 
   let pdf: Uint8Array
   try {
