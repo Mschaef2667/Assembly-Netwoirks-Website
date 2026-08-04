@@ -258,13 +258,13 @@ const SECTION_SUB: CSSProperties = {
 
 const GRID_3: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
   gap: 24,
 }
 
 const GRID_3_FEATURES: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
   gap: 20,
 }
 
@@ -610,6 +610,7 @@ function Logo({ size = 28 }: { size?: number }) {
 function Flywheel() {
   return (
     <svg
+      className="flywheel-svg"
       viewBox="0 0 760 600"
       role="img"
       aria-label="The Assembly AI loop: Strategy, ICP Calibrator, Lead Generator, Asset Studio, Integrations, Performance, and back to Strategy"
@@ -690,6 +691,90 @@ function Flywheel() {
         </g>
       ))}
     </svg>
+  )
+}
+
+/**
+ * Phone version of the loop.
+ *
+ * The circle is the right picture on a laptop, but at ~311px of usable width it
+ * renders at 41% scale, which puts its labels at 4 to 6 pixels tall. A vertical
+ * list keeps every module name legible and still reads as a sequence; the closing
+ * row carries the "it loops" idea that the circle conveys geometrically.
+ *
+ * Which one is visible is decided purely in CSS, so there is no layout shift and
+ * no client-side width measurement.
+ */
+function FlywheelList() {
+  const last = FLYWHEEL.length - 1
+  return (
+    <ol
+      className="flywheel-list"
+      aria-label="The Assembly AI loop, in order"
+      style={{ listStyle: 'none', margin: '0 auto', padding: 0, maxWidth: 420 }}
+    >
+      {FLYWHEEL.map((s, i) => (
+        <li key={s.n} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span
+              style={{
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 15,
+                fontWeight: 700,
+                color: s.stage === 'live' ? WHITE : 'rgba(255,255,255,0.75)',
+                backgroundColor: s.stage === 'live' ? ORANGE : 'rgba(10,22,40,1)',
+                border: `2px ${s.stage === 'building' ? 'dashed' : 'solid'} ${
+                  s.stage === 'live'
+                    ? ORANGE
+                    : s.stage === 'building'
+                      ? 'rgba(232,82,10,0.7)'
+                      : 'rgba(255,255,255,0.28)'
+                }`,
+              }}
+            >
+              {s.n}
+            </span>
+            {i < last && <span style={{ flex: 1, width: 2, minHeight: 22, backgroundColor: 'rgba(255,255,255,0.14)' }} />}
+          </div>
+          <div style={{ paddingTop: 5, paddingBottom: i < last ? 18 : 0 }}>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: s.stage === 'live' ? 700 : 500,
+                color: s.stage === 'service' ? 'rgba(255,255,255,0.7)' : WHITE,
+              }}
+            >
+              {s.label}
+            </div>
+            {s.note && (
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: 1.4,
+                  marginTop: 3,
+                  color: s.stage === 'live' ? ORANGE : 'rgba(232,82,10,0.8)',
+                }}
+              >
+                {s.note.toUpperCase()}
+              </div>
+            )}
+          </div>
+        </li>
+      ))}
+      <li style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10 }}>
+        <span style={{ width: 34, textAlign: 'center', fontSize: 18, color: 'rgba(255,255,255,0.35)' }}>&#8635;</span>
+        <span style={{ fontSize: 14, lineHeight: 1.45, color: 'rgba(255,255,255,0.55)' }}>
+          Back to Strategy. Every loop sharpens the next.
+        </span>
+      </li>
+    </ol>
   )
 }
 
@@ -1013,6 +1098,7 @@ export default function LandingPage() {
 
           <div style={{ margin: '48px 0 8px' }}>
             <Flywheel />
+            <FlywheelList />
           </div>
 
           <div style={GRID_3_FEATURES}>
@@ -1089,8 +1175,11 @@ export default function LandingPage() {
       <style>{`
         html { scroll-behavior: smooth; }
         a:hover { opacity: 0.9; }
+        .flywheel-list { display: none; }
         @media (max-width: 720px) {
           .landing-nav-links { display: none !important; }
+          .flywheel-svg { display: none !important; }
+          .flywheel-list { display: block; }
         }
       `}</style>
     </div>

@@ -460,7 +460,7 @@ export default function WhitepaperPage() {
                 </div>
               )}
 
-              <div style={FORM_ROW}>
+              <div style={FORM_ROW} className="form-row">
                 <div>
                   <label htmlFor="wp-first" style={LABEL}>First Name</label>
                   <input
@@ -641,6 +641,9 @@ export default function WhitepaperPage() {
       <style>{`
         @media (max-width: 900px) {
           .wp-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .form-row { grid-template-columns: 1fr !important; }
         }
         input:focus, select:focus { border-color: ${BLUE} !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
         button[disabled] { opacity: 0.7; cursor: not-allowed; }

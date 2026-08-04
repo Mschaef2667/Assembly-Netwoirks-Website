@@ -94,7 +94,10 @@ const SUBTITLE: CSSProperties = {
 
 const TWO_COL: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+  // min() is load-bearing. A bare minmax(360px, 1fr) forces a 360px floor, so on
+  // any phone narrower than 424px (360 + 64px page padding) the grid overflows and
+  // the whole page scrolls sideways. min(360px, 100%) lets the track collapse.
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
   gap: 48,
   alignItems: 'start',
   textAlign: 'left',
@@ -444,7 +447,7 @@ export default function DemoPage() {
             <form style={FORM_CARD} onSubmit={handleSubmit} noValidate>
               {error && <div style={ERROR_BOX}>{error}</div>}
 
-              <div style={FORM_ROW}>
+              <div style={FORM_ROW} className="form-row">
                 <div>
                   <label htmlFor="demo-name" style={LABEL}>Full Name</label>
                   <input
@@ -471,7 +474,7 @@ export default function DemoPage() {
                 </div>
               </div>
 
-              <div style={FORM_ROW}>
+              <div style={FORM_ROW} className="form-row">
                 <div>
                   <label htmlFor="demo-email" style={LABEL}>Work Email</label>
                   <input
@@ -625,6 +628,9 @@ export default function DemoPage() {
       </footer>
 
       <style>{`
+        @media (max-width: 640px) {
+          .form-row { grid-template-columns: 1fr !important; }
+        }
         input:focus, textarea:focus { border-color: ${BLUE} !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
         button[disabled] { opacity: 0.7; cursor: not-allowed; }
       `}</style>
