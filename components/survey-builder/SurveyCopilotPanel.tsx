@@ -538,6 +538,39 @@ export default function SurveyCopilotPanel({
         )}
       </div>
 
+      {/* Best practices guide. Placed here rather than in Response Manager on
+          purpose: this is the moment the client is about to go and collect the
+          data, which is the only point at which the advice can still change what
+          they do. By the time they reach Response Manager the interviews are done. */}
+      <div style={{
+        backgroundColor: '#0F2140', borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.1)', padding: '24px', marginBottom: '16px',
+      }}>
+        <h3 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>
+          {mode === 'interview' ? 'Before You Interview' : 'Before You Send'}
+        </h3>
+        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', margin: '0 0 16px' }}>
+          {mode === 'interview'
+            ? 'A short guide covering how to run the conversation and how to send us the transcript afterwards. Worth reading before your first interview.'
+            : 'A short guide covering distribution, response rates, and how many responses you need. Worth reading before you send the first link.'}
+        </p>
+        <a
+          href={mode === 'interview' ? '/guides/assembly-ai-interview-guide.pdf' : '/guides/assembly-ai-survey-guide.pdf'}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '8px', boxSizing: 'border-box',
+            backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.85)',
+            border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+            fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+          }}
+        >
+          <FileText size={15} />
+          {mode === 'interview' ? 'Read the Interview Guide' : 'Read the Survey Guide'}
+        </a>
+      </div>
+
       {/* Export card */}
       <div style={{
         backgroundColor: '#0F2140', borderRadius: '12px',
