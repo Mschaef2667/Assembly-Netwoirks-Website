@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShieldCheck, Lock, Clock, ChevronRight, X, Brain, Lightbulb, FileText, TrendingUp } from 'lucide-react'
+import { ShieldCheck, Lock, Clock, ChevronRight, X, Brain, Lightbulb, FileText, TrendingUp, Target } from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { isJourneyStep, JOURNEY_TOTAL } from '@/lib/journey/canonicalSteps'
@@ -235,6 +235,38 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
   const [bannerDismissed, setBannerDismissed] = useState(true)
+  const [downloadingIcpReport, setDownloadingIcpReport] = useState(false)
+  const [icpReportError, setIcpReportError] = useState<string | null>(null)
+
+  // ── ICP Calibration Report download ─────────────────────────────────────────
+
+  async function handleDownloadIcpReport() {
+    if (downloadingIcpReport) return
+    setDownloadingIcpReport(true)
+    setIcpReportError(null)
+    try {
+      const res = await fetch('/api/icp/report', { method: 'GET' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Could not generate the report.')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const cd = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="([^"]+)"/.exec(cd)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = match ? match[1] : 'ICP-Calibration-Report.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setIcpReportError(err instanceof Error ? err.message : 'Download failed.')
+    } finally {
+      setDownloadingIcpReport(false)
+    }
+  }
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
@@ -1144,6 +1176,35 @@ export default function DashboardPage() {
                         )}
                       </>
                     )
+                  }
+                />
+                <ReportRow
+                  icon={<Target size={20} />}
+                  iconColor="#E8520A"
+                  iconBg="rgba(232,82,10,0.15)"
+                  name="ICP Calibration Report"
+                  description="Calibrated ICPs with baseline beliefs, buyer evidence, and per-ICP messaging and action plan."
+                  statusLabel="Ready"
+                  statusColor="#10B981"
+                  statusBg="rgba(16,185,129,0.15)"
+                  actions={
+                    <>
+                      <Link href="/dashboard/target-markets" style={linkBtnSecondary}>Open</Link>
+                      <button
+                        onClick={() => { void handleDownloadIcpReport() }}
+                        disabled={downloadingIcpReport}
+                        title={icpReportError ?? undefined}
+                        style={{
+                          ...linkBtn,
+                          border: 'none',
+                          fontFamily: 'inherit',
+                          cursor: downloadingIcpReport ? 'not-allowed' : 'pointer',
+                          backgroundColor: downloadingIcpReport ? 'rgba(14,165,233,0.5)' : '#0EA5E9',
+                        }}
+                      >
+                        {downloadingIcpReport ? 'Preparing…' : icpReportError ? 'Retry PDF' : 'Download PDF'}
+                      </button>
+                    </>
                   }
                 />
               </div>
