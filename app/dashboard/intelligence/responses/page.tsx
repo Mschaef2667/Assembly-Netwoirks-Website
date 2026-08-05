@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check } from 'lucide-react'
+import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -91,6 +91,7 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: 'Manual Entry',
   csv: 'CSV Upload',
   simulated: 'Copilot Simulated',
+  interview: 'Interview Transcript',
 }
 
 const STAGE_NAMES: Record<number, string> = {
@@ -303,7 +304,7 @@ export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Segment[]>([])
-  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'view' | 'simulate'>('csv')
+  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'transcript' | 'view' | 'simulate'>('csv')
 
   // CSV tab
   const [csvAudience, setCsvAudience] = useState<Audience>('current')
@@ -329,6 +330,27 @@ export default function ResponseImportPage() {
   const [manAnswers, setManAnswers] = useState<Record<string, string>>({})
   const [manQuestions, setManQuestions] = useState<SurveyQuestion[]>([])
   const [manQuestionsLoading, setManQuestionsLoading] = useState(false)
+
+  // Interview transcript tab. One interview equals one respondent, so this
+  // produces exactly the same shape as a manual entry: a single row in
+  // survey_link_responses whose `answers` map is keyed by question id.
+  const [trAudience, setTrAudience] = useState<Audience>('current')
+  const [trSegment, setTrSegment] = useState<Segment | null>(null)
+  const [trQuestions, setTrQuestions] = useState<SurveyQuestion[]>([])
+  const [trQuestionsLoading, setTrQuestionsLoading] = useState(false)
+  const [trTranscript, setTrTranscript] = useState('')
+  const [trMapping, setTrMapping] = useState(false)
+  const [trMapped, setTrMapped] = useState(false)
+  const [trAnswers, setTrAnswers] = useState<Record<string, string>>({})
+  const [trLowConfidence, setTrLowConfidence] = useState<Record<string, boolean>>({})
+  const [trName, setTrName] = useState('')
+  const [trTitle, setTrTitle] = useState('')
+  const [trCompany, setTrCompany] = useState('')
+  const [trSize, setTrSize] = useState('')
+  const [trDecisionRole, setTrDecisionRole] = useState('')
+  const [trSaving, setTrSaving] = useState(false)
+  const [trError, setTrError] = useState<string | null>(null)
+  const [trSuccess, setTrSuccess] = useState(false)
   const [manSaving, setManSaving] = useState(false)
   const [manError, setManError] = useState<string | null>(null)
   const [manSuccess, setManSuccess] = useState(false)
@@ -591,13 +613,34 @@ export default function ResponseImportPage() {
   useEffect(() => {
     if (!orgId) return
     setManQuestionsLoading(true)
-    setManAnswers({})
     void fetchQuestionsForAudience(orgId, manAudience, manSegment).then(qs => {
       setManQuestions(qs)
       setManQuestionsLoading(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manAudience, manSegment, orgId])
+
+  // ── Transcript questions re-load when audience/segment changes ────────────────
+  // Any previous mapping is discarded: answers are keyed by question id, and a
+  // different audience or segment is a different question set entirely.
+
+  useEffect(() => {
+    if (!orgId) return
+    // Guard against a slow fetch for a previously selected audience resolving
+    // after a newer one and overwriting it with the wrong question set.
+    let cancelled = false
+    setTrQuestionsLoading(true)
+    setTrAnswers({})
+    setTrLowConfidence({})
+    setTrMapped(false)
+    void fetchQuestionsForAudience(orgId, trAudience, trSegment).then(qs => {
+      if (cancelled) return
+      setTrQuestions(qs)
+      setTrQuestionsLoading(false)
+    })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trAudience, trSegment, orgId])
 
   // ── CSV file handling ─────────────────────────────────────────────────────────
 
@@ -699,6 +742,136 @@ export default function ResponseImportPage() {
       setManError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setManSaving(false)
+    }
+  }
+
+  // ── Transcript handlers ───────────────────────────────────────────────────────
+
+  /**
+   * Send the transcript and the known question list to Copilot and get back a
+   * question_id -> answer map.
+   *
+   * This never writes anything. The result populates an editable review step,
+   * because these answers become the evidence base for the whole strategy and a
+   * mis-mapped or invented answer is far more damaging here than a missing one.
+   */
+  async function handleMapTranscript() {
+    if (!orgId || trQuestions.length === 0) return
+    const text = trTranscript.trim()
+    if (!text) {
+      setTrError('Paste the interview transcript first.')
+      return
+    }
+
+    setTrMapping(true)
+    setTrError(null)
+    setTrSuccess(false)
+    try {
+      const res = await fetch('/api/copilot/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId: 'survey-builder-interview-transcript',
+          workspaceId: orgId,
+          stepTitle: 'Interview Transcript Mapping',
+          stepDescription: 'Map interview transcript answers to survey questions',
+          currentContent: '',
+          extraContext: JSON.stringify({
+            questions: trQuestions.map(q => ({ question_id: q.id, text: q.text, stage: q.stageId })),
+            transcript: text,
+          }),
+        }),
+      })
+      if (!res.ok || !res.body) throw new Error('Copilot request failed. Please try again.')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+      }
+      if (accumulated.includes('__STREAM_ERROR__')) {
+        throw new Error('Copilot could not process this transcript. Please try again.')
+      }
+
+      const first = accumulated.indexOf('{')
+      const last = accumulated.lastIndexOf('}')
+      const jsonStr = first !== -1 && last > first ? accumulated.slice(first, last + 1) : accumulated.trim()
+      const parsed = JSON.parse(jsonStr) as {
+        answers?: Array<{ question_id: string; answer: string; confidence?: string }>
+      }
+
+      const known = new Set(trQuestions.map(q => q.id))
+      const nextAnswers: Record<string, string> = {}
+      const nextLow: Record<string, boolean> = {}
+      for (const a of parsed.answers ?? []) {
+        // Ignore any id Copilot did not receive, rather than writing an orphan key.
+        if (!known.has(a.question_id)) continue
+        if (typeof a.answer !== 'string' || !a.answer.trim()) continue
+        nextAnswers[a.question_id] = a.answer.trim()
+        if (a.confidence === 'low') nextLow[a.question_id] = true
+      }
+
+      setTrAnswers(nextAnswers)
+      setTrLowConfidence(nextLow)
+      setTrMapped(true)
+      if (Object.keys(nextAnswers).length === 0) {
+        setTrError('Copilot could not match any answers to your questions. Check that the transcript is for this audience and segment.')
+      }
+    } catch (err) {
+      setTrError(err instanceof Error ? err.message : 'Mapping failed. Please try again.')
+    } finally {
+      setTrMapping(false)
+    }
+  }
+
+  async function handleTranscriptSave() {
+    if (!orgId) return
+    const filled = Object.entries(trAnswers).filter(([, v]) => v.trim())
+    if (filled.length === 0) {
+      setTrError('There are no answers to save.')
+      return
+    }
+
+    setTrSaving(true)
+    setTrError(null)
+    setTrSuccess(false)
+    try {
+      const res = await fetch('/api/intelligence/import-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId,
+          audience: trAudience,
+          segmentSlug: trSegment?.slug ?? 'all-segments',
+          segmentName: trSegment?.name ?? 'All Segments',
+          responses: [{
+            respondent_name: trName || undefined,
+            respondent_title: trTitle || undefined,
+            respondent_company: trCompany || undefined,
+            respondent_size: trSize || undefined,
+            decision_role: trDecisionRole || undefined,
+            answers: Object.fromEntries(filled),
+          }],
+          source: 'interview',
+        }),
+      })
+      const body = await res.json() as { success?: boolean; error?: string }
+      if (!res.ok) throw new Error(body.error ?? 'Save failed')
+
+      setTrSuccess(true)
+      setTrTranscript('')
+      setTrAnswers({})
+      setTrLowConfidence({})
+      setTrMapped(false)
+      setTrName(''); setTrTitle(''); setTrCompany(''); setTrSize(''); setTrDecisionRole('')
+      await loadStats(orgId)
+    } catch (err) {
+      setTrError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setTrSaving(false)
     }
   }
 
@@ -865,6 +1038,7 @@ export default function ResponseImportPage() {
           {([
             { key: 'csv' as const, icon: Upload, label: 'Upload CSV' },
             { key: 'manual' as const, icon: UserPlus, label: 'Add Manually' },
+            { key: 'transcript' as const, icon: Mic, label: 'Interview Transcript' },
             { key: 'simulate' as const, icon: Sparkles, label: 'Simulate with Copilot' },
             { key: 'view' as const, icon: List, label: 'View Responses' },
           ]).map(({ key, icon: Icon, label }) => (
@@ -1262,6 +1436,250 @@ export default function ResponseImportPage() {
                 Save Response
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── Interview Transcript Tab ─────────────────────────────────────────── */}
+        {activeTab === 'transcript' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Respondent profile */}
+            <div style={CARD}>
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
+                Who did you interview?
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px' }}>
+                One transcript per interview. The audience and segment determine which questions
+                the transcript is matched against, so set them before mapping.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <LabeledSelect
+                  label="Audience"
+                  value={trAudience}
+                  onChange={v => setTrAudience(v as Audience)}
+                  options={audienceOptions}
+                />
+                <LabeledSelect
+                  label="Segment"
+                  value={trSegment?.id ?? '__all'}
+                  onChange={v => setTrSegment(v === '__all' ? null : (segments.find(s => s.id === v) ?? null))}
+                  options={segmentOptions}
+                />
+                {([
+                  { key: 'name', label: 'Full Name', value: trName, setter: setTrName, placeholder: 'Jane Smith' },
+                  { key: 'title', label: 'Job Title', value: trTitle, setter: setTrTitle, placeholder: 'VP of Marketing' },
+                  { key: 'company', label: 'Company', value: trCompany, setter: setTrCompany, placeholder: 'Acme Corp' },
+                ] as const).map(({ key, label, value, setter, placeholder }) => (
+                  <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{
+                      fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)',
+                      textTransform: 'uppercase', letterSpacing: '0.07em',
+                    }}>
+                      {label}
+                    </label>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={e => setter(e.target.value)}
+                      placeholder={placeholder}
+                      style={{
+                        padding: '10px 12px', fontSize: '14px',
+                        color: '#0D0D0D', backgroundColor: '#FFFFFF',
+                        border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', outline: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
+                <LabeledSelect
+                  label="Company Size"
+                  value={trSize}
+                  onChange={v => setTrSize(v)}
+                  options={[
+                    { value: '', label: 'Select company size' },
+                    { value: '1-10 employees', label: '1-10 employees' },
+                    { value: '11-50 employees', label: '11-50 employees' },
+                    { value: '51-200 employees', label: '51-200 employees' },
+                    { value: '201-500 employees', label: '201-500 employees' },
+                    { value: '501-1,000 employees', label: '501-1,000 employees' },
+                    { value: '1,000+ employees', label: '1,000+ employees' },
+                  ]}
+                />
+                <div style={{ gridColumn: 'span 2' }}>
+                  <LabeledSelect
+                    label={trAudience === 'internal' ? 'Internal Role' : 'Decision Role'}
+                    value={trDecisionRole}
+                    onChange={v => setTrDecisionRole(v)}
+                    options={trAudience === 'internal' ? [
+                      { value: '', label: 'Select their role' },
+                      { value: 'Founder / CEO', label: 'Founder / CEO' },
+                      { value: 'Sales Leadership (CRO / VP Sales)', label: 'Sales Leadership (CRO / VP Sales)' },
+                      { value: 'Marketing Leadership (CMO / VP Marketing)', label: 'Marketing Leadership (CMO / VP Marketing)' },
+                      { value: 'Revenue Operations', label: 'Revenue Operations' },
+                      { value: 'Account Executive', label: 'Account Executive' },
+                      { value: 'Business Development', label: 'Business Development' },
+                      { value: 'Customer Success', label: 'Customer Success' },
+                      { value: 'Product', label: 'Product' },
+                      { value: 'Other', label: 'Other' },
+                    ] : [
+                      { value: '', label: 'Select their role' },
+                      { value: 'Final Decision Maker', label: 'Final Decision Maker' },
+                      { value: 'Strong Influence', label: 'Strong Influence' },
+                      { value: 'Evaluator / Analyst', label: 'Evaluator / Analyst' },
+                      { value: 'Champion (internal advocate)', label: 'Champion (internal advocate)' },
+                      { value: 'Gatekeeper / Procurement', label: 'Gatekeeper / Procurement' },
+                      { value: 'End User', label: 'End User' },
+                      { value: 'Observer / No direct role', label: 'Observer / No direct role' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Paste transcript */}
+            <div style={CARD}>
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
+                Paste the transcript
+              </p>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
+                {trQuestionsLoading
+                  ? 'Loading survey questions…'
+                  : trQuestions.length === 0
+                    ? 'No saved survey found for this audience and segment. Build it in Survey Builder first.'
+                    : `Paste the full transcript exactly as exported. Speaker labels and timestamps are fine. Copilot will match answers against your ${trQuestions.length} questions.`}
+              </p>
+
+              <textarea
+                value={trTranscript}
+                onChange={e => setTrTranscript(e.target.value)}
+                placeholder="Paste the interview transcript here…"
+                rows={12}
+                style={{
+                  width: '100%', padding: '12px', fontSize: '13px',
+                  color: '#0D0D0D', backgroundColor: '#FFFFFF',
+                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                  outline: 'none', resize: 'vertical', boxSizing: 'border-box',
+                  fontFamily: 'inherit', lineHeight: '1.5',
+                }}
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', gap: '16px' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                  {trTranscript.trim()
+                    ? `${trTranscript.trim().split(/\s+/).length.toLocaleString()} words`
+                    : 'Nothing pasted yet'}
+                </span>
+                <button
+                  onClick={() => void handleMapTranscript()}
+                  disabled={trMapping || trQuestions.length === 0 || !trTranscript.trim()}
+                  style={{
+                    minHeight: '44px', padding: '0 22px', fontSize: '14px', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    borderRadius: '8px',
+                    border: `1px solid ${trMapping || trQuestions.length === 0 || !trTranscript.trim() ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.3)'}`,
+                    backgroundColor: 'rgba(14,165,233,0.15)',
+                    color: trMapping || trQuestions.length === 0 || !trTranscript.trim() ? 'rgba(14,165,233,0.4)' : '#0EA5E9',
+                    cursor: trMapping || trQuestions.length === 0 || !trTranscript.trim() ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {trMapping ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {trMapping ? 'Matching answers…' : 'Match with Copilot'}
+                </button>
+              </div>
+            </div>
+
+            {/* Review */}
+            {trMapped && trQuestions.length > 0 && (
+              <div style={CARD}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>
+                  Review before saving
+                </p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '0 0 20px' }}>
+                  {Object.keys(trAnswers).length} of {trQuestions.length} questions matched. Edit anything that
+                  is wrong, and leave a question blank if it was never really answered. Blank questions are not saved.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {trQuestions.map((q, i) => {
+                    const answered = Boolean(trAnswers[q.id]?.trim())
+                    const low = trLowConfidence[q.id]
+                    return (
+                      <div key={q.id}>
+                        <label style={{ display: 'block', marginBottom: '8px', lineHeight: '1.5' }}>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 700, color: '#0EA5E9',
+                            textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: '8px',
+                          }}>
+                            Q{i + 1} · {STAGE_NAMES[q.stageId] ?? `Stage ${q.stageId}`}
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
+                            {q.text}
+                          </span>
+                          {!answered && (
+                            <span style={{
+                              marginLeft: '8px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em',
+                              textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+                              border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', padding: '2px 6px',
+                            }}>
+                              Not found
+                            </span>
+                          )}
+                          {low && (
+                            <span style={{
+                              marginLeft: '8px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em',
+                              textTransform: 'uppercase', color: '#EAB308',
+                              border: '1px solid rgba(234,179,8,0.4)', borderRadius: '4px', padding: '2px 6px',
+                            }}>
+                              Check this
+                            </span>
+                          )}
+                        </label>
+                        <textarea
+                          value={trAnswers[q.id] ?? ''}
+                          onChange={e => setTrAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder="Not answered in this interview. Leave blank to skip."
+                          rows={3}
+                          style={{
+                            width: '100%', padding: '10px 12px', fontSize: '13px',
+                            color: '#0D0D0D', backgroundColor: '#FFFFFF',
+                            border: `1px solid ${low ? 'rgba(234,179,8,0.6)' : 'rgba(255,255,255,0.15)'}`,
+                            borderRadius: '8px', outline: 'none', resize: 'vertical',
+                            boxSizing: 'border-box', fontFamily: 'inherit',
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {trError && <p style={{ fontSize: '13px', color: '#EF4444', margin: 0 }}>{trError}</p>}
+            {trSuccess && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#16A34A' }}>
+                <CheckCircle2 size={16} />
+                Interview saved. Paste the next transcript when you are ready.
+              </div>
+            )}
+
+            {trMapped && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => void handleTranscriptSave()}
+                  disabled={trSaving}
+                  style={{
+                    minHeight: '44px', padding: '0 28px', fontSize: '14px', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    borderRadius: '8px', border: 'none',
+                    backgroundColor: trSaving ? 'rgba(255,255,255,0.1)' : '#E8520A',
+                    color: trSaving ? 'rgba(255,255,255,0.4)' : '#FFFFFF',
+                    cursor: trSaving ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {trSaving && <Loader2 size={14} className="animate-spin" />}
+                  Save Interview
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -64,7 +64,7 @@ function dispatchPrompt(stepId: string, ctx: PromptContext): string {
   if (stepId === '17' || stepId === '17-autofill' || stepId === '18' || stepId === '19' || stepId === '20' || stepId === '21' || stepId === '22' || stepId === '23' || stepId === '24' || stepId === '25' || stepId === '26') return buildCompetitivePrompt(stepId, ctx)
   if (['27', '28', '29', '30'].includes(stepId)) return buildMessagesPrompt(stepId, ctx)
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) return buildActionPrompt(stepId, ctx)
-  if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording' || stepId === 'survey-builder-interview-probes') {
+  if (stepId === 'survey-builder' || stepId === 'survey-builder-autowording' || stepId === 'survey-builder-interview-probes' || stepId === 'survey-builder-interview-transcript') {
     return buildIntelligencePrompt(stepId, ctx)
   }
   return buildGenericPrompt(ctx)

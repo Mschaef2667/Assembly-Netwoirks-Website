@@ -149,5 +149,49 @@ QUESTIONS:
 ${questionsBlock || '(no questions provided)'}`
   }
 
+  if (stepId === 'survey-builder-interview-transcript') {
+    let questions: Array<{ question_id: string; text: string; stage: number }> = []
+    let transcript = ''
+    try {
+      const parsed = JSON.parse(extraContext ?? '{}') as {
+        questions?: Array<{ question_id: string; text: string; stage: number }>
+        transcript?: string
+      }
+      if (parsed.questions) questions = parsed.questions
+      if (parsed.transcript) transcript = parsed.transcript
+    } catch { /* non-fatal */ }
+
+    const questionsBlock = questions
+      .map((q, i) => `${i + 1}. [ID: ${q.question_id}] [Stage ${q.stage}] ${q.text}`)
+      .join('\n')
+
+    return `You are processing a recorded buyer interview transcript for the C3 Method decision journey. The interviewer worked from a fixed question list, reading each main question aloud before the answer, then probing freely.
+
+Your job is to extract what the INTERVIEWEE said in response to each question.
+
+RULES, in priority order:
+
+1. NEVER INVENT AN ANSWER. This is the most important rule. These answers become the evidence base for the client's entire go-to-market strategy. A fabricated or inferred answer is far worse than a missing one. If a question was not actually asked, or was asked but not meaningfully answered, omit that question_id entirely from your output.
+
+2. USE THE INTERVIEWEE'S OWN WORDS. Quote them as closely as the transcript allows. Do not paraphrase, summarise, tidy the grammar, or make the answer more articulate than it was. Their exact phrasing is the entire point. Light cleanup of transcription artifacts (stray "um", duplicated words from a stutter, obvious mis-transcriptions) is fine. Rewriting is not.
+
+3. INCLUDE THE FOLLOW-UPS. An answer usually spans the initial reply plus whatever came out during probing. Combine those into one answer for that question, in the order spoken. Do not include the interviewer's own words.
+
+4. MATCH ON MEANING, NOT JUST WORDING. The interviewer may have rephrased slightly or asked questions out of order. Match an exchange to the question it actually addresses. If a passage genuinely answers two questions, assign it to the better fit and do not duplicate it.
+
+5. ATTRIBUTE ONLY THE INTERVIEWEE. Transcripts label speakers inconsistently. The interviewee is the person answering, not the one asking. If a third party is present, include only material from the person being interviewed.
+
+Return ONLY valid JSON starting with { and ending with }:
+{ "answers": [{ "question_id": "<id>", "answer": "<what they said>", "confidence": "high" | "low" }] }
+
+Set confidence to "low" when you matched a passage to a question by inference rather than because the question was clearly asked, so a human can check it. Omit unanswered questions entirely. No markdown, no prose, no explanation.
+
+QUESTIONS ASKED:
+${questionsBlock || '(no questions provided)'}
+
+TRANSCRIPT:
+${transcript || '(no transcript provided)'}`
+  }
+
   return ''
 }
