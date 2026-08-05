@@ -978,7 +978,7 @@ export default function TargetMarketsPage() {
                   <p style={{ margin: '4px 0 12px', fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.55' }}>
                     Open the Response Manager to tag current-customer responses by category. Survey-link responses can only be tagged there.
                   </p>
-                  <Link href="/dashboard/intelligence/responses" style={{
+                  <Link href="/dashboard/intelligence/responses?tab=view" style={{
                     display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '38px', padding: '0 16px',
                     borderRadius: '8px', backgroundColor: '#E8520A', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
                   }}>
@@ -998,7 +998,7 @@ export default function TargetMarketsPage() {
                     }}>
                       Open Survey Builder <ArrowRight size={14} />
                     </Link>
-                    <Link href="/dashboard/intelligence/responses" style={{
+                    <Link href="/dashboard/intelligence/responses?tab=manual" style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '38px', padding: '0 16px',
                       borderRadius: '8px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.75)',
                       border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',

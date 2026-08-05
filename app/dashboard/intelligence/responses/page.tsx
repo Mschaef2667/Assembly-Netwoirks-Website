@@ -426,6 +426,13 @@ export default function ResponseImportPage() {
   }, [orgId])
 
   async function init() {
+    // Honor a ?tab= deep link (e.g. the ICP Calibrator "Open Response Manager"
+    // button lands on View Responses). Read here inside init rather than a raw
+    // effect to avoid a hydration mismatch and a set-state-in-effect lint error.
+    const requestedTab = new URLSearchParams(window.location.search).get('tab')
+    if (requestedTab === 'csv' || requestedTab === 'manual' || requestedTab === 'transcript' || requestedTab === 'view' || requestedTab === 'simulate') {
+      setActiveTab(requestedTab)
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
