@@ -9,7 +9,6 @@ import { supabase } from '@/lib/supabase/client'
 
 type BuyerType = 'economic_buyer' | 'champion'
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
-type ActiveTab = 'markets' | 'offers'
 
 interface Segment {
   index: number
@@ -43,16 +42,6 @@ interface IcpFormData {
   common_objections: Objection[]
   risk_sensitivities: string
   tech_stack: string
-}
-
-interface OfferData {
-  localKey: string
-  id: string | null
-  icpId: string
-  offer_name: string
-  key_outcome: string
-  price_range: string
-  primary_differentiator: string
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -337,7 +326,6 @@ function IcpPreviewPanel({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TargetMarketsPage() {
-  const [tab, setTab] = useState<ActiveTab>('markets')
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [preferredModel, setPreferredModel] = useState('claude-sonnet-4-5')
   const [loading, setLoading] = useState(true)
@@ -357,6 +345,10 @@ export default function TargetMarketsPage() {
     { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
     { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
   ])
+  // The id of the ICP row the client marked primary. Exactly one per org, enforced
+  // by a partial unique index, so switching primary is a two-step update.
+  const [primaryIcpId, setPrimaryIcpId] = useState<string | null>(null)
+  const [primarySaving, setPrimarySaving] = useState(false)
   const [icpDbIds, setIcpDbIds] = useState<Record<BuyerType, string | null>[]>([
     { economic_buyer: null, champion: null },
     { economic_buyer: null, champion: null },
@@ -375,9 +367,6 @@ export default function TargetMarketsPage() {
   const [copilotPreviews, setCopilotPreviews] = useState<(IcpFormData | null)[]>([null, null, null])
   const [copilotErrors, setCopilotErrors] = useState<(string | null)[]>([null, null, null])
 
-  // Offers
-  const [offers, setOffers] = useState<OfferData[]>([])
-  const [offerSaveStates, setOfferSaveStates] = useState<Record<string, SaveState>>({})
 
   // Refs
   const icpFormsRef = useRef<Record<BuyerType, IcpFormData>[]>([
@@ -394,8 +383,6 @@ export default function TargetMarketsPage() {
   const activeBuyerTypeRef = useRef<BuyerType[]>(['economic_buyer', 'economic_buyer', 'economic_buyer'])
   const workspaceIdRef = useRef<string | null>(null)
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const offerSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const offersRef = useRef<OfferData[]>([])
 
   // Keep refs current
   icpFormsRef.current = icpForms
@@ -403,7 +390,6 @@ export default function TargetMarketsPage() {
   icpDbIdsRef.current = icpDbIds
   activeBuyerTypeRef.current = activeBuyerType
   workspaceIdRef.current = workspaceId
-  offersRef.current = offers
 
   // ── Load ──────────────────────────────────────────────────────────────────
 
@@ -506,6 +492,7 @@ export default function TargetMarketsPage() {
             const i = si - 1
             const bt: BuyerType = raw['buyer_type'] === 'champion' ? 'champion' : 'economic_buyer'
             newIds[i][bt] = String(raw['id'] ?? '')
+            if (raw['is_primary'] === true) setPrimaryIcpId(String(raw['id'] ?? ''))
             const strArr = (v: unknown): string[] => Array.isArray(v) ? (v as unknown[]).map(String) : []
             const objArr = (v: unknown): Objection[] =>
               Array.isArray(v)
@@ -542,24 +529,6 @@ export default function TargetMarketsPage() {
           icpDbIdsRef.current = newIds
         }
 
-        // Existing offers
-        const { data: offerRows } = await supabase
-          .from('offer_definition')
-          .select('*')
-          .eq('org_id', wsId)
-          .order('created_at')
-        if (offerRows) {
-          const loaded: OfferData[] = (offerRows as Array<Record<string, unknown>>).map(r => ({
-            localKey: String(r['id'] ?? ''),
-            id: String(r['id'] ?? ''),
-            icpId: String(r['icp_id'] ?? ''),
-            offer_name: String(r['offer_name'] ?? ''),
-            key_outcome: String(r['key_outcome'] ?? ''),
-            price_range: String(r['price_range'] ?? ''),
-            primary_differentiator: String(r['primary_differentiator'] ?? ''),
-          }))
-          setOffers(loaded)
-        }
       } catch { /* non-fatal */ } finally {
         setLoading(false)
       }
@@ -620,77 +589,39 @@ export default function TargetMarketsPage() {
     scheduleIcpSave(i, bt)
   }
 
-  // ── Offer save ────────────────────────────────────────────────────────────
+  // ── Primary ICP ───────────────────────────────────────────────────────────
 
-  async function doSaveOffer(localKey: string) {
+  /**
+   * Mark one profile as the primary ICP.
+   *
+   * A partial unique index allows only one primary per organisation, so the
+   * previous one has to be cleared before the new one is set. Doing it in the
+   * other order fails on the constraint.
+   */
+  async function setPrimary(dbId: string) {
     const wsId = workspaceIdRef.current
-    if (!wsId) return
-    const offer = offersRef.current.find(o => o.localKey === localKey)
-    if (!offer) return
+    if (!wsId || !dbId || primarySaving) return
 
-    setOfferSaveStates(prev => ({ ...prev, [localKey]: 'saving' }))
+    setPrimarySaving(true)
+    const previous = primaryIcpId
+    setPrimaryIcpId(dbId) // optimistic, reverted below if the write fails
     try {
-      const now = new Date().toISOString()
-      if (offer.id) {
+      if (previous && previous !== dbId) {
         const { error } = await supabase
-          .from('offer_definition')
-          .update({ offer_name: offer.offer_name, key_outcome: offer.key_outcome, price_range: offer.price_range, primary_differentiator: offer.primary_differentiator, updated_at: now })
-          .eq('id', offer.id)
+          .from('icp_definition')
+          .update({ is_primary: false })
+          .eq('id', previous)
         if (error) throw error
-      } else {
-        const { data, error } = await supabase
-          .from('offer_definition')
-          .insert({ org_id: wsId, icp_id: offer.icpId, offer_name: offer.offer_name, key_outcome: offer.key_outcome, price_range: offer.price_range, primary_differentiator: offer.primary_differentiator, created_at: now, updated_at: now })
-          .select('id')
-          .single()
-        if (error) throw error
-        if (data) {
-          const newId = String((data as Record<string, unknown>)['id'] ?? '')
-          setOffers(prev => prev.map(o => o.localKey === localKey ? { ...o, id: newId } : o))
-        }
       }
-      setOfferSaveStates(prev => ({ ...prev, [localKey]: 'saved' }))
-      setTimeout(() => setOfferSaveStates(prev => ({ ...prev, [localKey]: 'idle' })), 2500)
+      const { error } = await supabase
+        .from('icp_definition')
+        .update({ is_primary: true })
+        .eq('id', dbId)
+      if (error) throw error
     } catch {
-      setOfferSaveStates(prev => ({ ...prev, [localKey]: 'error' }))
-    }
-  }
-
-  function scheduleOfferSave(localKey: string) {
-    const existing = offerSaveTimers.current.get(localKey)
-    if (existing) clearTimeout(existing)
-    offerSaveTimers.current.set(localKey, setTimeout(() => void doSaveOffer(localKey), AUTOSAVE_MS))
-  }
-
-  function updateOffer(localKey: string, patch: Partial<OfferData>) {
-    setOffers(prev => prev.map(o => o.localKey === localKey ? { ...o, ...patch } : o))
-    scheduleOfferSave(localKey)
-  }
-
-  function primaryIcpId(i: number): string | null {
-    const ids = icpDbIdsRef.current[i]
-    return ids.economic_buyer ?? ids.champion
-  }
-
-  async function handleAddOffer(i: number) {
-    let icpId = primaryIcpId(i)
-    if (!icpId) {
-      // Save ICP immediately to get an id (prefer economic_buyer as the primary)
-      await doSaveIcp(i, 'economic_buyer')
-      icpId = primaryIcpId(i)
-      if (!icpId) return
-    }
-    const localKey = `new-${Date.now()}-${i}`
-    const newOffer: OfferData = { localKey, id: null, icpId, offer_name: '', key_outcome: '', price_range: '', primary_differentiator: '' }
-    setOffers(prev => [...prev, newOffer])
-  }
-
-  function handleDeleteOffer(localKey: string) {
-    const offer = offersRef.current.find(o => o.localKey === localKey)
-    if (!offer) return
-    setOffers(prev => prev.filter(o => o.localKey !== localKey))
-    if (offer.id) {
-      void supabase.from('offer_definition').delete().eq('id', offer.id).then(() => null)
+      setPrimaryIcpId(previous)
+    } finally {
+      setPrimarySaving(false)
     }
   }
 
@@ -803,8 +734,48 @@ export default function TargetMarketsPage() {
       </div>
     )
 
+    const dbId = icpDbIds[i][bt]
+    const isPrimary = Boolean(dbId) && dbId === primaryIcpId
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+        {/* Primary marker. Only offered once the profile has been saved, because
+            there is no row to mark until then. */}
+        {dbId && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+            padding: '14px 18px', borderRadius: '10px',
+            backgroundColor: isPrimary ? 'rgba(232,82,10,0.12)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${isPrimary ? 'rgba(232,82,10,0.45)' : 'rgba(255,255,255,0.1)'}`,
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: isPrimary ? '#E8520A' : 'rgba(255,255,255,0.85)' }}>
+                {isPrimary ? 'Primary ICP' : 'Not your primary ICP'}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.5' }}>
+                {isPrimary
+                  ? 'Lead generation will prioritise this profile, and sales should start here.'
+                  : 'Mark the profile you most want lead generation to prioritise. Only one can be primary.'}
+              </p>
+            </div>
+            {!isPrimary && (
+              <button
+                onClick={() => void setPrimary(dbId)}
+                disabled={primarySaving}
+                style={{
+                  flexShrink: 0, minHeight: '38px', padding: '0 16px', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: 600, cursor: primarySaving ? 'not-allowed' : 'pointer',
+                  backgroundColor: 'rgba(232,82,10,0.15)', color: '#E8520A',
+                  border: '1px solid rgba(232,82,10,0.35)',
+                }}
+              >
+                Set as primary
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Section 1: Professional Identity & Firmographics */}
         <div style={CARD}>
           <p style={{ ...LABEL_ST, color: '#0EA5E9', marginBottom: '14px' }}>Professional Identity & Firmographics</p>
@@ -876,84 +847,6 @@ export default function TargetMarketsPage() {
     )
   }
 
-  // ── Offers tab render ─────────────────────────────────────────────────────
-
-  function renderOffersTab() {
-    const hasAnyIcp = icpDbIds.some(ids => ids.economic_buyer !== null || ids.champion !== null)
-
-    if (!hasAnyIcp) {
-      return (
-        <div style={{ padding: '48px 0', textAlign: 'center' }}>
-          <AlertTriangle size={28} style={{ color: '#D97706', margin: '0 auto 12px', display: 'block' }} />
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#FDE68A', margin: '0 0 4px' }}>No ICPs saved yet</p>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Complete your Target Markets ICPs first — offers are linked to ICPs.</p>
-        </div>
-      )
-    }
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {segments.map((seg, i) => {
-          const ids = icpDbIds[i]
-          const icpId = ids.economic_buyer ?? ids.champion
-          const segOffers = offers.filter(o => o.icpId === icpId)
-          return (
-            <div key={i} style={CARD}>
-              <p style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 4px' }}>{seg.name}</p>
-              {!icpId ? (
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: '8px 0 0' }}>Save the ICP for this segment first to add offers.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
-                  {segOffers.map(offer => (
-                    <div key={offer.localKey} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <SaveIndicator state={offerSaveStates[offer.localKey] ?? 'idle'} />
-                        <button onClick={() => handleDeleteOffer(offer.localKey)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center' }}>
-                          <X size={15} />
-                        </button>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div>
-                          <label style={LABEL_ST}>Offer Name</label>
-                          <input style={INPUT_ST} type="text" value={offer.offer_name} placeholder="Name this offer…"
-                            onChange={e => updateOffer(offer.localKey, { offer_name: e.target.value })} />
-                        </div>
-                        <div>
-                          <label style={LABEL_ST}>Price Range</label>
-                          <input style={INPUT_ST} type="text" value={offer.price_range} placeholder="e.g. $2,500/month"
-                            onChange={e => updateOffer(offer.localKey, { price_range: e.target.value })} />
-                        </div>
-                        <div>
-                          <label style={LABEL_ST}>Key Outcome</label>
-                          <textarea style={TEXTAREA_ST} value={offer.key_outcome} placeholder="Primary outcome delivered…"
-                            onChange={e => updateOffer(offer.localKey, { key_outcome: e.target.value })} />
-                        </div>
-                        <div>
-                          <label style={LABEL_ST}>Primary Differentiator</label>
-                          <textarea style={TEXTAREA_ST} value={offer.primary_differentiator} placeholder="What makes this offer unique…"
-                            onChange={e => updateOffer(offer.localKey, { primary_differentiator: e.target.value })} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {segOffers.length < 3 && (
-                    <button onClick={() => void handleAddOffer(i)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', minHeight: '44px',
-                        backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '2px dashed rgba(255,255,255,0.2)',
-                        borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                      <Plus size={16} /> Add Offer
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -1021,29 +914,18 @@ export default function TargetMarketsPage() {
     <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
-        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Target Markets &amp; Offers</h1>
+        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>ICP Calibrator</h1>
         <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', margin: '6px 0 0' }}>
-          Define your ideal customer profiles and aligned offers per market segment.
+          Calibrate your ideal customer profiles against what your buyers actually said, then mark one as
+          primary so lead generation knows where to start.
         </p>
       </header>
 
-      {/* Tabs */}
-      <div style={{ backgroundColor: '#0A1628', paddingLeft: '32px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ display: 'flex', gap: '0' }}>
-          {(['markets', 'offers'] as ActiveTab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '12px 20px', minHeight: '44px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-                color: tab === t ? '#0EA5E9' : 'rgba(255,255,255,0.5)',
-                borderBottom: tab === t ? '2px solid #0EA5E9' : '2px solid transparent' }}>
-              {t === 'markets' ? 'Target Markets' : 'Offers'}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div style={{ backgroundColor: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.1)' }} />
 
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', maxWidth: '960px' }}>
-        {tab === 'markets' ? (
+        {(
           <div id="target-markets-segments" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {missingEndemicSteps.length > 0 && (
               <div style={{
@@ -1136,8 +1018,6 @@ export default function TargetMarketsPage() {
               </div>
             ))}
           </div>
-        ) : (
-          renderOffersTab()
         )}
       </div>
     </div>
