@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import Anthropic from '@anthropic-ai/sdk'
@@ -248,9 +248,9 @@ ${JSON.stringify(brief)}`
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
-export async function GET(): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
   try {
-    return await handle()
+    return await handle(req)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[icp/report] unhandled error:', message)
@@ -258,7 +258,7 @@ export async function GET(): Promise<Response> {
   }
 }
 
-async function handle(): Promise<Response> {
+async function handle(req: NextRequest): Promise<Response> {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -332,19 +332,34 @@ async function handle(): Promise<Response> {
     }
   }
 
-  const pdf = await buildPdf({
+  const data: ReportData = {
     orgName, orgIndustry, icps, baselines, tagged, totalResponses, gate1Approved, primary, messaging,
-  })
+  }
 
+  const { searchParams } = new URL(req.url)
+  const format = searchParams.get('format') === 'docx' ? 'docx' : 'pdf'
+  const disposition = searchParams.get('inline') === '1' ? 'inline' : 'attachment'
   const safeName = orgName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'Company'
   const date = new Date().toISOString().slice(0, 10)
-  const filename = `ICP-Calibration-Report-${safeName}-${date}.pdf`
 
+  if (format === 'docx') {
+    const docxBuf = await buildDocx(data)
+    return new NextResponse(Buffer.from(docxBuf), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `${disposition}; filename="ICP-Calibration-Report-${safeName}-${date}.docx"`,
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
+  const pdf = await buildPdf(data)
   return new NextResponse(Buffer.from(pdf), {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `${disposition}; filename="ICP-Calibration-Report-${safeName}-${date}.pdf"`,
       'Cache-Control': 'no-store',
     },
   })
@@ -686,18 +701,21 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
       y = ensure(y, 40)
       doc.setFont('helvetica', 'bold'); doc.setFontSize(12); ink(NAVY)
       doc.text(cat.label, margin, y)
+      const catLabelW = doc.getTextWidth(cat.label) // measure while bold 12pt is active
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); ink(GREY)
-      doc.text(cat.hint, margin + doc.getTextWidth(cat.label) + 12, y)
+      doc.text(cat.hint, margin + catLabelW + 12, y)
       y += 8
       stroke('#E2E8F0'); doc.setLineWidth(0.8); doc.line(margin, y, pageW - margin, y)
       y += 14
       for (const b of rows) {
         y = ensure(y, 44)
         const tag = b.profile_type === 'ideal' ? 'CUSTOMER WE WANT' : 'CUSTOMER WE HAVE'
+        const nameStr = b.customer_name || '(unnamed)'
         doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); ink(INK)
-        doc.text(b.customer_name || '(unnamed)', margin, y)
+        doc.text(nameStr, margin, y)
+        const nameW = doc.getTextWidth(nameStr) // measure while bold 10.5pt is active
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); ink(b.profile_type === 'ideal' ? SKY : GREEN)
-        doc.text(tag, margin + doc.getTextWidth(b.customer_name || '(unnamed)') + 10, y, { charSpace: 0.5 })
+        doc.text(tag, margin + nameW + 10, y, { charSpace: 0.5 })
         y += 14
         const meta = [b.contact_name && `${b.contact_name}${b.contact_title ? `, ${b.contact_title}` : ''}`, b.segment_name, b.industry, b.company_size].filter(Boolean).join('  ·  ')
         if (meta) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); ink(GREY); y = wrap(meta, margin, y, contentW, 13) }
@@ -758,4 +776,166 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
   }
 
   return new Uint8Array(doc.output('arraybuffer'))
+}
+
+// ── Word (docx) builder ───────────────────────────────────────────────────────
+//
+// Same content as the PDF, laid out as an editable Word document so Sales and
+// Marketing can mark it up. Mirrors the section order of buildPdf.
+
+async function buildDocx(data: ReportData): Promise<Uint8Array> {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx')
+  type Para = InstanceType<typeof Paragraph>
+
+  const NAVY_H = '0A1628'
+  const ORANGE_H = 'E8520A'
+  const GREY_H = '6B7280'
+
+  const children: Para[] = []
+
+  const h1 = (text: string) => new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 160 } })
+  const h2 = (text: string) => new Paragraph({ children: [new TextRun({ text, bold: true, size: 26, color: NAVY_H })], spacing: { before: 220, after: 100 } })
+  const body = (text: string) => new Paragraph({ children: [new TextRun({ text, size: 21 })], spacing: { after: 120 } })
+  const bullets = (items: string[]): Para[] => items.filter(Boolean).map(t => new Paragraph({ text: t, bullet: { level: 0 }, spacing: { after: 40 } }))
+  const kv = (label: string, value: string): Para[] =>
+    value.trim()
+      ? [new Paragraph({ children: [new TextRun({ text: `${label}: `, bold: true, size: 21 }), new TextRun({ text: value, size: 21 })], spacing: { after: 60 } })]
+      : []
+  const labelList = (label: string, items: string[]): Para[] => {
+    const clean = items.filter(Boolean)
+    if (clean.length === 0) return []
+    return [new Paragraph({ children: [new TextRun({ text: label.toUpperCase(), bold: true, color: GREY_H, size: 17 })], spacing: { before: 100, after: 40 } }), ...bullets(clean)]
+  }
+
+  function renderIcp(icp: IcpRecord, full: boolean): Para[] {
+    const out: Para[] = []
+    out.push(new Paragraph({
+      children: [
+        new TextRun({ text: `${icp.segment_name} · ${buyerLabel(icp.buyer_type)}`, bold: true, size: 26, color: NAVY_H }),
+        ...(icp.is_primary ? [new TextRun({ text: '   PRIMARY', bold: true, size: 16, color: ORANGE_H })] : []),
+      ],
+      spacing: { before: 240, after: 100 },
+    }))
+    out.push(...labelList('Job titles', icp.job_titles))
+    out.push(...kv('Company size', icp.company_size_range))
+    out.push(...kv('Budget range', icp.budget_range))
+    out.push(...labelList('Industry verticals', icp.industry_verticals))
+    out.push(...kv('The big win', icp.the_big_win))
+    out.push(...labelList('Primary challenges', icp.primary_challenges))
+    out.push(...labelList('Buying triggers', icp.buying_triggers))
+    if (full) {
+      out.push(...kv('Decision-making power', icp.decision_making_power))
+      out.push(...kv('Buying motion', icp.buying_motion))
+      out.push(...kv('Urgency trigger', icp.buying_urgency_trigger))
+      out.push(...labelList('Barriers to success', icp.barriers_to_success))
+      out.push(...labelList('Success metrics', icp.success_metrics))
+      out.push(...labelList('Purchase criteria', icp.purchase_criteria))
+      out.push(...labelList('Information sources', icp.information_sources))
+      out.push(...kv('Preferred communication', icp.preferred_communication))
+      out.push(...kv('Values', icp.buyer_values))
+      out.push(...kv('Risk sensitivities', icp.risk_sensitivities))
+      out.push(...kv('Tech stack & integrations', icp.tech_stack))
+    }
+    if (icp.common_objections.length > 0) {
+      out.push(new Paragraph({ children: [new TextRun({ text: 'COMMON OBJECTIONS & HOW TO OVERCOME THEM', bold: true, color: GREY_H, size: 17 })], spacing: { before: 120, after: 40 } }))
+      for (const o of icp.common_objections) {
+        if (o.objection) out.push(new Paragraph({ children: [new TextRun({ text: `"${o.objection}"`, bold: true, size: 21 })], spacing: { after: 20 } }))
+        if (o.overcomes) out.push(new Paragraph({ children: [new TextRun({ text: `How to overcome: `, bold: true, size: 20, color: GREY_H }), new TextRun({ text: o.overcomes, size: 20 })], spacing: { after: 100 } }))
+      }
+    }
+    const mblock = data.messaging[icpKey(icp)]
+    if (mblock && (mblock.messages.length > 0 || mblock.actions.length > 0)) {
+      out.push(new Paragraph({ children: [new TextRun({ text: 'MESSAGING & ACTION PLAN', bold: true, color: ORANGE_H, size: 18 })], spacing: { before: 140, after: 60 } }))
+      out.push(...labelList('How to message them', mblock.messages))
+      out.push(...labelList('Recommended actions', mblock.actions))
+    }
+    return out
+  }
+
+  // Title block
+  children.push(new Paragraph({ children: [new TextRun({ text: 'ICP Calibration Report', bold: true, size: 48, color: NAVY_H })], spacing: { after: 80 } }))
+  children.push(new Paragraph({ children: [new TextRun({ text: data.orgName + (data.orgIndustry ? `  ·  ${data.orgIndustry}` : ''), size: 24, color: GREY_H })], spacing: { after: 40 } }))
+  children.push(new Paragraph({ children: [new TextRun({ text: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), size: 20, color: GREY_H })], spacing: { after: 240 } }))
+
+  // Overview
+  children.push(h1('Overview'))
+  children.push(body(`This report calibrates who ${data.orgName} believes its best customers are against what buyers actually said, then names the profiles Sales and Marketing should organise around. Treat it as a working document: mark it up, argue with it, and bring your input back in.`))
+  children.push(...bullets([
+    `Calibrated ICPs: ${data.icps.length}`,
+    `Baseline profiles: ${data.baselines.length}`,
+    `Tagged buyer responses: ${data.tagged.length} of ${data.totalResponses}`,
+    `Gate 1 (Decision Clarity): ${data.gate1Approved ? 'Approved' : 'Pending'}`,
+  ]))
+  children.push(new Paragraph({
+    children: [
+      new TextRun({ text: 'Primary ICP — start here: ', bold: true, size: 21, color: ORANGE_H }),
+      new TextRun({ text: data.primary ? `${data.primary.segment_name} · ${buyerLabel(data.primary.buyer_type)}` : 'Not selected yet.', size: 21 }),
+    ],
+    spacing: { before: 120, after: 160 },
+  }))
+
+  // Primary ICP
+  if (data.primary) {
+    children.push(h1('Primary ICP — who we sell to first'))
+    children.push(...renderIcp(data.primary, true))
+  }
+
+  // Other calibrated ICPs
+  const otherIcps = data.icps.filter(i => !(data.primary && i.is_primary))
+  children.push(h1('Calibrated ICPs'))
+  if (data.icps.length === 0) {
+    children.push(body('No ICPs have been built yet. Complete Step 3 of the ICP Calibrator to populate this section.'))
+  } else if (otherIcps.length === 0) {
+    children.push(body('Your primary ICP, detailed above, is currently your only calibrated profile.'))
+  } else {
+    for (const icp of otherIcps) children.push(...renderIcp(icp, false))
+  }
+
+  // Baseline profiles
+  children.push(h1('Baseline Profiles — day-one beliefs'))
+  if (data.baselines.length === 0) {
+    children.push(body('No baseline profiles captured yet.'))
+  } else {
+    for (const cat of CUSTOMER_CATEGORIES) {
+      const rows = data.baselines.filter(b => b.category === cat.value)
+      if (rows.length === 0) continue
+      children.push(h2(`${cat.label} — ${cat.hint}`))
+      for (const b of rows) {
+        const tag = b.profile_type === 'ideal' ? 'CUSTOMER WE WANT' : 'CUSTOMER WE HAVE'
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: b.customer_name || '(unnamed)', bold: true, size: 21 }),
+            new TextRun({ text: `   ${tag}`, bold: true, size: 15, color: b.profile_type === 'ideal' ? '0EA5E9' : '16A34A' }),
+          ],
+          spacing: { before: 100, after: 20 },
+        }))
+        const meta = [b.contact_name && `${b.contact_name}${b.contact_title ? `, ${b.contact_title}` : ''}`, b.segment_name, b.industry, b.company_size].filter(Boolean).join('  ·  ')
+        if (meta) children.push(new Paragraph({ children: [new TextRun({ text: meta, size: 18, color: GREY_H })], spacing: { after: 40 } }))
+        if (b.why_fits) children.push(body(b.why_fits))
+        if (b.additional_context) children.push(new Paragraph({ children: [new TextRun({ text: b.additional_context, italics: true, size: 19, color: GREY_H })], spacing: { after: 80 } }))
+      }
+    }
+  }
+
+  // Buyer evidence
+  children.push(h1('Buyer Evidence — what buyers said'))
+  if (data.tagged.length === 0) {
+    children.push(body(`No responses tagged yet. ${data.totalResponses} response${data.totalResponses === 1 ? '' : 's'} collected — tag current customers by category in the Response Manager to fill this in.`))
+  } else {
+    for (const cat of CUSTOMER_CATEGORIES) {
+      const rows = data.tagged.filter(t => t.customer_category === cat.value)
+      if (rows.length === 0) continue
+      children.push(h2(`${cat.label} (${rows.length})`))
+      children.push(...bullets(rows.map(r => [r.respondent_name, r.respondent_title, r.respondent_company].filter(Boolean).join(' · ') || 'Unnamed respondent')))
+    }
+  }
+
+  const doc = new Document({
+    creator: 'Assembly AI',
+    title: `${data.orgName} — ICP Calibration Report`,
+    description: 'Generated by Assembly AI',
+    sections: [{ children }],
+  })
+  const buf = await Packer.toBuffer(doc)
+  return new Uint8Array(buf)
 }

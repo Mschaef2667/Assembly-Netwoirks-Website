@@ -235,17 +235,17 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [scoreAnimated, setScoreAnimated] = useState(0)
   const [bannerDismissed, setBannerDismissed] = useState(true)
-  const [downloadingIcpReport, setDownloadingIcpReport] = useState(false)
+  const [downloadingIcp, setDownloadingIcp] = useState<null | 'pdf' | 'docx'>(null)
   const [icpReportError, setIcpReportError] = useState<string | null>(null)
 
-  // ── ICP Calibration Report download ─────────────────────────────────────────
+  // ── ICP Calibration Report download (PDF or Word) ───────────────────────────
 
-  async function handleDownloadIcpReport() {
-    if (downloadingIcpReport) return
-    setDownloadingIcpReport(true)
+  async function handleDownloadIcp(format: 'pdf' | 'docx') {
+    if (downloadingIcp) return
+    setDownloadingIcp(format)
     setIcpReportError(null)
     try {
-      const res = await fetch('/api/icp/report', { method: 'GET' })
+      const res = await fetch(format === 'docx' ? '/api/icp/report?format=docx' : '/api/icp/report', { method: 'GET' })
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(body.error ?? 'Could not generate the report.')
@@ -256,7 +256,7 @@ export default function DashboardPage() {
       const match = /filename="([^"]+)"/.exec(cd)
       const a = document.createElement('a')
       a.href = url
-      a.download = match ? match[1] : 'ICP-Calibration-Report.pdf'
+      a.download = match ? match[1] : `ICP-Calibration-Report.${format}`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -264,7 +264,7 @@ export default function DashboardPage() {
     } catch (err) {
       setIcpReportError(err instanceof Error ? err.message : 'Download failed.')
     } finally {
-      setDownloadingIcpReport(false)
+      setDownloadingIcp(null)
     }
   }
 
@@ -1189,20 +1189,29 @@ export default function DashboardPage() {
                   statusBg="rgba(16,185,129,0.15)"
                   actions={
                     <>
-                      <Link href="/dashboard/target-markets" style={linkBtnSecondary}>Open</Link>
+                      <Link href="/dashboard/target-markets/report" style={linkBtnSecondary}>Open</Link>
                       <button
-                        onClick={() => { void handleDownloadIcpReport() }}
-                        disabled={downloadingIcpReport}
+                        onClick={() => { void handleDownloadIcp('pdf') }}
+                        disabled={downloadingIcp !== null}
                         title={icpReportError ?? undefined}
                         style={{
-                          ...linkBtn,
-                          border: 'none',
-                          fontFamily: 'inherit',
-                          cursor: downloadingIcpReport ? 'not-allowed' : 'pointer',
-                          backgroundColor: downloadingIcpReport ? 'rgba(14,165,233,0.5)' : '#0EA5E9',
+                          ...linkBtn, border: 'none', fontFamily: 'inherit',
+                          cursor: downloadingIcp ? 'not-allowed' : 'pointer',
+                          backgroundColor: downloadingIcp === 'pdf' ? 'rgba(14,165,233,0.5)' : '#0EA5E9',
                         }}
                       >
-                        {downloadingIcpReport ? 'Preparing…' : icpReportError ? 'Retry PDF' : 'Download PDF'}
+                        {downloadingIcp === 'pdf' ? 'Preparing…' : 'Download PDF'}
+                      </button>
+                      <button
+                        onClick={() => { void handleDownloadIcp('docx') }}
+                        disabled={downloadingIcp !== null}
+                        title={icpReportError ?? undefined}
+                        style={{
+                          ...linkBtnSecondary, fontFamily: 'inherit',
+                          cursor: downloadingIcp ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {downloadingIcp === 'docx' ? 'Preparing…' : 'Download Word'}
                       </button>
                     </>
                   }
