@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic } from 'lucide-react'
+import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic, Info } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { CUSTOMER_CATEGORIES, categoryAppliesTo } from '@/lib/icp/customer-categories'
 
@@ -1754,6 +1754,21 @@ export default function ResponseImportPage() {
         {/* ── View Responses Tab ───────────────────────────────────────────────── */}
         {activeTab === 'view' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Notice: only current customers can be categorised */}
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              padding: '12px 16px', borderRadius: '10px',
+              backgroundColor: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.3)',
+            }}>
+              <Info size={16} style={{ color: '#0EA5E9', flexShrink: 0, marginTop: '1px' }} />
+              <p style={{ margin: 0, fontSize: '13px', color: '#7DD3FC', lineHeight: '1.55' }}>
+                <strong style={{ color: '#0EA5E9' }}>Only current customers can be categorized.</strong> The best-customer
+                categories (Most Profitable, Most Loyal, Most Influential, Highest Growth Potential) describe existing
+                customers, so the <strong>Category</strong> control appears only on Current Customers responses. Prospects,
+                lost customers, and internal stakeholders are kept out of the calibration on purpose.
+              </p>
+            </div>
 
             {/* Filters */}
             <div style={CARD}>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check, Lock, MessageSquare, ArrowRight } from 'lucide-react'
+import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check, Lock, MessageSquare, ArrowRight, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import BaselineProfiles from '@/components/icp/BaselineProfiles'
 
@@ -384,6 +384,10 @@ export default function TargetMarketsPage() {
 
   // Step 2 status panel: how many buyer responses exist to tag.
   const [responseCount, setResponseCount] = useState<number | null>(null)
+
+  // ICP report PDF download.
+  const [reportDownloading, setReportDownloading] = useState(false)
+  const [reportError, setReportError] = useState<string | null>(null)
 
   // ICP forms (index 0, 1, 2 = segments 1, 2, 3) — independent per buyer_type
   const [icpForms, setIcpForms] = useState<Record<BuyerType, IcpFormData>[]>([
@@ -910,6 +914,36 @@ export default function TargetMarketsPage() {
     )
   }
 
+  // ── ICP report download ─────────────────────────────────────────────────────
+
+  async function downloadReport() {
+    if (reportDownloading) return
+    setReportDownloading(true)
+    setReportError(null)
+    try {
+      const res = await fetch('/api/icp/report', { method: 'GET' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Could not generate the report. Please try again.')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const cd = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="([^"]+)"/.exec(cd)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = match ? match[1] : 'ICP-Calibration-Report.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : 'Download failed. Please try again.')
+    } finally {
+      setReportDownloading(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -923,12 +957,33 @@ export default function TargetMarketsPage() {
   return (
     <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
-        <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>ICP Calibrator</h1>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', margin: '6px 0 0', maxWidth: '640px', lineHeight: '1.55' }}>
-          Three steps: capture your day-one beliefs about your best customers, tag the buyer responses that come
-          back, then calibrate your ideal customer profiles against that evidence and mark one as primary.
-        </p>
+      <header style={{ backgroundColor: '#0A1628', padding: '24px 32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>ICP Calibrator</h1>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', margin: '6px 0 0', maxWidth: '640px', lineHeight: '1.55' }}>
+            Three steps: capture your day-one beliefs about your best customers, tag the buyer responses that come
+            back, then calibrate your ideal customer profiles against that evidence and mark one as primary.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+          <button
+            onClick={() => void downloadReport()}
+            disabled={reportDownloading}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '40px', padding: '0 18px',
+              borderRadius: '8px', border: '1px solid rgba(232,82,10,0.5)',
+              backgroundColor: reportDownloading ? 'rgba(232,82,10,0.15)' : '#E8520A',
+              color: reportDownloading ? '#E8520A' : '#FFFFFF',
+              fontSize: '13px', fontWeight: 600, cursor: reportDownloading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {reportDownloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+            {reportDownloading ? 'Preparing report…' : 'Download ICP Report'}
+          </button>
+          {reportError && (
+            <span style={{ fontSize: '12px', color: '#FCA5A5', maxWidth: '260px', textAlign: 'right' }}>{reportError}</span>
+          )}
+        </div>
       </header>
 
       <div style={{ backgroundColor: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.1)' }} />
