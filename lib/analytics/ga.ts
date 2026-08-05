@@ -19,6 +19,23 @@
 
 export const GA_MEASUREMENT_ID = 'G-ZG44BWSYVQ'
 
+/**
+ * Hostnames that count as production for analytics. The GA4 tag is only loaded
+ * on these hosts, so the dev environment, Vercel preview URLs, and localhost
+ * never report into the live property. Exact-match allowlist on purpose: a dev
+ * subdomain like dev.assemblyai.net must NOT be treated as production.
+ */
+export const GA_PRODUCTION_HOSTS: readonly string[] = [
+  'assemblyai.net',
+  'www.assemblyai.net',
+  'assemblynetworks.net',
+  'www.assemblynetworks.net',
+]
+
+export function isGaProductionHost(hostname: string): boolean {
+  return GA_PRODUCTION_HOSTS.includes(hostname)
+}
+
 declare global {
   interface Window {
     dataLayer?: unknown[]
