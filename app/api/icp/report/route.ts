@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import Anthropic from '@anthropic-ai/sdk'
 import { CUSTOMER_CATEGORIES } from '@/lib/icp/customer-categories'
 
 // This route builds a downloadable ICP Calibration Report (PDF) summarising the
@@ -138,6 +139,114 @@ function mapIcp(raw: Record<string, unknown>): IcpRecord {
   }
 }
 
+// ── Messaging & action-plan synthesis ─────────────────────────────────────────
+//
+// The C3 journey stores Key Selling Points (Step 15), Strategic Messages
+// (Steps 27-30), and the Action Plan (Steps 31-38) at the company / pain-point
+// level, not per target market. So rather than duplicate that material, we ask
+// Claude to distill a short, per-ICP block (3 messaging angles + 3 actions)
+// grounded in it. Best-effort: any failure just omits the block.
+
+interface MessagingBlock { messages: string[]; actions: string[] }
+
+const PLAYBOOK_STEP_IDS = ['15', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38']
+
+function stepText(content: unknown): string {
+  if (!content || typeof content !== 'object') return ''
+  const c = content as Record<string, unknown>
+  if (typeof c['text'] === 'string' && c['text'].trim()) return c['text'].trim()
+  try {
+    const j = JSON.stringify(c)
+    return j && j !== '{}' && j !== 'null' ? j : ''
+  } catch {
+    return ''
+  }
+}
+
+// Build a labelled playbook context from the latest version of each source step.
+function buildPlaybookContext(rows: Array<Record<string, unknown>>): string {
+  const latest = new Map<string, string>()
+  for (const row of rows) {
+    const sid = s(row['step_id'])
+    if (!sid || latest.has(sid)) continue // rows are version-desc, first seen is newest
+    const t = stepText(row['content'])
+    if (t) latest.set(sid, t)
+  }
+  const section = (label: string, ids: string[]): string => {
+    const parts = ids.map(id => latest.get(id)).filter((v): v is string => Boolean(v))
+    return parts.length ? `## ${label}\n${parts.join('\n')}` : ''
+  }
+  return [
+    section('Key Selling Points', ['15']),
+    section('Strategic Messages', ['27', '28', '29', '30']),
+    section('Action Plan', ['31', '32', '33', '34', '35', '36', '37', '38']),
+  ].filter(Boolean).join('\n\n').slice(0, 12000)
+}
+
+function icpKey(i: { segment_index: number; buyer_type: string }): string {
+  return `${i.segment_index}-${i.buyer_type}`
+}
+
+async function synthesizeMessaging(
+  icps: IcpRecord[], playbookContext: string, orgName: string, model: string, apiKey: string,
+): Promise<Record<string, MessagingBlock>> {
+  const anthropic = new Anthropic({ apiKey })
+  const brief = icps.map(i => ({
+    id: icpKey(i),
+    label: `${i.segment_name} (${buyerLabel(i.buyer_type)})`,
+    the_big_win: i.the_big_win,
+    primary_challenges: i.primary_challenges,
+    job_titles: i.job_titles,
+  }))
+
+  const system = `You are a B2B sales and marketing strategist. Using the company's EXISTING Key Selling Points, Strategic Messages, and Action Plan, produce a SHORT, tailored block for each ICP:
+- exactly 3 "messages": how to talk to THIS specific buyer (angles, hooks, proof points), each one sentence, directive and specific.
+- exactly 3 "actions": concrete next steps sales/marketing should take to pursue this ICP, each one sentence, directive.
+Ground every item in the provided material; do not invent programs, offers, or claims that are not implied by it. Do not restate the material verbatim — adapt it to the buyer.
+
+Return ONLY valid JSON. Start with { and end with }. Shape exactly:
+{"icps":[{"id":"<id>","messages":["...","...","..."],"actions":["...","...","..."]}]}
+Use the exact id values given. If material is thin for an ICP, still return the best 3 and 3 grounded in what exists.
+
+COMPANY: ${orgName}
+
+EXISTING MATERIAL:
+${playbookContext}
+
+ICPS:
+${JSON.stringify(brief)}`
+
+  const response = await anthropic.messages.create({
+    model,
+    max_tokens: 1800,
+    system,
+    messages: [{ role: 'user', content: 'Generate the JSON now.' }],
+  })
+  let text = ''
+  for (const block of response.content) {
+    if (block.type === 'text') text += block.text
+  }
+  const stripped = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stripped)
+  } catch {
+    const m = stripped.match(/\{[\s\S]*\}/)
+    if (!m) return {}
+    try { parsed = JSON.parse(m[0]) } catch { return {} }
+  }
+  const out: Record<string, MessagingBlock> = {}
+  const list = (parsed as Record<string, unknown>)?.['icps']
+  if (Array.isArray(list)) {
+    for (const it of list as Array<Record<string, unknown>>) {
+      const id = s(it['id'])
+      if (!id) continue
+      out[id] = { messages: arr(it['messages']).slice(0, 3), actions: arr(it['actions']).slice(0, 3) }
+    }
+  }
+  return out
+}
+
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function GET(): Promise<Response> {
@@ -171,16 +280,18 @@ async function handle(): Promise<Response> {
   if (!orgId) return NextResponse.json({ error: 'No organisation found for user' }, { status: 400 })
 
   // Load everything the report needs. RLS scopes each read to the user's org.
-  const [orgRes, icpRes, baseRes, respRes, dcpRes] = await Promise.all([
-    supabase.from('organizations').select('name, industry').eq('id', orgId).maybeSingle(),
+  const [orgRes, icpRes, baseRes, respRes, dcpRes, playbookRes] = await Promise.all([
+    supabase.from('organizations').select('name, industry, preferred_model').eq('id', orgId).maybeSingle(),
     supabase.from('icp_definition').select('*').eq('org_id', orgId).order('segment_index'),
     supabase.from('icp_baseline_profile').select('*').eq('org_id', orgId).order('created_at'),
     supabase.from('survey_link_responses').select('respondent_name, respondent_title, respondent_company, customer_category, audience').eq('org_id', orgId),
     supabase.from('dcp_analysis').select('status').eq('org_id', orgId).maybeSingle(),
+    supabase.from('step_output').select('step_id, version, content').eq('workspace_id', orgId).in('step_id', PLAYBOOK_STEP_IDS).order('version', { ascending: false }),
   ])
 
   const orgName = orgRes.data ? s((orgRes.data as Record<string, unknown>)['name']) || 'Your Company' : 'Your Company'
   const orgIndustry = orgRes.data ? s((orgRes.data as Record<string, unknown>)['industry']) : ''
+  const preferredModel = orgRes.data ? s((orgRes.data as Record<string, unknown>)['preferred_model']) || 'claude-sonnet-4-5' : 'claude-sonnet-4-5'
   const icps = ((icpRes.data ?? []) as Array<Record<string, unknown>>).map(mapIcp)
   const baselines = ((baseRes.data ?? []) as Array<Record<string, unknown>>).map(b => ({
     category: s(b['category']),
@@ -208,8 +319,22 @@ async function handle(): Promise<Response> {
 
   const primary = icps.find(i => i.is_primary) ?? null
 
+  // Per-ICP messaging + action-plan synthesis (best-effort; omitted on any failure
+  // or when there is no source material / API key).
+  let messaging: Record<string, MessagingBlock> = {}
+  const playbookContext = buildPlaybookContext((playbookRes.data ?? []) as Array<Record<string, unknown>>)
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (apiKey && icps.length > 0 && playbookContext.trim().length > 0) {
+    try {
+      messaging = await synthesizeMessaging(icps, playbookContext, orgName, preferredModel, apiKey)
+    } catch (err) {
+      console.error('[icp/report] messaging synthesis failed:', err instanceof Error ? err.message : String(err))
+      messaging = {}
+    }
+  }
+
   const pdf = await buildPdf({
-    orgName, orgIndustry, icps, baselines, tagged, totalResponses, gate1Approved, primary,
+    orgName, orgIndustry, icps, baselines, tagged, totalResponses, gate1Approved, primary, messaging,
   })
 
   const safeName = orgName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'Company'
@@ -237,6 +362,7 @@ interface ReportData {
   totalResponses: number
   gate1Approved: boolean
   primary: IcpRecord | null
+  messaging: Record<string, MessagingBlock>
 }
 
 async function buildPdf(data: ReportData): Promise<Uint8Array> {
@@ -473,6 +599,48 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
         yy += 12
       }
     }
+
+    // Messaging & action plan — synthesised from the company's Key Selling Points,
+    // Strategic Messages, and Action Plan, tailored to this ICP.
+    const mblock = data.messaging[icpKey(icp)]
+    if (mblock && (mblock.messages.length > 0 || mblock.actions.length > 0)) {
+      yy = ensure(yy, 56)
+      // Tinted panel header bar so this reads as the actionable "so what".
+      fill('#FFF3EC'); doc.roundedRect(margin, yy - 12, contentW, 22, 5, 5, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(ORANGE)
+      doc.text('MESSAGING & ACTION PLAN', margin + 10, yy + 3, { charSpace: 0.8 })
+      yy += 24
+
+      if (mblock.messages.length > 0) {
+        yy = ensure(yy, 24)
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(SKY)
+        doc.text('How to message them', margin, yy)
+        yy += 15
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(INK)
+        for (const m of mblock.messages) {
+          yy = ensure(yy, 16)
+          fill(SKY); doc.rect(margin + 1, yy - 3.5, 3, 3, 'F')
+          yy = wrap(m, margin, yy, contentW, 14, 12)
+          yy += 3
+        }
+        yy += 8
+      }
+      if (mblock.actions.length > 0) {
+        yy = ensure(yy, 24)
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(ORANGE)
+        doc.text('Recommended actions', margin, yy)
+        yy += 15
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(INK)
+        for (const a of mblock.actions) {
+          yy = ensure(yy, 16)
+          fill(ORANGE); doc.rect(margin + 1, yy - 3.5, 3, 3, 'F')
+          yy = wrap(a, margin, yy, contentW, 14, 12)
+          yy += 3
+        }
+        yy += 6
+      }
+    }
+
     return yy + 14
   }
 
@@ -485,17 +653,20 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
     renderIcp(data.primary, y, true)
   }
 
-  // ── All calibrated ICPs ────────────────────────────────────────────────────
-  y = sectionPage('Calibrated ICPs', data.primary ? 'The full set of profiles' : 'Your calibrated profiles')
+  // ── All calibrated ICPs (excluding the primary, which has its own section) ──
+  const otherIcps = data.icps.filter(i => !(data.primary && i.is_primary))
+  y = sectionPage('Calibrated ICPs', data.primary ? 'The other calibrated profiles' : 'Your calibrated profiles')
   if (data.icps.length === 0) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(11); ink(GREY)
     wrap('No ICPs have been built yet. Complete Step 3 of the ICP Calibrator to populate this section.', margin, y, contentW, 16)
+  } else if (otherIcps.length === 0) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); ink(GREY)
+    wrap('Your primary ICP, detailed in the previous section, is currently your only calibrated profile. Build additional profiles in the ICP Calibrator to expand your reach.', margin, y, contentW, 15)
   } else {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); ink(GREY)
-    y = wrap('Each profile below is a distinct buyer worth a tailored motion. The primary is flagged.', margin, y, contentW, 15)
+    y = wrap('Each profile below is a distinct buyer worth a tailored motion.', margin, y, contentW, 15)
     y += 12
-    // Primary already has a full-detail section; show it here in brief too for completeness.
-    for (const icp of data.icps) {
+    for (const icp of otherIcps) {
       y = renderIcp(icp, y, false)
     }
   }
