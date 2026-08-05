@@ -1837,7 +1837,7 @@ export default function ResponseImportPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead style={{ backgroundColor: '#0A1628' }}>
                       <tr>
-                        {(['Name', 'Title', 'Role', 'Audience', 'Segment', 'Date', 'Actions'] as const).map(col => (
+                        {(['Name', 'Title', 'Role', 'Audience', 'Segment', 'Category', 'Date', 'Actions'] as const).map(col => (
                           <th
                             key={col}
                             style={{
@@ -1878,6 +1878,29 @@ export default function ResponseImportPage() {
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {segmentNameFromSlug(r.segment_slug)}
+                          </td>
+                          <td style={{ padding: '8px 16px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                            {categoryAppliesTo(r.audience) ? (
+                              <select
+                                value={r.customer_category ?? ''}
+                                disabled={categoryTagSaving}
+                                onChange={e => void updateResponseCategory(r.id, e.target.value)}
+                                style={{
+                                  maxWidth: '160px', padding: '6px 8px', minHeight: '32px', appearance: 'none',
+                                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px',
+                                  fontSize: '12px', color: r.customer_category ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                                  backgroundColor: '#1A3050', fontFamily: 'inherit', outline: 'none',
+                                  cursor: categoryTagSaving ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                <option value="">Untagged</option>
+                                {CUSTOMER_CATEGORIES.map(c => (
+                                  <option key={c.value} value={c.value}>{c.label}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>—</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {formatDate(r.submitted_at)}
