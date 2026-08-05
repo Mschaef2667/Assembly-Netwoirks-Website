@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { CUSTOMER_CATEGORIES, categoryAppliesTo } from '@/lib/icp/customer-categories'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ interface ViewResponse {
   respondent_company: string | null
   respondent_size: string | null
   decision_role: string | null
+  customer_category: string | null
   audience: string
   segment_slug: string
   answers: Record<string, string>
@@ -327,6 +329,7 @@ export default function ResponseImportPage() {
   const [manCompany, setManCompany] = useState('')
   const [manSize, setManSize] = useState('')
   const [manDecisionRole, setManDecisionRole] = useState('')
+  const [manCustomerCategory, setManCustomerCategory] = useState('')
   const [manAnswers, setManAnswers] = useState<Record<string, string>>({})
   const [manQuestions, setManQuestions] = useState<SurveyQuestion[]>([])
   const [manQuestionsLoading, setManQuestionsLoading] = useState(false)
@@ -348,6 +351,7 @@ export default function ResponseImportPage() {
   const [trCompany, setTrCompany] = useState('')
   const [trSize, setTrSize] = useState('')
   const [trDecisionRole, setTrDecisionRole] = useState('')
+  const [trCustomerCategory, setTrCustomerCategory] = useState('')
   const [trSaving, setTrSaving] = useState(false)
   const [trError, setTrError] = useState<string | null>(null)
   const [trSuccess, setTrSuccess] = useState(false)
@@ -545,7 +549,7 @@ export default function ResponseImportPage() {
     try {
       const { data, error } = await supabase
         .from('survey_link_responses')
-        .select('id, survey_link_id, respondent_name, respondent_title, respondent_company, respondent_size, decision_role, audience, segment_slug, answers, submitted_at, source')
+        .select('id, survey_link_id, respondent_name, respondent_title, respondent_company, respondent_size, decision_role, customer_category, audience, segment_slug, answers, submitted_at, source')
         .eq('org_id', oid)
         .order('submitted_at', { ascending: false })
 
@@ -727,6 +731,7 @@ export default function ResponseImportPage() {
             respondent_company: manCompany || undefined,
             respondent_size: manSize || undefined,
             decision_role: manDecisionRole || undefined,
+            customer_category: categoryAppliesTo(manAudience) ? (manCustomerCategory || undefined) : undefined,
             answers: manAnswers,
           }],
           source: 'manual',
@@ -735,7 +740,7 @@ export default function ResponseImportPage() {
       const body = await res.json() as { success?: boolean; error?: string }
       if (!res.ok) throw new Error(body.error ?? 'Save failed')
       setManSuccess(true)
-      setManName(''); setManTitle(''); setManCompany(''); setManSize(''); setManDecisionRole('')
+      setManName(''); setManTitle(''); setManCompany(''); setManSize(''); setManDecisionRole(''); setManCustomerCategory('')
       setManAnswers({})
       await loadStats(orgId)
     } catch (err) {
@@ -853,6 +858,7 @@ export default function ResponseImportPage() {
             respondent_company: trCompany || undefined,
             respondent_size: trSize || undefined,
             decision_role: trDecisionRole || undefined,
+            customer_category: categoryAppliesTo(trAudience) ? (trCustomerCategory || undefined) : undefined,
             answers: Object.fromEntries(filled),
           }],
           source: 'interview',
@@ -866,7 +872,7 @@ export default function ResponseImportPage() {
       setTrAnswers({})
       setTrLowConfidence({})
       setTrMapped(false)
-      setTrName(''); setTrTitle(''); setTrCompany(''); setTrSize(''); setTrDecisionRole('')
+      setTrName(''); setTrTitle(''); setTrCompany(''); setTrSize(''); setTrDecisionRole(''); setTrCustomerCategory('')
       await loadStats(orgId)
     } catch (err) {
       setTrError(err instanceof Error ? err.message : 'Save failed')
@@ -1349,6 +1355,22 @@ export default function ResponseImportPage() {
                     ]}
                   />
                 </div>
+                {categoryAppliesTo(manAudience) && (
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <LabeledSelect
+                      label="Best-Customer Type (optional)"
+                      value={manCustomerCategory}
+                      onChange={v => setManCustomerCategory(v)}
+                      options={[
+                        { value: '', label: 'Not one of the four / not sure' },
+                        ...CUSTOMER_CATEGORIES.map(c => ({ value: c.value, label: `${c.label} — ${c.hint}` })),
+                      ]}
+                    />
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '6px 0 0', lineHeight: '1.5' }}>
+                      Used by ICP Calibrator to compare what each type of good customer said. Leave blank if they do not fit one.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1532,6 +1554,22 @@ export default function ResponseImportPage() {
                     ]}
                   />
                 </div>
+                {categoryAppliesTo(trAudience) && (
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <LabeledSelect
+                      label="Best-Customer Type (optional)"
+                      value={trCustomerCategory}
+                      onChange={v => setTrCustomerCategory(v)}
+                      options={[
+                        { value: '', label: 'Not one of the four / not sure' },
+                        ...CUSTOMER_CATEGORIES.map(c => ({ value: c.value, label: `${c.label} — ${c.hint}` })),
+                      ]}
+                    />
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: '6px 0 0', lineHeight: '1.5' }}>
+                      Used by ICP Calibrator to compare what each type of good customer said. Leave blank if they do not fit one.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2352,6 +2390,7 @@ export default function ResponseImportPage() {
                   { label: 'Company', value: selectedResponse.respondent_company },
                   { label: 'Company Size', value: selectedResponse.respondent_size },
                   { label: 'Decision Role', value: selectedResponse.decision_role },
+                  { label: 'Best-Customer Type', value: selectedResponse.customer_category },
                   { label: 'Audience', value: AUDIENCE_LABELS[selectedResponse.audience as Audience] ?? selectedResponse.audience },
                   { label: 'Segment', value: segmentNameFromSlug(selectedResponse.segment_slug) },
                   { label: 'Date Submitted', value: formatDate(selectedResponse.submitted_at) },

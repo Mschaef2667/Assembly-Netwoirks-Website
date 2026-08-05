@@ -188,6 +188,7 @@ export const STEP_TIPS: Record<string, Tip[]> = {
   // fail for different reasons than surveys: the risk is not completion rate, it is
   // losing the link between an answer and the stage its question belongs to.
   'survey-builder-interview': [
+    { headline: 'Pick current customers across four types', body: 'Interview your most profitable, most loyal, most influential (the ones who send referrals), and highest growth potential customers. One from each beats four who all look alike. This is for choosing among current customers only: lost customers and prospects are still separate groups you need to talk to.' },
     { headline: 'Read each question out loud, word for word', body: 'Reading the question verbatim before the answer puts it into the transcript, which is what lets every answer be matched back to the right buying stage. Probe and follow up freely after that.' },
     { headline: 'Upload transcripts, not recordings', body: 'A text transcript is what the system reads. Use .docx, .txt, or the .vtt or .srt file your meeting tool exports. Leave speaker labels on. Timestamps are fine.' },
     { headline: 'One file per interview, and note who it was', body: 'Keep each conversation in its own file and record which audience the person belongs to: your team, a current customer, a lost customer, or a prospect. That grouping drives the entire analysis and cannot be guessed from the transcript.' },

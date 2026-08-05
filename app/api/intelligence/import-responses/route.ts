@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { allowedCustomerCategory } from '@/lib/icp/customer-categories'
 
 interface ImportResponseRow {
   respondent_name?: string
@@ -9,6 +10,7 @@ interface ImportResponseRow {
   respondent_company?: string
   respondent_size?: string
   decision_role?: string
+  customer_category?: string
   answers: Record<string, string>
 }
 
@@ -104,6 +106,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       respondent_company: r.respondent_company ?? null,
       respondent_size: r.respondent_size ?? null,
       decision_role: r.decision_role ?? null,
+      // Validated here rather than trusted: the column is plain text, so an
+      // unrecognised value would be stored and then silently ignored downstream.
+      customer_category: allowedCustomerCategory(r.customer_category),
       answers: r.answers ?? {},
       source: body.source ?? null,
       submitted_at: new Date().toISOString(),
