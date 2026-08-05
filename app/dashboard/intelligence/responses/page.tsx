@@ -390,6 +390,7 @@ export default function ResponseImportPage() {
   const [viewFilterSource, setViewFilterSource] = useState('')
   const [categoryTagSavingId, setCategoryTagSavingId] = useState<string | null>(null)
   const [categoryTagSavedId, setCategoryTagSavedId] = useState<string | null>(null)
+  const [categoryTagErrorId, setCategoryTagErrorId] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
@@ -584,19 +585,25 @@ export default function ResponseImportPage() {
     const category = value || null
     setCategoryTagSavingId(id)
     setCategoryTagSavedId(null)
+    setCategoryTagErrorId(null)
     try {
-      const { error } = await supabase
-        .from('survey_link_responses')
-        .update({ customer_category: category })
-        .eq('id', id)
-      if (error) throw error
+      // survey_link_responses has no UPDATE RLS policy, so a direct client write
+      // would silently affect zero rows. Persist through the service-role route.
+      const res = await fetch('/api/intelligence/update-response-category', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ responseId: id, category }),
+      })
+      if (!res.ok) throw new Error('save failed')
       setSelectedResponse(prev => (prev && prev.id === id ? { ...prev, customer_category: category } : prev))
       setViewResponses(prev => prev.map(r => (r.id === id ? { ...r, customer_category: category } : r)))
       // Brief "Saved" confirmation so it's clear the tag persisted (it autosaves).
       setCategoryTagSavedId(id)
       setTimeout(() => setCategoryTagSavedId(prev => (prev === id ? null : prev)), 2000)
     } catch {
-      // non-fatal — the field simply stays as it was
+      // The select stays on its previous value (state is not mutated on failure).
+      setCategoryTagErrorId(id)
+      setTimeout(() => setCategoryTagErrorId(prev => (prev === id ? null : prev)), 4000)
     } finally {
       setCategoryTagSavingId(prev => (prev === id ? null : prev))
     }
@@ -1930,6 +1937,8 @@ export default function ResponseImportPage() {
                                   <Loader2 size={12} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
                                 ) : categoryTagSavedId === r.id ? (
                                   <Check size={14} style={{ color: '#16A34A', flexShrink: 0 }} />
+                                ) : categoryTagErrorId === r.id ? (
+                                  <span style={{ fontSize: '11px', color: '#F87171', fontWeight: 600, flexShrink: 0 }}>Failed</span>
                                 ) : null}
                               </div>
                             ) : (
@@ -2499,6 +2508,8 @@ export default function ResponseImportPage() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#16A34A' }}>
                         <Check size={11} /> Saved
                       </span>
+                    ) : categoryTagErrorId === selectedResponse.id ? (
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#F87171' }}>Save failed — try again</span>
                     ) : null}
                   </div>
                   <select
