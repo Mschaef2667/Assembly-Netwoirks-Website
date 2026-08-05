@@ -20,7 +20,6 @@ const PANEL  = '#0F2140'
 const ORANGE = '#E8520A'
 const SKY    = '#0EA5E9'
 const GREEN  = '#16A34A'
-const GREEN_DK = '#0F7A3D'
 const INK    = '#0D0D0D'
 const GREY   = '#6B7280'
 const LIGHT  = '#F1F5F9'
@@ -590,10 +589,10 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
         yy = wrap(o.objection ? `"${o.objection}"` : '(objection)', margin, yy, contentW, 15, 12)
         if (o.overcomes) {
           yy = ensure(yy, 20)
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); ink(GREEN)
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); ink(GREY)
           doc.text('HOW TO OVERCOME', margin + 12, yy, { charSpace: 0.6 })
           yy += 12
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(GREEN_DK)
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(INK)
           yy = wrap(o.overcomes, margin + 12, yy, contentW - 12, 14)
         }
         yy += 12

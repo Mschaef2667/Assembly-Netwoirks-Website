@@ -470,6 +470,8 @@ function ReportPageInner() {
   const [exportingFutureStateDocx, setExportingFutureStateDocx] = useState(false)
   const [futureStateLastGenerated, setFutureStateLastGenerated] = useState<string | null>(null)
   const [futureStateData, setFutureStateData] = useState<FutureStateData | null>(null)
+  const [downloadingIcpReport, setDownloadingIcpReport] = useState(false)
+  const [icpReportError, setIcpReportError] = useState<string | null>(null)
   const [refreshingPreview, setRefreshingPreview] = useState(false)
   const [dcpStatus, setDcpStatus] = useState<string | null>(null)
   const [dcpOverallConfidence, setDcpOverallConfidence] = useState<number | null>(null)
@@ -1947,6 +1949,35 @@ function ReportPageInner() {
     }
   }
 
+  // ─── ICP Calibration Report (server-generated PDF) ──────────────────────────
+  async function handleDownloadIcpReport() {
+    if (downloadingIcpReport) return
+    setDownloadingIcpReport(true)
+    setIcpReportError(null)
+    try {
+      const res = await fetch('/api/icp/report', { method: 'GET' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Could not generate the report. Please try again.')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const cd = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="([^"]+)"/.exec(cd)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = match ? match[1] : 'ICP-Calibration-Report.pdf'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setIcpReportError(err instanceof Error ? err.message : 'Download failed. Please try again.')
+    } finally {
+      setDownloadingIcpReport(false)
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -3034,6 +3065,61 @@ function ReportPageInner() {
                 </div>
               )
             })()}
+          </div>
+
+          {/* ── ICP Calibration Report (server-generated PDF) ── */}
+          <div style={{
+            backgroundColor: '#0F2140',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderLeft: '3px solid #E8520A',
+            borderRadius: '10px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}>
+            <div>
+              <p style={{
+                fontSize: '11px', fontWeight: 700, color: '#E8520A',
+                textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px',
+              }}>
+                Future State · Ideal Customer Profile
+              </p>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px' }}>
+                ICP Calibration Report
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
+                A shared Sales and Marketing reference: your calibrated ideal customer profiles, the day-one baseline
+                beliefs and buyer evidence behind them, and an AI-tailored messaging and action-plan summary for each
+                ICP. Pulls the latest data each time you download.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                onClick={() => { void handleDownloadIcpReport() }}
+                disabled={downloadingIcpReport}
+                style={{
+                  minHeight: '44px', padding: '0 20px',
+                  backgroundColor: downloadingIcpReport ? 'rgba(232,82,10,0.5)' : '#E8520A',
+                  color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: 600,
+                  cursor: downloadingIcpReport ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {downloadingIcpReport ? 'Preparing PDF…' : 'Download ICP Report'}
+              </button>
+              <Link href="/dashboard/target-markets" style={{
+                minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 18px',
+                backgroundColor: 'transparent', color: 'rgba(255,255,255,0.75)',
+                border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+              }}>
+                Open ICP Calibrator
+              </Link>
+              {icpReportError && (
+                <span style={{ fontSize: '12px', color: '#FCA5A5' }}>{icpReportError}</span>
+              )}
+            </div>
           </div>
         </div>
 
