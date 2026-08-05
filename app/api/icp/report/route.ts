@@ -19,6 +19,7 @@ const PANEL  = '#0F2140'
 const ORANGE = '#E8520A'
 const SKY    = '#0EA5E9'
 const GREEN  = '#16A34A'
+const GREEN_DK = '#0F7A3D'
 const INK    = '#0D0D0D'
 const GREY   = '#6B7280'
 const LIGHT  = '#F1F5F9'
@@ -347,7 +348,7 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
   y = wrap(
     'This report calibrates who ' + data.orgName + ' believes its best customers are against what buyers actually said, then '
     + 'names the profiles Sales and Marketing should organise around. Use it to align on targeting, sharpen messaging, and '
-    + 'decide where to focus outreach. It is a working document — mark it up, argue with it, and bring your input back in.',
+    + 'decide where to focus outreach. It is a working document: mark it up, argue with it, and bring your input back in.',
     margin, y, contentW, 16,
   )
   y += 12
@@ -380,7 +381,7 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
   fill(PANEL); doc.roundedRect(margin, y, contentW, 78, 8, 8, 'F')
   fill(ORANGE); doc.roundedRect(margin, y, 5, 78, 2, 2, 'F')
   doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(ORANGE)
-  doc.text('PRIMARY ICP — START HERE', margin + 18, y + 22, { charSpace: 1 })
+  doc.text('PRIMARY ICP  ·  START HERE', margin + 18, y + 22, { charSpace: 1 })
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14); ink('#FFFFFF')
   doc.text(primaryLabel, margin + 18, y + 43)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(LIGHT)
@@ -456,14 +457,20 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
       yy = ensure(yy, 40)
       yy = label('Common objections & how to overcome them', margin, yy)
       for (const o of icp.common_objections) {
-        yy = ensure(yy, 30)
+        yy = ensure(yy, 34)
+        // Objection: grey square bullet + the concern in quotes.
+        fill(GREY); doc.rect(margin + 1, yy - 3.5, 3, 3, 'F')
         doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); ink(INK)
-        yy = wrap(o.objection ? `“${o.objection}”` : '—', margin, yy, contentW, 15, 12)
+        yy = wrap(o.objection ? `"${o.objection}"` : '(objection)', margin, yy, contentW, 15, 12)
         if (o.overcomes) {
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(GREEN)
-          yy = wrap(`→ ${o.overcomes}`, margin, yy, contentW, 14, 12)
+          yy = ensure(yy, 20)
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); ink(GREEN)
+          doc.text('HOW TO OVERCOME', margin + 12, yy, { charSpace: 0.6 })
+          yy += 12
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(GREEN_DK)
+          yy = wrap(o.overcomes, margin + 12, yy, contentW - 12, 14)
         }
-        yy += 6
+        yy += 12
       }
     }
     return yy + 14
@@ -496,7 +503,7 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
   // ── Baseline beliefs ───────────────────────────────────────────────────────
   y = sectionPage('Baseline Profiles', 'Day-one beliefs (the "before")')
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); ink(GREY)
-  y = wrap('What the team believed about its best customers before buyer research — the baseline the calibration is measured against.', margin, y, contentW, 15)
+  y = wrap('What the team believed about its best customers before buyer research: the baseline the calibration is measured against.', margin, y, contentW, 15)
   y += 12
 
   if (data.baselines.length === 0) {
