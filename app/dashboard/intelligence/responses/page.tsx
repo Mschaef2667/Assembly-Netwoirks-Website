@@ -388,6 +388,7 @@ export default function ResponseImportPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [viewFilterSource, setViewFilterSource] = useState('')
+  const [categoryTagSaving, setCategoryTagSaving] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
@@ -564,6 +565,28 @@ export default function ResponseImportPage() {
       // non-fatal
     } finally {
       setViewLoading(false)
+    }
+  }
+
+  // Tag (or re-tag) a response's best-customer category from the detail panel.
+  // Survey-link responses never pass through the manual or transcript tabs, so
+  // this is the only place they can be categorised. Only current customers get a
+  // best-customer category — categoryAppliesTo() encodes that rule.
+  async function updateResponseCategory(id: string, value: string) {
+    const category = value || null
+    setCategoryTagSaving(true)
+    try {
+      const { error } = await supabase
+        .from('survey_link_responses')
+        .update({ customer_category: category })
+        .eq('id', id)
+      if (error) throw error
+      setSelectedResponse(prev => (prev && prev.id === id ? { ...prev, customer_category: category } : prev))
+      setViewResponses(prev => prev.map(r => (r.id === id ? { ...r, customer_category: category } : r)))
+    } catch {
+      // non-fatal — the field simply stays as it was
+    } finally {
+      setCategoryTagSaving(false)
     }
   }
 
@@ -2390,7 +2413,6 @@ export default function ResponseImportPage() {
                   { label: 'Company', value: selectedResponse.respondent_company },
                   { label: 'Company Size', value: selectedResponse.respondent_size },
                   { label: 'Decision Role', value: selectedResponse.decision_role },
-                  { label: 'Best-Customer Type', value: selectedResponse.customer_category },
                   { label: 'Audience', value: AUDIENCE_LABELS[selectedResponse.audience as Audience] ?? selectedResponse.audience },
                   { label: 'Segment', value: segmentNameFromSlug(selectedResponse.segment_slug) },
                   { label: 'Date Submitted', value: formatDate(selectedResponse.submitted_at) },
@@ -2405,6 +2427,35 @@ export default function ResponseImportPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Best-customer category — editable, and only meaningful for current
+                  customers. Survey-link responses can only be tagged here. */}
+              {categoryAppliesTo(selectedResponse.audience) && (
+                <div style={{ marginTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 6px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                      Best-Customer Type
+                    </p>
+                    {categoryTagSaving && <Loader2 size={11} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)' }} />}
+                  </div>
+                  <select
+                    value={selectedResponse.customer_category ?? ''}
+                    disabled={categoryTagSaving}
+                    onChange={e => void updateResponseCategory(selectedResponse.id, e.target.value)}
+                    style={{
+                      width: '100%', padding: '9px 12px', minHeight: '40px', appearance: 'none',
+                      border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                      fontSize: '14px', color: '#FFFFFF', backgroundColor: '#1A3050',
+                      fontFamily: 'inherit', outline: 'none', cursor: categoryTagSaving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <option value="">Not tagged</option>
+                    {CUSTOMER_CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label} — {c.hint}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Q&A by stage */}

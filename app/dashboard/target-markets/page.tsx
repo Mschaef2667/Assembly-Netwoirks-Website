@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check, Lock } from 'lucide-react'
+import { Loader2, Wand2, ChevronDown, ChevronRight, Plus, X, AlertTriangle, Check, Lock, MessageSquare, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import BaselineProfiles from '@/components/icp/BaselineProfiles'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,15 @@ interface Segment {
   index: number
   name: string
   description: string
+}
+
+// Shape BaselineProfiles (Step 1) expects. Segments carry firmographics so a
+// baseline profile can prefill industry / company size from its segment.
+interface BaselineSegment {
+  index: number
+  name: string
+  industry?: string
+  companySize?: string
 }
 
 interface Objection {
@@ -180,6 +190,36 @@ function SaveIndicator({ state }: { state: SaveState }) {
   return <span style={{ fontSize: '12px', color: '#EF4444' }}>Save failed</span>
 }
 
+function StepHeading({ n, title, subtitle, locked = false }: { n: number; title: string; subtitle: string; locked?: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
+      <div style={{
+        flexShrink: 0, width: '30px', height: '30px', borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '14px', fontWeight: 700,
+        backgroundColor: locked ? 'rgba(255,255,255,0.06)' : 'rgba(232,82,10,0.15)',
+        color: locked ? 'rgba(255,255,255,0.45)' : '#E8520A',
+      }}>
+        {n}
+      </div>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#FFFFFF' }}>{title}</h2>
+          {locked && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600,
+              color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '999px', padding: '2px 9px',
+            }}>
+              <Lock size={10} /> Locked
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '3px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.55' }}>{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
 function TagInput({
   tags, onChange, maxItems = 10, placeholder = 'Type and press Enter…',
 }: { tags: string[]; onChange: (tags: string[]) => void; maxItems?: number; placeholder?: string }) {
@@ -339,6 +379,12 @@ export default function TargetMarketsPage() {
     { index: 3, name: 'Segment 3', description: '' },
   ])
 
+  // Firmographic-bearing view of the segments, passed to Step 1 (Baseline Profiles).
+  const [baselineSegments, setBaselineSegments] = useState<BaselineSegment[]>([])
+
+  // Step 2 status panel: how many buyer responses exist to tag.
+  const [responseCount, setResponseCount] = useState<number | null>(null)
+
   // ICP forms (index 0, 1, 2 = segments 1, 2, 3) — independent per buyer_type
   const [icpForms, setIcpForms] = useState<Record<BuyerType, IcpFormData>[]>([
     { economic_buyer: defaultIcp('economic_buyer'), champion: defaultIcp('champion') },
@@ -430,7 +476,8 @@ export default function TargetMarketsPage() {
           const c = (step2Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null
           const rawSegs = c?.['segments']
           if (Array.isArray(rawSegs) && rawSegs.length > 0) {
-            const loaded = (rawSegs as Array<Record<string, unknown>>).slice(0, 3).map((s, i) => ({
+            const segArr = (rawSegs as Array<Record<string, unknown>>).slice(0, 3)
+            const loaded = segArr.map((s, i) => ({
               index: i + 1,
               name: typeof s['name'] === 'string' && s['name'].trim() ? s['name'] : `Segment ${i + 1}`,
               description: typeof s['description'] === 'string' ? s['description'] : '',
@@ -440,8 +487,24 @@ export default function TargetMarketsPage() {
               loaded.push({ index: loaded.length + 1, name: `Segment ${loaded.length + 1}`, description: '' })
             }
             setSegments(loaded)
+
+            // Firmographic view for Step 1. Only real segments (not the filler),
+            // carrying industry / company_size so baseline profiles can prefill.
+            setBaselineSegments(segArr.map((s, i) => ({
+              index: i + 1,
+              name: typeof s['name'] === 'string' && s['name'].trim() ? String(s['name']) : `Segment ${i + 1}`,
+              industry: typeof s['industry'] === 'string' ? String(s['industry']) : undefined,
+              companySize: typeof s['company_size'] === 'string' ? String(s['company_size']) : undefined,
+            })))
           }
         }
+
+        // Step 2 status: count buyer responses available to tag.
+        const { count: respCount } = await supabase
+          .from('survey_link_responses')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', wsId)
+        setResponseCount(respCount ?? 0)
 
         // Endemic Problems readiness (Steps 4-8) — soft warning, never blocks
         const { data: endemicRows } = await supabase
@@ -857,75 +920,130 @@ export default function TargetMarketsPage() {
     )
   }
 
-  if (gate1Approved === false) {
-    return (
-      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-        <div style={{
-          maxWidth: '560px', width: '100%',
-          backgroundColor: '#0F2140',
-          borderRadius: '14px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          padding: '40px',
-          textAlign: 'center',
-        }}>
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            backgroundColor: 'rgba(232,82,10,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
-          }}>
-            <Lock size={26} color="#E8520A" />
-          </div>
-          <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: '0 0 12px' }}>
-            ICP Calibrator Locked
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
-            Complete the Decision Clarity Process and receive Gate 1 approval before building your Ideal Customer Profiles. Your ICP should be grounded in real buyer research, not assumptions.
-          </p>
-          <div style={{
-            backgroundColor: 'rgba(14,165,233,0.1)',
-            border: '1px solid rgba(14,165,233,0.3)',
-            borderRadius: '10px',
-            padding: '14px 18px',
-            margin: '0 0 24px',
-            textAlign: 'left',
-          }}>
-            <p style={{ fontSize: '13px', color: '#7DD3FC', lineHeight: '1.55', margin: 0 }}>
-              <strong style={{ color: '#0EA5E9' }}>Why this order matters:</strong> Building your ICP after buyer research ensures your ideal customer profile reflects how buyers actually make decisions, not how you assume they do.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/intelligence"
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              minHeight: '44px', padding: '0 22px', borderRadius: '8px',
-              backgroundColor: '#E8520A', color: '#FFFFFF',
-              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
-            }}
-          >
-            Go to Intelligence
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{ backgroundColor: '#0A1628', padding: '24px 32px' }}>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>ICP Calibrator</h1>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', margin: '6px 0 0' }}>
-          Calibrate your ideal customer profiles against what your buyers actually said, then mark one as
-          primary so lead generation knows where to start.
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', margin: '6px 0 0', maxWidth: '640px', lineHeight: '1.55' }}>
+          Three steps: capture your day-one beliefs about your best customers, tag the buyer responses that come
+          back, then calibrate your ideal customer profiles against that evidence and mark one as primary.
         </p>
       </header>
 
       <div style={{ backgroundColor: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.1)' }} />
 
       {/* Content */}
-      <div style={{ flex: 1, padding: '28px 32px', maxWidth: '960px' }}>
-        {(
+      <div style={{ flex: 1, padding: '28px 32px', maxWidth: '960px', display: 'flex', flexDirection: 'column', gap: '36px' }}>
+
+        {/* ── Step 1: Baseline Profiles (open from day one, never gated) ───────── */}
+        <section>
+          <StepHeading
+            n={1}
+            title="Baseline Profiles"
+            subtitle="Capture who you believe your best customers are today. This is the “before” the calibration compares real buyer evidence against."
+          />
+          {workspaceId ? (
+            <BaselineProfiles orgId={workspaceId} segments={baselineSegments} />
+          ) : (
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Loading your workspace…</p>
+          )}
+        </section>
+
+        {/* ── Step 2: Tag responses (status panel, not a form) ─────────────────── */}
+        <section>
+          <StepHeading
+            n={2}
+            title="Tag responses"
+            subtitle="Tag each current-customer response by best-customer category in the Response Manager. That is what turns raw responses into calibration evidence."
+          />
+          <div style={{
+            ...CARD,
+            display: 'flex', alignItems: 'flex-start', gap: '14px',
+          }}>
+            <div style={{
+              flexShrink: 0, width: '38px', height: '38px', borderRadius: '9px',
+              backgroundColor: 'rgba(14,165,233,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <MessageSquare size={18} style={{ color: '#0EA5E9' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              {responseCount === null ? (
+                <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>Checking for responses…</p>
+              ) : responseCount > 0 ? (
+                <>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>
+                    {responseCount} {responseCount === 1 ? 'response' : 'responses'} collected
+                  </p>
+                  <p style={{ margin: '4px 0 12px', fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.55' }}>
+                    Open the Response Manager to tag current-customer responses by category. Survey-link responses can only be tagged there.
+                  </p>
+                  <Link href="/dashboard/intelligence/responses" style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '38px', padding: '0 16px',
+                    borderRadius: '8px', backgroundColor: '#E8520A', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                  }}>
+                    Open Response Manager <ArrowRight size={14} />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>No responses yet</p>
+                  <p style={{ margin: '4px 0 12px', fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.55' }}>
+                    You have no buyer responses to tag yet. Build and share a survey to start collecting them, then come back to tag by category.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    <Link href="/dashboard/intelligence/survey-builder" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '38px', padding: '0 16px',
+                      borderRadius: '8px', backgroundColor: '#E8520A', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                    }}>
+                      Open Survey Builder <ArrowRight size={14} />
+                    </Link>
+                    <Link href="/dashboard/intelligence/responses" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '38px', padding: '0 16px',
+                      borderRadius: '8px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.75)',
+                      border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                    }}>
+                      Enter a response manually
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Step 3: Calibrated ICPs (gated on Gate 1 / DCP approval) ─────────── */}
+        <section>
+          <StepHeading
+            n={3}
+            title="Calibrated ICPs"
+            subtitle="Build and calibrate your ideal customer profiles against what buyers actually said, then mark one as primary so lead generation knows where to start."
+            locked={gate1Approved === false}
+          />
+          {gate1Approved === false ? (
+            <div style={{ ...CARD, display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+              <div style={{
+                flexShrink: 0, width: '44px', height: '44px', borderRadius: '50%',
+                backgroundColor: 'rgba(232,82,10,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Lock size={20} color="#E8520A" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+                  Complete the Decision Clarity Process first
+                </p>
+                <p style={{ margin: '6px 0 12px', fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+                  Receive Gate 1 approval before building your ICPs. Building them after buyer research keeps your profiles grounded in how buyers actually decide, not how you assume they do. Steps 1 and 2 above stay open in the meantime.
+                </p>
+                <Link href="/dashboard/intelligence" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '40px', padding: '0 18px',
+                  borderRadius: '8px', backgroundColor: '#E8520A', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  Go to Intelligence <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          ) : (
           <div id="target-markets-segments" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {missingEndemicSteps.length > 0 && (
               <div style={{
@@ -1018,7 +1136,9 @@ export default function TargetMarketsPage() {
               </div>
             ))}
           </div>
-        )}
+          )}
+        </section>
+
       </div>
     </div>
   )
