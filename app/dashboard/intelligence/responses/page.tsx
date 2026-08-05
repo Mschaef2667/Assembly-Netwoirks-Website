@@ -388,7 +388,8 @@ export default function ResponseImportPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [viewFilterSource, setViewFilterSource] = useState('')
-  const [categoryTagSaving, setCategoryTagSaving] = useState(false)
+  const [categoryTagSavingId, setCategoryTagSavingId] = useState<string | null>(null)
+  const [categoryTagSavedId, setCategoryTagSavedId] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const orgIdRef = useRef<string | null>(null)
@@ -581,7 +582,8 @@ export default function ResponseImportPage() {
   // best-customer category — categoryAppliesTo() encodes that rule.
   async function updateResponseCategory(id: string, value: string) {
     const category = value || null
-    setCategoryTagSaving(true)
+    setCategoryTagSavingId(id)
+    setCategoryTagSavedId(null)
     try {
       const { error } = await supabase
         .from('survey_link_responses')
@@ -590,10 +592,13 @@ export default function ResponseImportPage() {
       if (error) throw error
       setSelectedResponse(prev => (prev && prev.id === id ? { ...prev, customer_category: category } : prev))
       setViewResponses(prev => prev.map(r => (r.id === id ? { ...r, customer_category: category } : r)))
+      // Brief "Saved" confirmation so it's clear the tag persisted (it autosaves).
+      setCategoryTagSavedId(id)
+      setTimeout(() => setCategoryTagSavedId(prev => (prev === id ? null : prev)), 2000)
     } catch {
       // non-fatal — the field simply stays as it was
     } finally {
-      setCategoryTagSaving(false)
+      setCategoryTagSavingId(prev => (prev === id ? null : prev))
     }
   }
 
@@ -1863,11 +1868,11 @@ export default function ResponseImportPage() {
                           <th
                             key={col}
                             style={{
-                              padding: '11px 16px', textAlign: 'left',
+                              padding: '11px 12px', textAlign: 'left',
                               color: 'rgba(255,255,255,0.45)', fontSize: '11px',
                               fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
                               whiteSpace: 'nowrap',
-                              ...(col === 'Actions' ? { minWidth: '120px' } : {}),
+                              ...(col === 'Actions' ? { minWidth: '110px' } : {}),
                             }}
                           >
                             {col}
@@ -1880,17 +1885,17 @@ export default function ResponseImportPage() {
                         <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                           <td
                             onClick={() => setSelectedResponse(r)}
-                            style={{ padding: '12px 16px', color: '#FFFFFF', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            style={{ padding: '11px 12px', color: '#FFFFFF', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
                           >
                             {r.respondent_name ?? <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>—</span>}
                           </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '11px 12px', color: 'rgba(255,255,255,0.7)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.respondent_title ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
                           </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.7)', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '11px 12px', color: 'rgba(255,255,255,0.7)', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.decision_role ?? <span style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>}
                           </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '11px 12px', whiteSpace: 'nowrap' }}>
                             <span style={{
                               padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600,
                               backgroundColor: 'rgba(14,165,233,0.15)', color: '#0EA5E9',
@@ -1898,36 +1903,43 @@ export default function ResponseImportPage() {
                               {AUDIENCE_LABELS[r.audience as Audience] ?? r.audience}
                             </span>
                           </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '11px 12px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {segmentNameFromSlug(r.segment_slug)}
                           </td>
-                          <td style={{ padding: '8px 16px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                          <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                             {categoryAppliesTo(r.audience) ? (
-                              <select
-                                value={r.customer_category ?? ''}
-                                disabled={categoryTagSaving}
-                                onChange={e => void updateResponseCategory(r.id, e.target.value)}
-                                style={{
-                                  maxWidth: '160px', padding: '6px 8px', minHeight: '32px', appearance: 'none',
-                                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px',
-                                  fontSize: '12px', color: r.customer_category ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
-                                  backgroundColor: '#1A3050', fontFamily: 'inherit', outline: 'none',
-                                  cursor: categoryTagSaving ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                <option value="">Untagged</option>
-                                {CUSTOMER_CATEGORIES.map(c => (
-                                  <option key={c.value} value={c.value}>{c.label}</option>
-                                ))}
-                              </select>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <select
+                                  value={r.customer_category ?? ''}
+                                  disabled={categoryTagSavingId === r.id}
+                                  onChange={e => void updateResponseCategory(r.id, e.target.value)}
+                                  style={{
+                                    maxWidth: '150px', padding: '6px 8px', minHeight: '32px', appearance: 'none',
+                                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px',
+                                    fontSize: '12px', color: r.customer_category ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                                    backgroundColor: '#1A3050', fontFamily: 'inherit', outline: 'none',
+                                    cursor: categoryTagSavingId === r.id ? 'not-allowed' : 'pointer',
+                                  }}
+                                >
+                                  <option value="">Untagged</option>
+                                  {CUSTOMER_CATEGORIES.map(c => (
+                                    <option key={c.value} value={c.value}>{c.label}</option>
+                                  ))}
+                                </select>
+                                {categoryTagSavingId === r.id ? (
+                                  <Loader2 size={12} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
+                                ) : categoryTagSavedId === r.id ? (
+                                  <Check size={14} style={{ color: '#16A34A', flexShrink: 0 }} />
+                                ) : null}
+                              </div>
                             ) : (
                               <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '11px 12px', color: 'rgba(255,255,255,0.45)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                             {formatDate(r.submitted_at)}
                           </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', minWidth: '120px' }}>
+                          <td style={{ padding: '11px 12px', whiteSpace: 'nowrap', minWidth: '110px' }}>
                             {deleteConfirmId === r.id ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>Delete?</span>
@@ -2481,17 +2493,23 @@ export default function ResponseImportPage() {
                     <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
                       Best-Customer Type
                     </p>
-                    {categoryTagSaving && <Loader2 size={11} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)' }} />}
+                    {categoryTagSavingId === selectedResponse.id ? (
+                      <Loader2 size={11} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                    ) : categoryTagSavedId === selectedResponse.id ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: '#16A34A' }}>
+                        <Check size={11} /> Saved
+                      </span>
+                    ) : null}
                   </div>
                   <select
                     value={selectedResponse.customer_category ?? ''}
-                    disabled={categoryTagSaving}
+                    disabled={categoryTagSavingId === selectedResponse.id}
                     onChange={e => void updateResponseCategory(selectedResponse.id, e.target.value)}
                     style={{
                       width: '100%', padding: '9px 12px', minHeight: '40px', appearance: 'none',
                       border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
                       fontSize: '14px', color: '#FFFFFF', backgroundColor: '#1A3050',
-                      fontFamily: 'inherit', outline: 'none', cursor: categoryTagSaving ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit', outline: 'none', cursor: categoryTagSavingId === selectedResponse.id ? 'not-allowed' : 'pointer',
                     }}
                   >
                     <option value="">Not tagged</option>
