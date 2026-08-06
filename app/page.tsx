@@ -476,7 +476,7 @@ type Stage = 'live' | 'building' | 'service'
 
 const FLYWHEEL = [
   { n: 1, label: 'Strategy',       x: 380, y: 110, lx: 380, ly: 54,  anchor: 'middle' as const, stage: 'live'     as Stage, note: 'Available now' },
-  { n: 2, label: 'ICP Calibrator', x: 545, y: 205, lx: 590, ly: 185, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
+  { n: 2, label: 'ICP Calibrator', x: 545, y: 205, lx: 590, ly: 185, anchor: 'start'  as const, stage: 'live'     as Stage, note: 'Available now' },
   { n: 3, label: 'Lead Generator', x: 545, y: 395, lx: 590, ly: 427, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
   { n: 4, label: 'Asset Studio',   x: 380, y: 490, lx: 380, ly: 560, anchor: 'middle' as const, stage: 'service'  as Stage, note: '' },
   { n: 5, label: 'Integrations',   x: 215, y: 395, lx: 170, ly: 427, anchor: 'end'    as const, stage: 'service'  as Stage, note: '' },
@@ -514,8 +514,8 @@ const MODULES = [
     title: '2. ICP Calibrator',
     body:
       'Sharpen exactly who you should be selling to, using what your buyers told you rather than a guess.',
-    tag: 'In development',
-    stage: 'building' as Stage,
+    tag: 'Available now',
+    stage: 'live' as Stage,
   },
   {
     title: '3. Lead Generator',
@@ -1085,7 +1085,7 @@ export default function LandingPage() {
               feeds straight back into the strategy instead of getting lost.
             </p>
             <p style={SECTION_SUB}>
-              Step one is in the platform today and steps two and three are in development. The rest
+              Steps one and two are in the platform today and step three is in development. The rest
               is not software yet, but the loop still closes. Our team or your agency can run those
               stages by hand while the modules are built. Nothing waits on a release date.
             </p>
