@@ -337,10 +337,16 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   const { searchParams } = new URL(req.url)
-  const format = searchParams.get('format') === 'docx' ? 'docx' : 'pdf'
+  const formatParam = searchParams.get('format')
+  const format = formatParam === 'docx' ? 'docx' : formatParam === 'json' ? 'json' : 'pdf'
   const disposition = searchParams.get('inline') === '1' ? 'inline' : 'attachment'
   const safeName = orgName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'Company'
   const date = new Date().toISOString().slice(0, 10)
+
+  // JSON powers the on-screen HTML report view.
+  if (format === 'json') {
+    return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
+  }
 
   if (format === 'docx') {
     const docxBuf = await buildDocx(data)
