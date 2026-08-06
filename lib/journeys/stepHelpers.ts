@@ -64,6 +64,9 @@ export interface AllStep {
 }
 
 export interface Segment {
+  /** Stable identifier, generated once and preserved across renames/reorders.
+   *  Downstream references (survey links, responses) key off this, not the name. */
+  id: string
   name: string
   industry: string
   company_size: string
@@ -122,7 +125,7 @@ export interface PrereqInfo { status: string; hasContent: boolean }
 
 // ── Defaults and reference data ───────────────────────────────────────────────
 
-export const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geography: '', annual_revenue: '' }
+export const DEFAULT_SEGMENT: Segment = { id: '', name: '', industry: '', company_size: '', geography: '', annual_revenue: '' }
 
 export const ROLE_CATEGORIES: RoleCategory[] = [
   '',

@@ -245,7 +245,17 @@ export default function StepPage() {
   const persistStep2Content = useCallback(async (segs: Segment[], wsId: string) => {
     setSaveStatus('saving')
     try {
-      const contentPayload = { segments: segs }
+      // Assign a stable id to any segment missing one, so downstream references
+      // (survey links, responses) never orphan when a segment is renamed. Write
+      // the ids back to state so subsequent saves reuse them rather than churn.
+      let generated = false
+      const withIds = segs.map(s => {
+        if (s.id && s.id.trim()) return s
+        generated = true
+        return { ...s, id: crypto.randomUUID() }
+      })
+      if (generated) setStep2Segments(withIds)
+      const contentPayload = { segments: withIds }
       const now = new Date().toISOString()
       if (outputId) {
         const { error } = await supabase
@@ -275,7 +285,7 @@ export default function StepPage() {
     } catch {
       setSaveStatus('error')
     }
-  }, [outputId, outputVersion, stepId, setOutputId])
+  }, [outputId, outputVersion, stepId, setOutputId, setStep2Segments])
 
   // ── Auto-save (Step 3) ──────────────────────────────────────────────────────
 

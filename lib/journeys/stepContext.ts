@@ -201,6 +201,7 @@ export function useStepContext(stepId: string): StepContext {
             const segs = c?.['segments']
             if (Array.isArray(segs)) {
               const parsed = (segs as Array<Record<string, unknown>>).map(s => ({
+                id: String(s['id'] ?? ''),
                 name: String(s['name'] ?? ''),
                 industry: String(s['industry'] ?? ''),
                 company_size: String(s['company_size'] ?? ''),
