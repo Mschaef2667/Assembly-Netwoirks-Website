@@ -17,13 +17,17 @@ interface Segment {
   description: string
 }
 
-// Shape BaselineProfiles (Step 1) expects. Segments carry firmographics so a
-// baseline profile can prefill industry / company size from its segment.
+// Shape BaselineProfiles (Step 1) expects. Segments carry their full firmographic
+// profile plus decision makers, so selecting a segment surfaces everything we
+// already know about it (the "segment as source of truth" idea).
 interface BaselineSegment {
   index: number
   name: string
   industry?: string
   companySize?: string
+  geography?: string
+  annualRevenue?: string
+  decisionMakers?: { role: string; influence: string; risk: string }[]
 }
 
 interface Objection {
@@ -489,13 +493,40 @@ export default function TargetMarketsPage() {
             }
             setSegments(loaded)
 
-            // Firmographic view for Step 1. Only real segments (not the filler),
-            // carrying industry / company_size so baseline profiles can prefill.
+            // Load Step 3 decision makers so each segment carries its buying committee.
+            const { data: step3Rows } = await supabase
+              .from('step_output')
+              .select('content')
+              .eq('workspace_id', wsId)
+              .eq('step_id', '3')
+              .order('version', { ascending: false })
+              .limit(1)
+            const dmContent = step3Rows && step3Rows.length > 0
+              ? ((step3Rows[0] as Record<string, unknown>)['content'] as Record<string, unknown> | null)
+              : null
+            const dmsRaw = (dmContent?.['decision_makers'] ?? {}) as Record<string, unknown>
+            const dmsForSegment = (i: number): { role: string; influence: string; risk: string }[] => {
+              const arr = dmsRaw[`segment_${i + 1}`]
+              if (!Array.isArray(arr)) return []
+              return (arr as Array<Record<string, unknown>>)
+                .map(dm => ({
+                  role: (String(dm['specific_title'] ?? '').trim() || String(dm['role_category'] ?? '').trim()),
+                  influence: String(dm['influence'] ?? '').trim(),
+                  risk: String(dm['risk_level'] ?? '').trim(),
+                }))
+                .filter(d => d.role)
+            }
+
+            // Full firmographic + decision-maker view for Step 1, so selecting a
+            // segment surfaces everything already known about it.
             setBaselineSegments(segArr.map((s, i) => ({
               index: i + 1,
               name: typeof s['name'] === 'string' && s['name'].trim() ? String(s['name']) : `Segment ${i + 1}`,
               industry: typeof s['industry'] === 'string' ? String(s['industry']) : undefined,
               companySize: typeof s['company_size'] === 'string' ? String(s['company_size']) : undefined,
+              geography: typeof s['geography'] === 'string' ? String(s['geography']) : undefined,
+              annualRevenue: typeof s['annual_revenue'] === 'string' ? String(s['annual_revenue']) : undefined,
+              decisionMakers: dmsForSegment(i),
             })))
           }
         }

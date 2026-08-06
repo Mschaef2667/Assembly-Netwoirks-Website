@@ -96,6 +96,20 @@ const SOURCE_LABELS: Record<string, string> = {
   interview: 'Interview Transcript',
 }
 
+// Bridges a buyer's self-reported decision role (survey vocabulary) to the
+// influence levels used on the segment's decision makers (Step 3), so a
+// response can inherit that decision maker's Risk Level. Best-effort: order
+// within each list is priority order for matching.
+const DECISION_ROLE_TO_INFLUENCE: Record<string, string[]> = {
+  'Final Decision Maker': ['Final Approver', 'Economic Buyer'],
+  'Strong Influence': ['Economic Buyer', 'Primary Buyer', 'Influencer'],
+  'Evaluator / Analyst': ['Evaluator'],
+  'Champion (internal advocate)': ['Champion'],
+  'Gatekeeper / Procurement': ['Gatekeeper / Blocker'],
+  'End User': ['Influencer'],
+  'Observer / No direct role': [],
+}
+
 const STAGE_NAMES: Record<number, string> = {
   1: 'Need Recognition',
   2: 'Motivation to Act',
@@ -306,6 +320,8 @@ function LabeledSelect({
 export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  // Segment decision makers keyed by segment slug, for response risk inheritance.
+  const [dmsBySlug, setDmsBySlug] = useState<Record<string, { role: string; influence: string; risk: string }[]>>({})
   const [segments, setSegments] = useState<Segment[]>([])
   const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'transcript' | 'view' | 'simulate'>('view')
 
@@ -461,6 +477,36 @@ export default function ResponseImportPage() {
           setCsvSegment(segs[0])
           setManSegment(segs[0])
           setSimSegment(segs[0])
+        }
+
+        // Load Step 3 decision makers so responses can inherit a Risk Level from
+        // the matching decision maker in their segment. Keyed by segment slug;
+        // segment order here matches segment_1..3 in the Step 3 content.
+        const { data: step3 } = await supabase
+          .from('step_output')
+          .select('content')
+          .eq('workspace_id', oid)
+          .eq('step_id', '3')
+          .order('version', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (step3) {
+          const c3 = (step3 as Record<string, unknown>)['content'] as Record<string, unknown> | null
+          const dmRaw = (c3?.['decision_makers'] ?? {}) as Record<string, unknown>
+          const bySlug: Record<string, { role: string; influence: string; risk: string }[]> = {}
+          segs.forEach((seg, i) => {
+            const arr = dmRaw[`segment_${i + 1}`]
+            if (Array.isArray(arr)) {
+              bySlug[seg.slug] = (arr as Array<Record<string, unknown>>)
+                .map(dm => ({
+                  role: (String(dm['specific_title'] ?? '').trim() || String(dm['role_category'] ?? '').trim()),
+                  influence: String(dm['influence'] ?? '').trim(),
+                  risk: String(dm['risk_level'] ?? '').trim(),
+                }))
+                .filter(d => d.role || d.influence)
+            }
+          })
+          setDmsBySlug(bySlug)
         }
       }
 
@@ -1051,6 +1097,23 @@ export default function ResponseImportPage() {
     const seg = segments.find(s => s.slug === slug)
     if (seg) return seg.name
     return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  }
+
+  // Risk Level inherited from the segment's decision maker whose influence maps
+  // to the buyer's self-reported decision role. Buyer-side audiences only.
+  function inheritedRiskFor(resp: ViewResponse): string | null {
+    if (resp.audience === 'internal') return null
+    const role = (resp.decision_role ?? '').trim()
+    if (!role) return null
+    const dms = dmsBySlug[resp.segment_slug]
+    if (!dms || dms.length === 0) return null
+    const wanted = DECISION_ROLE_TO_INFLUENCE[role] ?? []
+    if (wanted.length === 0) return null
+    for (const influence of wanted) {
+      const match = dms.find(dm => dm.risk && dm.influence === influence)
+      if (match) return match.risk
+    }
+    return null
   }
 
   const CARD: React.CSSProperties = {
@@ -2478,6 +2541,9 @@ export default function ResponseImportPage() {
                   { label: 'Company', value: selectedResponse.respondent_company },
                   { label: 'Company Size', value: selectedResponse.respondent_size },
                   { label: 'Decision Role', value: selectedResponse.decision_role },
+                  ...(inheritedRiskFor(selectedResponse)
+                    ? [{ label: 'Decision-Maker Risk', value: `${inheritedRiskFor(selectedResponse)} (from segment)` }]
+                    : []),
                   { label: 'Audience', value: AUDIENCE_LABELS[selectedResponse.audience as Audience] ?? selectedResponse.audience },
                   { label: 'Segment', value: segmentNameFromSlug(selectedResponse.segment_slug) },
                   { label: 'Date Submitted', value: formatDate(selectedResponse.submitted_at) },

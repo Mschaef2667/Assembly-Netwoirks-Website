@@ -32,6 +32,9 @@ interface SegmentOption {
   name: string
   industry?: string
   companySize?: string
+  geography?: string
+  annualRevenue?: string
+  decisionMakers?: { role: string; influence: string; risk: string }[]
 }
 
 interface BaselineRow {
@@ -456,6 +459,52 @@ export default function BaselineProfiles({ orgId, segments }: BaselineProfilesPr
                       placeholder="Anything else worth remembering about this customer…"
                       onChange={e => patchRow(row.key, { additional_context: e.target.value })} />
                   </div>
+                  {(() => {
+                    const seg = row.segment_index != null ? segments.find(s => s.index === row.segment_index) : undefined
+                    if (!seg) return null
+                    const dms = seg.decisionMakers ?? []
+                    const hasContext = !!(seg.geography || seg.annualRevenue || dms.length > 0)
+                    if (!hasContext) return null
+                    return (
+                      <div style={{ gridColumn: 'span 2', padding: '12px 14px', backgroundColor: 'rgba(232,82,10,0.06)',
+                        border: '1px solid rgba(232,82,10,0.25)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                          color: '#E8520A', marginBottom: '8px' }}>
+                          What we already know about {seg.name}
+                        </div>
+                        {(seg.geography || seg.annualRevenue) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: dms.length > 0 ? '10px' : 0 }}>
+                            {seg.geography && (
+                              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', padding: '3px 10px',
+                                backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.45)' }}>Geography:</span> {seg.geography}
+                              </span>
+                            )}
+                            {seg.annualRevenue && (
+                              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', padding: '3px 10px',
+                                backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px' }}>
+                                <span style={{ color: 'rgba(255,255,255,0.45)' }}>Annual revenue:</span> {seg.annualRevenue}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {dms.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>Decision makers</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {dms.map((dm, di) => (
+                                <div key={di} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{dm.role}</span>
+                                  {dm.influence && <span> · {dm.influence} influence</span>}
+                                  {dm.risk && <span> · {dm.risk} risk</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             ))}
