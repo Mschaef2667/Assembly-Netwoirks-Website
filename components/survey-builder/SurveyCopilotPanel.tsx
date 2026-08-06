@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText, Link2, Users, RotateCcw } from 'lucide-react'
+import { Loader2, Wand2, CheckCircle2, Copy, Download, AlertTriangle, FileText, Link2, Users, RotateCcw, ExternalLink } from 'lucide-react'
 import TipsPanel from '@/components/ui/TipsPanel'
 import { STEP_TIPS } from '@/lib/tips'
 import type { CopilotStatus, Audience, SurveyState, Segment } from './types'
@@ -712,6 +712,17 @@ export default function SurveyCopilotPanel({
                     ? <><CheckCircle2 size={13} /> Copied!</>
                     : <><Copy size={13} /> Copy Link</>
                   }
+                </button>
+                <button
+                  onClick={() => { if (surveyUrl) window.open(surveyUrl, '_blank', 'noopener,noreferrer') }}
+                  style={{
+                    flex: 1, minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    backgroundColor: 'rgba(14,165,233,0.12)', color: '#0EA5E9',
+                    border: '1px solid rgba(14,165,233,0.25)',
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  }}
+                >
+                  <ExternalLink size={13} /> View
                 </button>
                 <button
                   onClick={() => void handleGenerateLink()}
