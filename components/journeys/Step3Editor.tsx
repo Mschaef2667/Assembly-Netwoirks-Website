@@ -125,6 +125,20 @@ export function Step3Editor({ segmentNames, dms, activeTab, saveStatus, onTabCha
                   ))}
                 </select>
               </div>
+              <div>
+                <label style={{ ...LABEL_STYLE, display: 'block' }}>Risk Level</label>
+                <select
+                  value={dm.risk_level}
+                  onChange={e => onChange(activeKey, dmIdx, 'risk_level', e.target.value)}
+                  onBlur={onBlur}
+                  style={{ ...FIELD_INPUT, cursor: 'pointer' }}
+                >
+                  <option value="" style={{ backgroundColor: '#0F2140' }}>Select risk level</option>
+                  <option value="High" style={{ backgroundColor: '#0F2140' }}>High</option>
+                  <option value="Medium" style={{ backgroundColor: '#0F2140' }}>Medium</option>
+                  <option value="Low" style={{ backgroundColor: '#0F2140' }}>Low</option>
+                </select>
+              </div>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>

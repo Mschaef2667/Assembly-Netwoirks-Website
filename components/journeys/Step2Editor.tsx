@@ -111,6 +111,23 @@ export function Step2Editor({ segments, saveStatus, onChange, onBlur }: Step2Edi
                 <option value="Global">Global</option>
               </select>
             </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ ...LABEL_STYLE, display: 'block' }}>Annual Revenue</label>
+              <select
+                value={seg.annual_revenue}
+                onChange={e => onChange(i, 'annual_revenue', e.target.value)}
+                onBlur={onBlur}
+                style={DROPDOWN_STYLE}
+              >
+                <option value="">Select annual revenue</option>
+                <option value="Under $1M">Under $1M</option>
+                <option value="$1M–$10M">$1M–$10M</option>
+                <option value="$10M–$50M">$10M–$50M</option>
+                <option value="$50M–$250M">$50M–$250M</option>
+                <option value="$250M–$1B">$250M–$1B</option>
+                <option value="$1B+">$1B+</option>
+              </select>
+            </div>
           </div>
         </div>
       ))}

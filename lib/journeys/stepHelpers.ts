@@ -68,6 +68,7 @@ export interface Segment {
   industry: string
   company_size: string
   geography: string
+  annual_revenue: string
 }
 
 export type RoleCategory =
@@ -100,10 +101,15 @@ export type InfluenceLevel =
   | 'Influencer'
   | 'Gatekeeper / Blocker'
 
+// Risk Level = how much this decision-maker personally has at stake in a good
+// or bad decision (their exposure). Identifies who has the most skin in the game.
+export type RiskLevel = '' | 'High' | 'Medium' | 'Low'
+
 export interface DecisionMaker {
   role_category: RoleCategory
   specific_title: string
   influence: InfluenceLevel
+  risk_level: RiskLevel
   primary_concerns: string[]
 }
 
@@ -116,7 +122,7 @@ export interface PrereqInfo { status: string; hasContent: boolean }
 
 // ── Defaults and reference data ───────────────────────────────────────────────
 
-export const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geography: '' }
+export const DEFAULT_SEGMENT: Segment = { name: '', industry: '', company_size: '', geography: '', annual_revenue: '' }
 
 export const ROLE_CATEGORIES: RoleCategory[] = [
   '',
@@ -196,7 +202,7 @@ export const PRIMARY_CONCERN_MAP: Partial<Record<RoleCategory, string[]>> = {
   'CRO / VP Sales': ['Pipeline predictability and quota attainment', 'Revenue growth and competitive positioning'],
 }
 
-export const DEFAULT_DM: DecisionMaker = { role_category: '', specific_title: '', influence: '', primary_concerns: [] }
+export const DEFAULT_DM: DecisionMaker = { role_category: '', specific_title: '', influence: '', risk_level: '', primary_concerns: [] }
 
 export function makeDMs(): DecisionMaker[] {
   return [{ ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }, { ...DEFAULT_DM }]

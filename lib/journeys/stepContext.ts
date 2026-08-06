@@ -21,6 +21,7 @@ import {
   type InfluenceLevel,
   type PainPoint,
   type PrereqInfo,
+  type RiskLevel,
   type RoleCategory,
   type Segment,
   type Step9State,
@@ -204,6 +205,7 @@ export function useStepContext(stepId: string): StepContext {
                 industry: String(s['industry'] ?? ''),
                 company_size: String(s['company_size'] ?? ''),
                 geography: String(s['geography'] ?? ''),
+                annual_revenue: String(s['annual_revenue'] ?? ''),
               }))
               setStep2Segments([0, 1, 2].map(i => parsed[i] ?? { ...DEFAULT_SEGMENT }))
             }
@@ -220,6 +222,7 @@ export function useStepContext(stepId: string): StepContext {
                     role_category: (dm['role_category'] ?? '') as RoleCategory,
                     specific_title: String(dm['specific_title'] ?? dm['title'] ?? ''),
                     influence: (dm['influence'] ?? '') as InfluenceLevel,
+                    risk_level: (dm['risk_level'] ?? '') as RiskLevel,
                     primary_concerns: Array.isArray(dm['primary_concerns'])
                       ? (dm['primary_concerns'] as string[])
                       : dm['primary_concern']
