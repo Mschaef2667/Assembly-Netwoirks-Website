@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Upload, UserPlus, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic, Info } from 'lucide-react'
+import { Loader2, Upload, CheckCircle2, Users, ChevronDown, List, X, Search, Eye, Trash2, Sparkles, Check, Mic, Info } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { CUSTOMER_CATEGORIES, categoryAppliesTo } from '@/lib/icp/customer-categories'
 
@@ -306,7 +306,7 @@ export default function ResponseImportPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [segments, setSegments] = useState<Segment[]>([])
-  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'transcript' | 'view' | 'simulate'>('csv')
+  const [activeTab, setActiveTab] = useState<'csv' | 'manual' | 'transcript' | 'view' | 'simulate'>('view')
 
   // CSV tab
   const [csvAudience, setCsvAudience] = useState<Audience>('current')
@@ -432,7 +432,7 @@ export default function ResponseImportPage() {
     // button lands on View Responses). Read here inside init rather than a raw
     // effect to avoid a hydration mismatch and a set-state-in-effect lint error.
     const requestedTab = new URLSearchParams(window.location.search).get('tab')
-    if (requestedTab === 'csv' || requestedTab === 'manual' || requestedTab === 'transcript' || requestedTab === 'view' || requestedTab === 'simulate') {
+    if (requestedTab === 'transcript' || requestedTab === 'view' || requestedTab === 'simulate') {
       setActiveTab(requestedTab)
     }
     try {
@@ -1075,7 +1075,7 @@ export default function ResponseImportPage() {
           Response Manager
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '6px 0 0' }}>
-          Import survey responses from external tools or add them manually
+          Review responses collected via your survey links, add interviews, or simulate responses for testing
         </p>
       </header>
 
@@ -1084,8 +1084,6 @@ export default function ResponseImportPage() {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '2px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           {([
-            { key: 'csv' as const, icon: Upload, label: 'Upload CSV' },
-            { key: 'manual' as const, icon: UserPlus, label: 'Add Manually' },
             { key: 'transcript' as const, icon: Mic, label: 'Interview Transcript' },
             { key: 'simulate' as const, icon: Sparkles, label: 'Simulate with Copilot' },
             { key: 'view' as const, icon: List, label: 'View Responses' },

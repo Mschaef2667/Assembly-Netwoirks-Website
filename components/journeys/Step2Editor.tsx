@@ -74,6 +74,7 @@ export function Step2Editor({ segments, saveStatus, onChange, onBlur }: Step2Edi
                 <option value="Financial Services & Fintech">Financial Services &amp; Fintech</option>
                 <option value="Non-Profit & Fundraising">Non-Profit &amp; Fundraising</option>
                 <option value="Manufacturing & Industrial">Manufacturing &amp; Industrial</option>
+                <option value="Construction & Engineering">Construction &amp; Engineering</option>
                 <option value="Other">Other</option>
               </select>
             </div>
