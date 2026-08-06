@@ -21,7 +21,7 @@ export default function SurveyBuilderPage() {
     handleAudienceSwitch, handleSegmentSwitch,
     toggleStage, addQuestion, deleteQuestion, restoreQuestion,
     commitEdit, cycleType, handleMarkComplete, handleLoadRecommended,
-    handleGenerate, handleCopy, handleDownloadCSV,
+    handleGenerate, handleCopy, handleDownloadReview,
     addMissingLockedQuestions,
     generateInterviewProbes,
     handleAutoWord,
@@ -201,7 +201,7 @@ export default function SurveyBuilderPage() {
           onGenerate={handleGenerate}
           onLoadRecommended={handleLoadRecommended}
           onCopy={handleCopy}
-          onDownloadCSV={handleDownloadCSV}
+          onDownloadReview={handleDownloadReview}
           onMarkComplete={() => void handleMarkComplete()}
           onAddMissingLockedQuestions={addMissingLockedQuestions}
         />

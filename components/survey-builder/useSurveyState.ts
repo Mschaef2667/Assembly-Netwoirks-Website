@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Question, SurveyState, CopilotStatus, Audience, QuestionType, Segment } from './types'
 import {
-  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, DEFAULT_SURVEY_QUESTIONS, LOCKED_QUESTIONS,
+  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, LOCKED_QUESTIONS,
   uid,
 } from './constants'
 
@@ -598,18 +598,6 @@ export function useSurveyState() {
     return lines.join('\n')
   }
 
-  function buildCSV(): string {
-    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
-    const rows = [`"DCP Survey — ${audienceLabel}"`, 'Stage,Stage Name,Question,Type']
-    for (const stage of STAGES) {
-      for (const q of (survey[stage.id] ?? [])) {
-        const esc = `"${q.text.replace(/"/g, '""')}"`
-        rows.push(`${stage.id},"${stage.name}",${esc},"${TYPE_LABELS[q.type]}"`)
-      }
-    }
-    return rows.join('\n')
-  }
-
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(buildPlainText())
@@ -678,16 +666,85 @@ export function useSurveyState() {
     } catch { /* non-fatal */ }
   }
 
-  function handleDownloadCSV() {
-    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)!.label
-    const blob = new Blob([buildCSV()], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `dcp-survey-${selectedAudience}.csv`
-    a.title    = `DCP Survey — ${audienceLabel}`
-    a.click()
-    URL.revokeObjectURL(url)
+  // Download the current survey as a formatted document for internal review
+  // (not for distribution — respondents use the survey link). PDF or Word.
+  async function handleDownloadReview(format: 'pdf' | 'docx') {
+    const audienceLabel = AUDIENCES.find(a => a.id === selectedAudience)?.label ?? selectedAudience
+    const segmentLabel  = selectedSegment?.name ?? 'All Segments'
+    const org           = orgName || 'Assembly AI'
+    const slug          = selectedSegment?.slug ?? 'all'
+    const base          = `dcp-survey-${slug}-${selectedAudience}`
+    const stages = STAGES
+      .map(s => ({ id: s.id, name: s.name, questions: (survey[s.id] ?? []).map(q => ({ text: q.text, type: TYPE_LABELS[q.type] })) }))
+      .filter(s => s.questions.length > 0)
+
+    function triggerDownload(blob: Blob, name: string) {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+
+    if (format === 'docx') {
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx')
+      type Para = InstanceType<typeof Paragraph>
+      const children: Para[] = [
+        new Paragraph({ children: [new TextRun({ text: `${org} — Decision Clarity Survey`, bold: true, size: 32 })], spacing: { after: 80 } }),
+        new Paragraph({ children: [new TextRun({ text: `${segmentLabel}  ·  ${audienceLabel} audience  ·  for internal review`, size: 22, color: '6B7280' })], spacing: { after: 240 } }),
+      ]
+      for (const stage of stages) {
+        children.push(new Paragraph({ text: `Stage ${stage.id}: ${stage.name}`, heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 100 } }))
+        stage.questions.forEach((q, i) => {
+          children.push(new Paragraph({
+            children: [
+              new TextRun({ text: `${i + 1}. `, bold: true, size: 22 }),
+              new TextRun({ text: q.text, size: 22 }),
+              new TextRun({ text: `   (${q.type})`, size: 18, color: '9CA3AF' }),
+            ],
+            spacing: { after: 80 },
+          }))
+        })
+      }
+      const doc = new Document({ creator: 'Assembly AI', title: `${org} — Decision Clarity Survey`, sections: [{ children }] })
+      triggerDownload(await Packer.toBlob(doc), `${base}.docx`)
+      return
+    }
+
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+    const margin = 56
+    const maxW = pageW - margin * 2
+    let y = margin
+    const ensure = (need: number) => { if (y + need > pageH - margin) { doc.addPage(); y = margin } }
+    const wrap = (text: string, indent = 0, lh = 16) => {
+      const lines = doc.splitTextToSize(text, maxW - indent) as string[]
+      for (const line of lines) { ensure(lh); doc.text(line, margin + indent, y); y += lh }
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(10, 22, 40)
+    wrap(`${org} — Decision Clarity Survey`, 0, 22)
+    y += 4
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(107, 114, 128)
+    wrap(`${segmentLabel}  ·  ${audienceLabel} audience  ·  for internal review`, 0, 16)
+    y += 14
+    for (const stage of stages) {
+      ensure(30)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(14, 165, 233)
+      wrap(`Stage ${stage.id}: ${stage.name}`, 0, 18)
+      y += 4
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(13, 13, 13)
+      stage.questions.forEach((q, i) => {
+        wrap(`${i + 1}. ${q.text}   (${q.type})`, 0, 16)
+        y += 4
+      })
+      y += 8
+    }
+    triggerDownload(doc.output('blob') as Blob, `${base}.pdf`)
   }
 
   function handleAutoWord() {
@@ -733,7 +790,7 @@ export function useSurveyState() {
     handleLoadRecommended,
     handleGenerate,
     handleCopy,
-    handleDownloadCSV,
+    handleDownloadReview,
     generateInterviewProbes,
     handleAutoWord,
   }

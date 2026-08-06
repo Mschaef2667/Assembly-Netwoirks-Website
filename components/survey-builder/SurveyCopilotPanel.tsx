@@ -32,7 +32,7 @@ interface Props {
   onGenerate: () => Promise<void>
   onLoadRecommended: () => void
   onCopy: () => Promise<void>
-  onDownloadCSV: () => void
+  onDownloadReview: (format: 'pdf' | 'docx') => void | Promise<void>
   onMarkComplete: () => void
   onAddMissingLockedQuestions: () => void
 }
@@ -70,7 +70,7 @@ export default function SurveyCopilotPanel({
   onGenerate,
   onLoadRecommended,
   onCopy,
-  onDownloadCSV,
+  onDownloadReview,
   onMarkComplete,
   onAddMissingLockedQuestions,
 }: Props) {
@@ -618,12 +618,12 @@ export default function SurveyCopilotPanel({
             </button>
           </>
         ) : (
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               onClick={() => void onCopy()}
               disabled={total === 0}
               style={{
-                flex: 1, minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 backgroundColor: total === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
                 color: total === 0 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
                 border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
@@ -635,19 +635,29 @@ export default function SurveyCopilotPanel({
                 : <><Copy size={14} /> Copy Questions</>
               }
             </button>
-            <button
-              onClick={onDownloadCSV}
-              disabled={total === 0}
-              style={{
-                flex: 1, minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                backgroundColor: total === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
-                color: total === 0 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
-                cursor: total === 0 ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600,
-              }}
-            >
-              <Download size={14} /> Download CSV
-            </button>
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+                Download survey for review
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {(['pdf', 'docx'] as const).map(fmt => (
+                  <button
+                    key={fmt}
+                    onClick={() => void onDownloadReview(fmt)}
+                    disabled={total === 0}
+                    style={{
+                      flex: 1, minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      backgroundColor: total === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
+                      color: total === 0 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                      cursor: total === 0 ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600,
+                    }}
+                  >
+                    {fmt === 'pdf' ? <><Download size={14} /> PDF</> : <><FileText size={14} /> Word</>}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
