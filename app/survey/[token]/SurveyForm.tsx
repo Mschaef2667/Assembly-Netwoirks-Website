@@ -84,6 +84,7 @@ export default function SurveyForm({ link, orgBrand }: Props) {
   const [decisionRole,      setDecisionRole]      = useState('')
   const [answers,           setAnswers]           = useState<Record<string, string>>({})
   const [scaleValues,        setScaleValues]         = useState<Record<string, number>>({})
+  const [otherFeedback,      setOtherFeedback]       = useState('')
   const [submitting,         setSubmitting]          = useState(false)
   const [submitted,          setSubmitted]           = useState(false)
   const [error,              setError]               = useState<string | null>(null)
@@ -116,7 +117,9 @@ export default function SurveyForm({ link, orgBrand }: Props) {
           respondentCompany,
           respondentSize,
           decisionRole,
-          answers,
+          answers: otherFeedback.trim()
+            ? { ...answers, __other_feedback__: otherFeedback.trim() }
+            : answers,
         }),
       })
 
@@ -395,6 +398,32 @@ export default function SurveyForm({ link, orgBrand }: Props) {
               </div>
             )
           })}
+
+          {/* Other feedback */}
+          <div style={{
+            backgroundColor: '#0F2140', borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)', padding: '28px', marginBottom: '24px',
+          }}>
+            <h2 style={{ color: '#FFFFFF', fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>
+              Anything else?
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: '0 0 14px' }}>
+              Optional — share any other feedback or context that didn&apos;t fit the questions above.
+            </p>
+            <textarea
+              value={otherFeedback}
+              onChange={e => setOtherFeedback(e.target.value)}
+              placeholder="Your feedback…"
+              rows={4}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#0D0D0D', backgroundColor: '#FFFFFF',
+                fontSize: '14px', lineHeight: '1.6', resize: 'vertical',
+                boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+          </div>
 
           {/* Error */}
           {error && (

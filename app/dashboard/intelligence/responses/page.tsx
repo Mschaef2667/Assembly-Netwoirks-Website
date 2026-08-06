@@ -247,7 +247,8 @@ function formatDate(iso: string): string {
 }
 
 function countAnswers(answers: Record<string, string>): number {
-  return Object.values(answers).filter(v => typeof v === 'string' && v.trim().length > 0).length
+  // Reserved keys (e.g. __other_feedback__) are not survey questions.
+  return Object.entries(answers).filter(([k, v]) => !k.startsWith('__') && typeof v === 'string' && v.trim().length > 0).length
 }
 
 // ── Shared select component ───────────────────────────────────────────────────
@@ -2593,6 +2594,19 @@ export default function ResponseImportPage() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {selectedResponse.answers['__other_feedback__']?.trim() && (
+                <div style={{ marginTop: '20px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#E8520A', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
+                    Other Feedback
+                  </p>
+                  <div style={{ backgroundColor: '#0A1628', borderRadius: '8px', padding: '14px 16px', border: '1px solid rgba(232,82,10,0.25)' }}>
+                    <p style={{ fontSize: '13px', color: '#FFFFFF', margin: 0, lineHeight: '1.6' }}>
+                      {selectedResponse.answers['__other_feedback__']}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
