@@ -3,6 +3,9 @@ node_modules
 .env.local
 *.png
 *.jpg
+.DS_Store
+tsconfig.tsbuildinfo
+.claude/
 
 # A blanket *.png above means every image is ignored by default, which silently
 # skips assets that must ship. These are required in the deployed build: Next.js
