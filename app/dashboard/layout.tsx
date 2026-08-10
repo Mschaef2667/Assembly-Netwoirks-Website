@@ -1,6 +1,7 @@
 import Sidebar from '@/components/layout/sidebar'
 import BetaFeedbackWidget from '@/components/ui/BetaFeedbackWidget'
 import BetaAgreementGate from '@/components/ui/BetaAgreementGate'
+import HelpBubble from '@/components/ui/HelpBubble'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <BetaFeedbackWidget />
+      <HelpBubble />
       <BetaAgreementGate />
     </div>
   )
