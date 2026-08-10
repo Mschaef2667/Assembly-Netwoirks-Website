@@ -45,7 +45,7 @@ export default function BetaAgreementModal({ userId, orgId, onAgreed }: BetaAgre
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Beta Agreement"
+      aria-label="Terms & Conditions"
       style={{
         position: 'fixed',
         inset: 0,
@@ -104,7 +104,7 @@ export default function BetaAgreementModal({ userId, orgId, onAgreed }: BetaAgre
             textAlign: 'center',
           }}
         >
-          Please review and accept our Beta Agreement before continuing
+          Please review and accept our Terms &amp; Conditions before continuing
         </p>
 
         <div
@@ -232,7 +232,7 @@ export default function BetaAgreementModal({ userId, orgId, onAgreed }: BetaAgre
             }}
           />
           <span style={{ fontSize: '14px', lineHeight: 1.5, color: '#FFFFFF' }}>
-            I have read and agree to the Beta Agreement, Terms of Service, and Privacy Policy
+            I have read and agree to the Terms of Service and Privacy Policy
           </span>
         </label>
 

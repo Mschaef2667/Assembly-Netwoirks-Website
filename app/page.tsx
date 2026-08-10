@@ -78,22 +78,6 @@ const BTN_GHOST: CSSProperties = {
   justifyContent: 'center',
 }
 
-const BTN_PRIMARY: CSSProperties = {
-  backgroundColor: ORANGE,
-  color: WHITE,
-  fontSize: 14,
-  fontWeight: 600,
-  textDecoration: 'none',
-  padding: '10px 18px',
-  borderRadius: 8,
-  border: 'none',
-  minHeight: 44,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  boxShadow: '0 4px 14px rgba(232,82,10,0.35)',
-}
-
 const BTN_OUTLINE: CSSProperties = {
   color: WHITE,
   fontSize: 15,
@@ -894,9 +878,6 @@ export default function LandingPage() {
           <div style={NAV_ACTIONS}>
             <Link href="/auth/login" style={BTN_GHOST}>
               Sign In
-            </Link>
-            <Link href="/auth/signup" style={BTN_PRIMARY}>
-              Get Started
             </Link>
           </div>
         </div>
