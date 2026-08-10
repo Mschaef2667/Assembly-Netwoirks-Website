@@ -56,11 +56,21 @@ export interface AssemblyUser {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+// Do NOT throw at module load. A hard throw here crashes the whole build (during
+// Next.js "collecting page data") for any deployment that happens to lack these
+// vars — e.g. a throwaway preview build on a project that only sets them for its
+// Production environment. Real deployments inline the real values at build time,
+// so this only affects builds that were never going to run anyway. Fall back to
+// harmless placeholders (a valid-looking URL so the client constructor doesn't
+// throw) and log a warning instead.
 if (!url || !key) {
-  throw new Error(
-    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
-    'Copy .env.local.example to .env.local and fill in your Supabase credentials.'
+  console.warn(
+    '[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
+    'Using placeholders — this build will not connect to Supabase at runtime.'
   )
 }
 
-export const supabase = createBrowserClient(url, key)
+export const supabase = createBrowserClient(
+  url ?? 'https://placeholder.supabase.co',
+  key ?? 'placeholder-anon-key',
+)
