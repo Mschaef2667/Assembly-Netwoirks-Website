@@ -158,11 +158,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
-          Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" style={{ color: '#0EA5E9', fontWeight: 600, textDecoration: 'none' }}>
-            Sign up
-          </Link>
+        <p style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+          Access is by invitation only.
         </p>
 
         <p style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
