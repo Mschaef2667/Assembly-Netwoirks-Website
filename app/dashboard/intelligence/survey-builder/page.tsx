@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, ClipboardList, Mic } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, ClipboardList, Mic, Lock } from 'lucide-react'
 import { useSurveyState } from '@/components/survey-builder/useSurveyState'
 import { countAll } from '@/components/survey-builder/constants'
 import SurveyAudienceTabs from '@/components/survey-builder/SurveyAudienceTabs'
@@ -38,6 +39,34 @@ export default function SurveyBuilderPage() {
     return (
       <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Loader2 size={32} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+      </div>
+    )
+  }
+
+  // Gate the Survey Builder behind the company foundation. Without target-market
+  // segments (Step 2), the Copilot has no context to tailor questions to, so it
+  // would only produce generic, un-personalized prompts. Guide the user to
+  // complete Phase 1 first instead of showing empty-context questions.
+  if (segments.length === 0) {
+    return (
+      <div style={{ backgroundColor: '#0A1628', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: '540px', backgroundColor: '#0F2140', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', padding: '36px 32px', textAlign: 'center' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'rgba(14,165,233,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Lock size={22} color="#0EA5E9" />
+          </div>
+          <h1 style={{ color: '#FFFFFF', fontSize: '20px', fontWeight: 700, margin: '0 0 10px' }}>
+            Set up your foundation first
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', lineHeight: 1.6, margin: '0 0 22px' }}>
+            The Survey Builder tailors buyer-research questions to your business. Before it can do that, complete your{' '}
+            <strong style={{ color: '#FFFFFF' }}>Company Profile</strong>,{' '}
+            <strong style={{ color: '#FFFFFF' }}>Target Markets</strong>, and{' '}
+            <strong style={{ color: '#FFFFFF' }}>Decision Makers</strong>. Once those are in, your questions come out tailored to your company, segments, and buyers.
+          </p>
+          <Link href="/dashboard/journeys" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#E8520A', color: '#FFFFFF', textDecoration: 'none', borderRadius: '8px', padding: '12px 22px', fontSize: '14px', fontWeight: 600, minHeight: '44px' }}>
+            Go to your journey
+          </Link>
+        </div>
       </div>
     )
   }
