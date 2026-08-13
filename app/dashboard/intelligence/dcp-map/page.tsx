@@ -38,13 +38,13 @@ interface AnalyzeApiResponse {
 // ── Stage metadata ────────────────────────────────────────────────────────────
 
 const STAGE_META = [
-  { stage_number: 1, stage_name: 'Need Recognition',          populates: 'Step 4 — The Problem',                  description: 'What pain first prompted buyers to seek a solution.' },
-  { stage_number: 2, stage_name: 'Trigger / Catalyst',        populates: 'Step 5 — The Cause',                    description: 'Events or mandates that forced buyers into action.' },
-  { stage_number: 3, stage_name: 'Search / Awareness',        populates: 'Step 9 — The Search',                   description: 'How buyers searched and which channels influenced them.' },
-  { stage_number: 4, stage_name: 'Evaluation / Consideration',populates: 'Step 8 — The Solution',                 description: 'Criteria used to evaluate and compare vendors.' },
-  { stage_number: 5, stage_name: 'Select-Set / Shortlist',    populates: 'Step 17 — Target Competition',          description: 'What qualified vendors for serious consideration.' },
-  { stage_number: 6, stage_name: 'Decision / Purchase',       populates: 'Step 18 — Competitive Differentiators', description: 'Who decided, what evidence tipped the choice, and why.' },
-  { stage_number: 7, stage_name: 'Confirmation / Validation', populates: 'Step 7 — The Realization',              description: 'Post-purchase validation signals, doubts, and friction.' },
+  { stage_number: 1, stage_name: 'Need',          populates: 'Step 4 — The Problem',                  description: 'What pain first prompted buyers to seek a solution.' },
+  { stage_number: 2, stage_name: 'Motivation',        populates: 'Step 5 — The Cause',                    description: 'Events or mandates that forced buyers into action.' },
+  { stage_number: 3, stage_name: 'Search',        populates: 'Step 9 — The Search',                   description: 'How buyers searched and which channels influenced them.' },
+  { stage_number: 4, stage_name: 'Evaluation',populates: 'Step 8 — The Solution',                 description: 'Criteria used to evaluate and compare vendors.' },
+  { stage_number: 5, stage_name: 'Select Set',    populates: 'Step 17 — Target Competition',          description: 'What qualified vendors for serious consideration.' },
+  { stage_number: 6, stage_name: 'Decision',       populates: 'Step 18 — Competitive Differentiators', description: 'Who decided, what evidence tipped the choice, and why.' },
+  { stage_number: 7, stage_name: 'Confirmation', populates: 'Step 7 — The Realization',              description: 'Post-purchase validation signals, doubts, and friction.' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

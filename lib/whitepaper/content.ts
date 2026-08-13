@@ -67,7 +67,7 @@ export const WHITEPAPER: WhitepaperDocument = {
       bullets: [
         'Stage 1 — Problem Recognition: What conditions make the buyer realize a problem exists?',
         'Stage 2 — Consequences: What happens if the problem stays unsolved, and what triggers urgency?',
-        'Stage 3 — Information Search: Where do buyers go, and who do they trust, when they start looking?',
+        'Stage 3 — Search: Where do buyers go, and who do they trust, when they start looking?',
         'Stage 4 — Solution Evaluation: What criteria do they apply, and what signals make a vendor credible?',
         'Stage 5 — Decision Process: Who is involved, what role do they play, and how is consensus reached?',
         'Stage 6 — Selection: Why the chosen vendor wins — and why finalists lose.',

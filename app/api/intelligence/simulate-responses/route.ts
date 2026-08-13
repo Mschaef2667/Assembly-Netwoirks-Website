@@ -36,12 +36,12 @@ interface ClaudePayload {
 }
 
 const STAGE_NAMES: Record<number, string> = {
-  1: 'Need Recognition',
-  2: 'Motivation to Act',
-  3: 'Information Search',
-  4: 'Evaluation of Alternatives',
+  1: 'Need',
+  2: 'Motivation',
+  3: 'Search',
+  4: 'Evaluation',
   5: 'Select Set',
-  6: 'Purchase Decision',
+  6: 'Decision',
   7: 'Confirmation',
 }
 

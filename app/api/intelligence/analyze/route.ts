@@ -31,13 +31,13 @@ interface ImportBatch {
 // ── Stage definitions (canonical) ─────────────────────────────────────────────
 
 const STAGES = [
-  { stage_number: 1, stage_name: 'Need Recognition' },
-  { stage_number: 2, stage_name: 'Trigger / Catalyst' },
-  { stage_number: 3, stage_name: 'Search / Awareness' },
-  { stage_number: 4, stage_name: 'Evaluation / Consideration' },
-  { stage_number: 5, stage_name: 'Select-Set / Shortlist' },
-  { stage_number: 6, stage_name: 'Decision / Purchase' },
-  { stage_number: 7, stage_name: 'Confirmation / Validation' },
+  { stage_number: 1, stage_name: 'Need' },
+  { stage_number: 2, stage_name: 'Motivation' },
+  { stage_number: 3, stage_name: 'Search' },
+  { stage_number: 4, stage_name: 'Evaluation' },
+  { stage_number: 5, stage_name: 'Select Set' },
+  { stage_number: 6, stage_name: 'Decision' },
+  { stage_number: 7, stage_name: 'Confirmation' },
 ]
 
 // ── POST /api/intelligence/analyze ────────────────────────────────────────────
@@ -141,7 +141,7 @@ Return ONLY valid JSON (no markdown fences, no prose) with this exact shape:
   "stage_summaries": [
     {
       "stage_number": 1,
-      "stage_name": "Need Recognition",
+      "stage_name": "Need",
       "summary": "<2-4 sentence synthesis of what buyers said about this stage>",
       "confidence_score": <integer 0-100>
     },

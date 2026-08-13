@@ -411,7 +411,7 @@ ${extraContext ? `ADDITIONAL CONTEXT:\n${extraContext}\n` : ''}`
 
     return `You are Assembly AI Copilot, an expert B2B go-to-market strategist using the C3 Method.
 
-Based on the decision factor ranking provided and the DCP Stage 6 (Purchase Decision) intelligence, write a 2-3 sentence Decision Pattern describing how this segment makes their final GTM partner selection. What drives the final choice? Who has final say? What tips the decision? Be specific to this segment.
+Based on the decision factor ranking provided and the DCP Stage 6 (Decision) intelligence, write a 2-3 sentence Decision Pattern describing how this segment makes their final GTM partner selection. What drives the final choice? Who has final say? What tips the decision? Be specific to this segment.
 
 Return plain text only — no JSON, no markdown fences, no bullet points. Just 2-3 sentences of clear, specific prose.
 
@@ -421,7 +421,7 @@ ${step2Text}
 STEP 3 — Decision Makers:
 ${step3Block}
 
-DCP MAP — Stage 6 (Purchase Decision):
+DCP MAP — Stage 6 (Decision):
 ${dcpStage6}
 
 ${extraContext ?? ''}

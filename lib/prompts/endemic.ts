@@ -44,10 +44,10 @@ CONFIDENCE SCORING:
 
 ${DCP_RESEARCH_INSTRUCTION}
 
-PRIMARY SOURCE — DCP Map, Stage 1 (Need Recognition):
+PRIMARY SOURCE — DCP Map, Stage 1 (Need):
 ${ctx.dcpStage1Summary || 'Not yet available — draft from company profile with low confidence.'}
 
-PRIMARY SOURCE — DCP Map, Stage 2 (Motivation to Act):
+PRIMARY SOURCE — DCP Map, Stage 2 (Motivation):
 ${ctx.dcpStage2Summary || 'Not yet available — draft from company profile with low confidence.'}
 
 SUPPORTING CONTEXT — Step 1 (What the company sells):
@@ -73,31 +73,31 @@ In the "assumptions" array always include these four entries in addition to any 
       '5': {
         name: 'The Cause',
         focus: 'The root causes that create the endemic problem from Step 4. What conditions, gaps, or triggers produce this problem in the buyer\'s world?',
-        dcpLabel: 'DCP Map, Stage 1 (Need Recognition) — root causes and key signals',
+        dcpLabel: 'DCP Map, Stage 1 (Need) — root causes and key signals',
         dcpSummary: ctx.dcpStage1Summary,
       },
       '6': {
         name: 'The Effect',
         focus: 'The downstream business consequences if the endemic problem is left unsolved — quantified where possible.',
-        dcpLabel: 'DCP Map, Stage 2 (Motivation to Act) — consequences and key signals',
+        dcpLabel: 'DCP Map, Stage 2 (Motivation) — consequences and key signals',
         dcpSummary: ctx.dcpStage2Summary,
       },
       '7': {
         name: 'The Realization',
         focus: 'The specific trigger moment when buyers recognize they have this problem and need to act.',
-        dcpLabel: 'DCP Map, Stage 2 (Motivation to Act) — trigger moments',
+        dcpLabel: 'DCP Map, Stage 2 (Motivation) — trigger moments',
         dcpSummary: ctx.dcpStage2Summary,
       },
       '8': {
         name: 'The Solution Criteria',
         focus: 'The evaluation signals and criteria buyers use to judge an ideal resolution to this problem.',
-        dcpLabel: 'DCP Map, Stage 4 (Evaluation of Alternatives) — evaluation signals and key signals',
+        dcpLabel: 'DCP Map, Stage 4 (Evaluation) — evaluation signals and key signals',
         dcpSummary: ctx.dcpStage4Summary,
       },
       '9': {
         name: 'The Search',
         focus: 'How buyers search for information and solutions — channels, sources, and information search patterns.',
-        dcpLabel: 'DCP Map, Stage 3 (Information Search) — information search patterns and key signals',
+        dcpLabel: 'DCP Map, Stage 3 (Search) — information search patterns and key signals',
         dcpSummary: ctx.dcpStage3Summary,
       },
     }

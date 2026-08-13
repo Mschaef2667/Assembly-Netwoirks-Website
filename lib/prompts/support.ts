@@ -8,12 +8,12 @@ C3 METHOD FRAMEWORK:
 C3 stands for Customer, Clarity, and Conversion — a buyer-led GTM framework that turns real buyer decision-making into strategic messaging and an executable plan.
 
 DECISION CLARITY PROFILE (DCP) — 7 STAGES:
-1) Need Recognition — buyers realize they have a problem
-2) Motivation to Act — what pushes them from awareness to action
-3) Information Search — where and how they look for solutions
-4) Evaluation of Alternatives — criteria used to compare options
+1) Need — buyers realize they have a problem
+2) Motivation — what pushes them from awareness to action
+3) Search — where and how they look for solutions
+4) Evaluation — criteria used to compare options
 5) Select Set — the shortlist of vendors considered
-6) Purchase Decision — what tips the final choice
+6) Decision — what tips the final choice
 7) Confirmation — post-purchase validation and retention signals
 
 JOURNEY — 38 STEPS ACROSS 6 PHASES:
