@@ -18,22 +18,34 @@ import {
   LifeBuoy,
   LogOut,
   ShieldCheck,
+  Compass,
+  type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 
-const navItems = [
-  { label: 'Onboarding',      href: '/dashboard/onboarding',         icon: BookOpen  },
-  { label: 'Dashboard',       href: '/dashboard',                    icon: Building2 },
-  { label: 'Intelligence',    href: '/dashboard/intelligence',       icon: Brain,    id: 'nav-intelligence' },
-  { label: 'Journeys',        href: '/dashboard/journeys',           icon: Route,    id: 'nav-report' },
-  { label: 'ICP Calibrator', href: '/dashboard/target-markets',     icon: Target,   id: 'nav-markets' },
-  { label: 'Lead Generation', href: '/dashboard/lead-generation',    icon: Search    },
-  { label: 'Assets Studio',   href: '/dashboard/assets',             icon: Layers    },
-  { label: 'Integrations',    href: '/dashboard/integrations',       icon: Plug      },
-  { label: 'Performance',     href: '/dashboard/performance',        icon: BarChart2 },
-  { label: 'Administration',  href: '/dashboard/administration',     icon: Settings  },
-  { label: 'Support',         href: '/dashboard/support',            icon: LifeBuoy  },
+type NavItem = {
+  label: string
+  icon: LucideIcon
+  href?: string
+  id?: string
+  header?: boolean
+  indent?: boolean
+}
+
+const navItems: NavItem[] = [
+  { label: 'Onboarding',     href: '/dashboard/onboarding',      icon: BookOpen  },
+  { label: 'Dashboard',      href: '/dashboard',                 icon: Building2 },
+  { label: 'C3 Strategy',    icon: Compass, header: true },
+  { label: 'Intelligence',   href: '/dashboard/intelligence',    icon: Brain,    id: 'nav-intelligence', indent: true },
+  { label: 'Journeys',       href: '/dashboard/journeys',        icon: Route,    id: 'nav-report', indent: true },
+  { label: 'ICP Calibrator', href: '/dashboard/target-markets',  icon: Target,   id: 'nav-markets' },
+  { label: 'Opportunities',  href: '/dashboard/lead-generation', icon: Search    },
+  { label: 'Assets Studio',  href: '/dashboard/assets',          icon: Layers    },
+  { label: 'Integrations',   href: '/dashboard/integrations',    icon: Plug      },
+  { label: 'Performance',    href: '/dashboard/performance',     icon: BarChart2 },
+  { label: 'Administration', href: '/dashboard/administration',  icon: Settings  },
+  { label: 'Support',        href: '/dashboard/support',         icon: LifeBuoy  },
 ]
 
 export function formatRole(role: string): string {
@@ -132,9 +144,25 @@ export default function Sidebar() {
         {[
           ...navItems,
           ...(isSuperAdmin
-            ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck, id: 'nav-admin' as const }]
+            ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck, id: 'nav-admin' } as NavItem]
             : []),
-        ].map(({ label, href, icon: Icon, id }) => {
+        ].map((item) => {
+          const { label, href, icon: Icon, id, header, indent } = item
+
+          if (header) {
+            return (
+              <div
+                key={label}
+                style={{ minHeight: '40px', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}
+                className="flex items-center gap-3 px-3 text-sm select-none"
+              >
+                <Icon size={18} strokeWidth={1.8} />
+                <span style={{ flex: 1 }}>{label}</span>
+              </div>
+            )
+          }
+
+          if (!href) return null
           const isActive = href === '/dashboard' ? pathname === '/dashboard' : pathname === href || pathname.startsWith(href + '/')
           const isOnboarding = href === '/dashboard/onboarding'
           return (
@@ -144,6 +172,7 @@ export default function Sidebar() {
               href={href}
               style={{
                 minHeight: '44px',
+                paddingLeft: indent ? '2rem' : undefined,
                 color: isActive ? '#0EA5E9' : 'rgba(255,255,255,0.55)',
                 backgroundColor: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
                 borderLeft: `3px solid ${isActive ? '#0EA5E9' : 'transparent'}`,
