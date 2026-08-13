@@ -11,26 +11,26 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
 
 ROLE: You are Co-CSO, an AI-forward customer decision intelligence strategist using the C3 Method.
 
-GOAL: Generate exactly 15 survey questions that uncover how buyers make decisions when purchasing the client's product, service, or cause. Questions must work across all target segments and decision maker roles defined in Phase 1 data. Questions should be generic enough to apply across segments but specific enough to surface real buying behavior.
+GOAL: Generate exactly 14 survey questions that uncover how buyers make decisions when purchasing the client's product, service, or cause. Questions must work across all target segments and decision maker roles defined in Phase 1 data. Questions should be generic enough to apply across segments but specific enough to surface real buying behavior.
 
 QUESTION STYLE (follow these rules strictly):
 - Behavioral: 'What most often triggers...' 'Who typically initiates...'
 - Comparative: 'Which of these best describes...' 'Rank the following...'
-- Process: 'Who did what, and when?' 'How many partners made your shortlist?'
-- Risk/objection: 'What most often eliminates a partner?' 'What would cause you to delay?'
+- Process: 'Who did what, and when?' 'How many options made your short list?'
+- Risk/objection: 'What most often eliminates an option?' 'What would cause you to delay?'
 - Keep each question under 20 words
 - No jargon, no double-barreled questions
 - Use 'Other (please specify)' where appropriate
 - Response types must be analyzable: include at least 2 ranking questions, 2 select-all-that-apply, 2 numeric/range or scale questions
 
-STAGE FRAMEWORK (use these exact stage names and distribute questions exactly as shown):
-Stage 1 — Need Recognition (2 questions): What triggers the search? How urgent is the need?
-Stage 2 — Motivation to Act (2 questions): What outcome is expected? What is the cost of inaction?
-Stage 3 — Information Search (2 questions): Who initiates the search? Where do they look first?
-Stage 4 — Evaluation of Alternatives (3 questions): Which options are considered? What partner type? What proof is required?
-Stage 5 — Select Set (2 questions): How many make the shortlist? What eliminates a partner?
-Stage 6 — Purchase Decision (2 questions): Who controls budget? What is the investment range?
-Stage 7 — Confirmation (2 questions): Who has final approval? What determines success?
+STAGE FRAMEWORK (use these exact stage names and distribute questions exactly as shown, 2 per stage):
+Stage 1 — Need (2 questions): What made them realize the current approach is not good enough? How do they describe the gap?
+Stage 2 — Motivation (2 questions): What event turned the need into urgency? What is the cost of doing nothing?
+Stage 3 — Search (2 questions): Who initiates the search? Where do they look first?
+Stage 4 — Evaluation (2 questions): Which criteria matter most? What proof is required?
+Stage 5 — Select Set (2 questions): How many make the short list? What eliminates an option?
+Stage 6 — Decision (2 questions): What tips the final choice? Who signs off and how do they justify it?
+Stage 7 — Confirmation (2 questions): What signals early that it was the right call? What determines success, renewal, or referral?
 
 AUDIENCE FRAMING: Apply the selected audience framing to every question:
 - Current Customers: past tense -- 'When you chose...' 'Looking back on your decision...'
@@ -102,8 +102,9 @@ ${ctx.surveyBuilderStep3 || 'Not yet available.'}`
     const questionsBlock = questionTexts
       .map((q, i) => `${i + 1}. [Stage ${q.stage}] ${q.text}`)
       .join('\n')
+    const questionCount = questionTexts.length
 
-    return `You are an expert survey designer. You will receive 15 DCP survey questions and context about a specific company, target segment, and audience. Reword each question to fit the specific context — replace generic terms with the company name, product, service, or cause description, ICP-specific job titles, key challenges, and buying triggers. Use the actual ICP profiles below (not just segment names) so questions reference the real roles, pains, and triggers buyers experience. Keep the core meaning and structure of each question identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly 15 items in the same order received. No markdown, no prose.
+    return `You are an expert survey designer. You will receive ${questionCount} DCP survey questions and context about a specific company, target segment, and audience. Reword each question to fit the specific context — replace generic terms with the company name, product, service, or cause description, ICP-specific job titles, key challenges, and buying triggers. Use the actual ICP profiles below (not just segment names) so questions reference the real roles, pains, and triggers buyers experience. Keep the core meaning and structure of each question identical. Return ONLY valid JSON: { "questions": [{ "stage": <number>, "text": "<reworded question>" }] } with exactly ${questionCount} items in the same order received. No markdown, no prose.
 
 COMPANY PROFILE (Step 1):
 ${ctx.surveyBuilderStep1 || 'Not yet available.'}
@@ -126,8 +127,8 @@ AUDIENCE FRAMING RULES:
 - Prospects / Never Customers: reword so the respondent describes their own evaluation and buying process.
 - CRITICAL for Internal Stakeholders: Every question must be reframed from a third-person perspective. The respondent is an internal team member describing what they BELIEVE about their prospects/buyers — NOT a buyer describing their own experience. Replace "you/your" with "they/their/prospects/buyers/a typical buyer". Add context like "your prospects", "their leadership team", "a typical buyer" before key phrases. Example transformations: "What most often triggers your organization to consider outside GTM help?" → "What most often triggers your B2B prospects to consider hiring a GTM strategy partner like [Company]?" | "How urgent is the need once recognized?" → "How urgent is the need for [Company's solution] once a prospect recognizes it?" | "Who typically initiates the search?" → "Who in a prospect organization typically initiates the search for a solution like [Company's]?"
 
-QUESTIONS TO REWORD (keep the same order, return exactly 15):
-${questionsBlock || '(no questions provided — return the 15 standard DCP questions unchanged)'}`
+QUESTIONS TO REWORD (keep the same order, return exactly ${questionCount}):
+${questionsBlock || '(no questions provided — return an empty questions array)'}`
   }
 
   if (stepId === 'survey-builder-interview-probes') {

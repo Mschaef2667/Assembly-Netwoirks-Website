@@ -16,7 +16,7 @@ export interface DecisionStage {
 
 export const DECISION_STAGES: DecisionStage[] = [
   { number: 1, name: 'Need',         description: 'The buyer realizes something is missing or could be better.' },
-  { number: 2, name: 'Trigger',      description: 'Something happens that turns the need into a reason to act now.' },
+  { number: 2, name: 'Motivation',   description: 'Something happens that turns the need into a reason to act now.' },
   { number: 3, name: 'Search',       description: 'They start looking for possible ways to solve it.' },
   { number: 4, name: 'Evaluation',   description: 'They compare options against what matters to them.' },
   { number: 5, name: 'Select Set',   description: 'They narrow to a short list of real contenders.' },

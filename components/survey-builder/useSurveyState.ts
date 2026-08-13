@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import type { Question, SurveyState, CopilotStatus, Audience, QuestionType, Segment } from './types'
 import {
-  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, LOCKED_QUESTIONS,
+  STAGES, AUDIENCES, TYPE_ORDER, TYPE_LABELS, LOCKED_QUESTIONS, SUGGESTED_QUESTIONS,
   uid,
 } from './constants'
 
@@ -218,7 +218,7 @@ export function useSurveyState() {
 
       const parsed = JSON.parse(jsonStr) as { questions?: Array<{ stage: number; text: string }> }
 
-      if (!parsed.questions || parsed.questions.length < 15) {
+      if (!parsed.questions || parsed.questions.length < lockedQTexts.length) {
         loadDefaultLockedQuestions()
         setAutoWordingStatus('idle')
         return
@@ -476,7 +476,7 @@ export function useSurveyState() {
     const newSurvey: SurveyState = {}
     for (const [stageKey, questions] of Object.entries(LOCKED_QUESTIONS)) {
       const stageId = parseInt(stageKey, 10)
-      newSurvey[stageId] = questions.map(q => ({
+      const locked = questions.map(q => ({
         id: uid(),
         text: q.text,
         type: q.type,
@@ -485,6 +485,16 @@ export function useSurveyState() {
         modified: false,
         originalText: q.text,
       }))
+      const suggested = (SUGGESTED_QUESTIONS[stageId] ?? []).map(q => ({
+        id: uid(),
+        text: q.text,
+        type: q.type,
+        stageId,
+        locked: false,
+        modified: false,
+        originalText: q.text,
+      }))
+      newSurvey[stageId] = [...locked, ...suggested]
     }
     updateSurvey(newSurvey)
     const counts: Record<number, number> = {}
