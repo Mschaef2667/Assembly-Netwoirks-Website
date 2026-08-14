@@ -9,7 +9,7 @@ interface ChatMessage {
   text: string
 }
 
-// Floating "ask me anything" help bubble. Sits to the left of the beta
+// Floating "ask me anything" help bubble. Sits stacked above the beta
 // feedback bubble and is available on every dashboard screen. Reuses the same
 // AI backend as the Support page's assistant (/api/copilot/draft).
 export default function HelpBubble() {
@@ -103,12 +103,12 @@ export default function HelpBubble() {
         <div
           style={{
             position: 'fixed',
-            bottom: '96px',
+            bottom: '256px',
             right: '24px',
             width: '360px',
             maxWidth: 'calc(100vw - 32px)',
             height: '480px',
-            maxHeight: 'calc(100vh - 140px)',
+            maxHeight: 'calc(100vh - 300px)',
             backgroundColor: '#0F2140',
             border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: '14px',
@@ -214,15 +214,15 @@ export default function HelpBubble() {
         </div>
       )}
 
-      {/* Floating button — sits to the left of the beta feedback bubble */}
+      {/* Floating button — stacked above the beta feedback bubble */}
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="Help"
         title="Help — ask a question"
         style={{
           position: 'fixed',
-          bottom: '24px',
-          right: '96px',
+          bottom: '188px',
+          right: '24px',
           width: '56px',
           height: '56px',
           borderRadius: '999px',

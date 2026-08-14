@@ -82,7 +82,7 @@ export default function BetaFeedbackWidget() {
       <div
         style={{
           position: 'fixed',
-          bottom: '24px',
+          bottom: '92px',
           right: '24px',
           display: 'flex',
           flexDirection: 'column',
