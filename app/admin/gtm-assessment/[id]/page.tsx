@@ -210,9 +210,14 @@ export default function GtmAssessmentReviewPage() {
   return (
     <div style={PAGE}>
       <div style={WRAP}>
-        <Link href="/admin" style={{ ...btn('transparent', 'rgba(255,255,255,0.16)', '#93C5FD'), marginBottom: '18px' }}>
-          <ArrowLeft size={14} /> Back to admin
-        </Link>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
+          <Link href="/admin" style={btn('transparent', 'rgba(255,255,255,0.16)', '#93C5FD')}>
+            <ArrowLeft size={14} /> Back to admin
+          </Link>
+          <Link href="/dashboard" style={btn('transparent', 'rgba(255,255,255,0.16)', '#93C5FD')}>
+            Dashboard
+          </Link>
+        </div>
 
         <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '4px 0 4px' }}>GTM Gap Report</h1>
         <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', marginBottom: '20px' }}>

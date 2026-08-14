@@ -233,6 +233,7 @@ export default function SuperAdminPage() {
   return (
     <div style={PAGE}>
       <header style={HEADER}>
+        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#93C5FD', fontSize: '13px', textDecoration: 'none', marginBottom: '10px' }}>&larr; Dashboard</Link>
         <h1 style={{ color: '#FFFFFF', fontSize: '22px', fontWeight: 700, margin: 0 }}>Super Admin</h1>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', margin: '6px 0 0' }}>
           Cross-workspace operations console.

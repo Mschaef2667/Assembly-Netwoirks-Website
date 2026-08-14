@@ -78,9 +78,14 @@ export default function GtmAssessmentsListPage() {
   return (
     <div style={PAGE}>
       <div style={WRAP}>
-        <Link href="/admin" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#93C5FD', fontSize: '13px', textDecoration: 'none', marginBottom: '16px' }}>
-          <ArrowLeft size={14} /> Back to admin
-        </Link>
+        <div style={{ display: 'flex', gap: '18px', marginBottom: '16px' }}>
+          <Link href="/admin" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#93C5FD', fontSize: '13px', textDecoration: 'none' }}>
+            <ArrowLeft size={14} /> Back to admin
+          </Link>
+          <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#93C5FD', fontSize: '13px', textDecoration: 'none' }}>
+            Dashboard
+          </Link>
+        </div>
         <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 4px' }}>GTM Gap Reports</h1>
         <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', marginBottom: '22px' }}>Free assessment requests. Click a row to generate, review, and send.</p>
 
