@@ -40,11 +40,9 @@ const str = (v: unknown, max = 4000): string | null => {
 
 export async function POST(req: NextRequest): Promise<Response> {
   try {
-    const secret = process.env.GTM_INTAKE_SECRET
-    if (!secret) {
-      console.error('[gtm-assessment/intake] GTM_INTAKE_SECRET not configured')
-      return NextResponse.json({ error: 'Not configured' }, { status: 500 })
-    }
+    // Shared token lives in code so no dashboard config is needed (repo is
+    // private). An env var, if set, takes precedence so it can be rotated later.
+    const secret = process.env.GTM_INTAKE_SECRET || '3Iz8LHXEK5DnpdpZVKesKue-Y9qXdJgR'
     if (req.headers.get('x-gtm-intake-secret') !== secret) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
