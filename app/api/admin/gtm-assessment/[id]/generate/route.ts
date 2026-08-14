@@ -80,13 +80,20 @@ export async function POST(
     const anthropic = new Anthropic({ apiKey })
 
     let fullText = ''
+    let stopReason: string | null = null
     try {
       const response = await anthropic.messages.create({
         model,
-        max_tokens: 4000,
+        max_tokens: 8000,
         system: buildGtmAssessmentSystemPrompt(intake),
-        messages: [{ role: 'user', content: 'Generate the GTM Gap Report now.' }],
+        // Prefill the assistant turn with "{" so the model must return JSON with
+        // no preamble or code fences. We prepend the "{" back before parsing.
+        messages: [
+          { role: 'user', content: 'Generate the GTM Gap Report now.' },
+          { role: 'assistant', content: '{' },
+        ],
       })
+      stopReason = response.stop_reason
       for (const block of response.content) {
         if (block.type === 'text') fullText += block.text
       }
@@ -96,22 +103,24 @@ export async function POST(
       return NextResponse.json({ error: message }, { status: 500 })
     }
 
-    // ── Parse JSON (strip fences, then direct, then regex extraction) ───────
-    const stripped = fullText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
-    let parsed: Record<string, unknown>
+    // ── Parse JSON. The assistant turn was prefilled with "{", so restore it. ─
+    const candidate = ('{' + fullText).replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim()
+    let parsed: Record<string, unknown> | null = null
     try {
-      parsed = JSON.parse(stripped) as Record<string, unknown>
+      parsed = JSON.parse(candidate) as Record<string, unknown>
     } catch {
-      const match = stripped.match(/\{[\s\S]*\}/)
-      if (!match) {
-        console.error('[gtm-assessment/generate] parse failed. Raw:', fullText)
-        return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
+      const match = candidate.match(/\{[\s\S]*\}/)
+      if (match) {
+        try { parsed = JSON.parse(match[0]) as Record<string, unknown> } catch { parsed = null }
       }
-      try {
-        parsed = JSON.parse(match[0]) as Record<string, unknown>
-      } catch {
-        return NextResponse.json({ error: 'parse_failed', raw: fullText }, { status: 422 })
-      }
+    }
+
+    if (!parsed) {
+      console.error(`[gtm-assessment/generate] parse failed (stop_reason=${stopReason}). Raw:`, fullText)
+      return NextResponse.json(
+        { error: `parse_failed (stop_reason: ${stopReason ?? 'unknown'})`, raw: fullText },
+        { status: 422 },
+      )
     }
 
     // ── Save draft ─────────────────────────────────────────────────────────
