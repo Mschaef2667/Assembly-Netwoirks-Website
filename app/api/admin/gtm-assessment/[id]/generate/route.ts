@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { buildGtmAssessmentSystemPrompt, type GtmAssessmentIntake } from '@/lib/prompts/gtmAssessment'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 120
 
 /**
  * POST /api/admin/gtm-assessment/[id]/generate
@@ -61,7 +61,7 @@ export async function POST(
     // ── Load the intake ────────────────────────────────────────────────────
     const { data: row, error: loadErr } = await service
       .from('gtm_assessments')
-      .select('id, name, company, industry, competitors, challenge, gtm_summary')
+      .select('id, name, company, company_website, industry, competitors, competitor_urls, challenge, gtm_summary')
       .eq('id', id)
       .maybeSingle()
 
@@ -79,13 +79,41 @@ export async function POST(
     const model = 'claude-sonnet-4-5'
     const anthropic = new Anthropic({ apiKey })
 
+    // Research step: read the company site and competitor sites via web search so
+    // the report can be specific. Best-effort; a failure just falls back to the
+    // self-reported intake.
+    let researchDigest = ''
+    if (intake.company_website || intake.competitor_urls || intake.competitors) {
+      const researchPrompt = `Research this company and its competitors on the web so a strategist can assess their go-to-market positioning and messaging. Be concise and factual, and report only what you actually find on the pages.
+
+Company: ${intake.company ?? 'unknown'}
+Company website: ${intake.company_website ?? 'not provided'}
+Competitors (names): ${intake.competitors ?? 'not provided'}
+Competitor links: ${intake.competitor_urls ?? 'not provided'}
+
+For the company and each competitor you can find, summarize in a few lines: what they say they do, who they target, their headline value proposition, and the main messaging themes on their site. Then note the 2 to 4 clearest differences in how the company and its competitors position themselves. If you cannot find a site, say so briefly. Keep the whole summary under ~400 words.`
+      try {
+        const researchResp = await anthropic.messages.create({
+          model,
+          max_tokens: 1500,
+          tools: [{ type: 'web_search_20250305' as const, name: 'web_search', max_uses: 6 }],
+          messages: [{ role: 'user', content: researchPrompt }],
+        })
+        for (const b of researchResp.content) {
+          if (b.type === 'text') researchDigest += b.text
+        }
+      } catch (e) {
+        console.error('[gtm-assessment/generate] research step failed (continuing):', e instanceof Error ? e.message : String(e))
+      }
+    }
+
     let fullText = ''
     let stopReason: string | null = null
     try {
       const response = await anthropic.messages.create({
         model,
         max_tokens: 8000,
-        system: buildGtmAssessmentSystemPrompt(intake),
+        system: buildGtmAssessmentSystemPrompt(intake, researchDigest),
         // Prefill the assistant turn with "{" so the model must return JSON with
         // no preamble or code fences. We prepend the "{" back before parsing.
         messages: [

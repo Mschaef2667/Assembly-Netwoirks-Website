@@ -24,7 +24,9 @@ interface IntakeBody {
   industry?: string
   annual_revenue?: string
   how_heard?: string
+  company_website?: string
   competitors?: string
+  competitor_urls?: string
   challenge?: string
   gtm_summary?: string
   source_site?: string
@@ -77,7 +79,9 @@ export async function POST(req: NextRequest): Promise<Response> {
         industry: str(body.industry, 120),
         annual_revenue: str(body.annual_revenue, 60),
         how_heard: str(body.how_heard, 120),
+        company_website: str(body.company_website, 300),
         competitors: str(body.competitors, 600),
+        competitor_urls: str(body.competitor_urls, 600),
         challenge: str(body.challenge, 300),
         gtm_summary: str(body.gtm_summary, 3000),
         source_site: str(body.source_site, 120),

@@ -22,8 +22,10 @@ interface Assessment {
   name: string | null
   email: string | null
   company: string | null
+  company_website: string | null
   industry: string | null
   competitors: string | null
+  competitor_urls: string | null
   challenge: string | null
   gtm_summary: string | null
   created_at: string
@@ -246,8 +248,10 @@ export default function GtmAssessmentReviewPage() {
           <Row k="Name" v={assessment?.name} />
           <Row k="Email" v={assessment?.email} />
           <Row k="Company" v={assessment?.company} />
+          <Row k="Website" v={assessment?.company_website} />
           <Row k="Industry" v={assessment?.industry} />
           <Row k="Competitors" v={assessment?.competitors} />
+          <Row k="Competitor links" v={assessment?.competitor_urls} />
           <Row k="Selected challenge" v={assessment?.challenge} />
           <div style={{ marginTop: '10px' }}>
             <span style={LABEL}>GTM strategy summary</span>
