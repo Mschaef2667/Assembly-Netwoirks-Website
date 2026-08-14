@@ -11,10 +11,16 @@ export const runtime = 'nodejs'
  * Super-admin only.
  */
 
-async function requireSuperAdmin(): Promise<
-  | { ok: true; service: ReturnType<typeof createClient> }
-  | { ok: false; res: Response }
-> {
+function serviceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  )
+}
+
+/** Returns null when the caller is a super admin, or a Response to return otherwise. */
+async function superAdminGuard(): Promise<Response | null> {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,25 +38,19 @@ async function requireSuperAdmin(): Promise<
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { ok: false, res: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const service = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  )
-
-  const { data: meRow } = await service
+  const { data: meRow } = await serviceClient()
     .from('users')
     .select('is_super_admin')
     .eq('id', user.id)
     .maybeSingle()
 
   if (!meRow || !(meRow as { is_super_admin?: boolean }).is_super_admin) {
-    return { ok: false, res: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  return { ok: true, service }
+  return null
 }
 
 export async function GET(
@@ -59,10 +59,10 @@ export async function GET(
 ): Promise<Response> {
   try {
     const { id } = await ctx.params
-    const guard = await requireSuperAdmin()
-    if (!guard.ok) return guard.res
+    const denied = await superAdminGuard()
+    if (denied) return denied
 
-    const { data, error } = await guard.service
+    const { data, error } = await serviceClient()
       .from('gtm_assessments')
       .select('*')
       .eq('id', id)
@@ -84,8 +84,8 @@ export async function PATCH(
 ): Promise<Response> {
   try {
     const { id } = await ctx.params
-    const guard = await requireSuperAdmin()
-    if (!guard.ok) return guard.res
+    const denied = await superAdminGuard()
+    if (denied) return denied
 
     let body: { report_final?: unknown }
     try {
@@ -98,7 +98,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'report_final required' }, { status: 400 })
     }
 
-    const { error } = await guard.service
+    const { error } = await serviceClient()
       .from('gtm_assessments')
       .update({ report_final: body.report_final, updated_at: new Date().toISOString() })
       .eq('id', id)
