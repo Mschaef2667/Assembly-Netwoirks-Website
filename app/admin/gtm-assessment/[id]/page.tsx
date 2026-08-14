@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Sparkles, Save, Send, Plus, X, ArrowLeft } from 'lucide-react'
+import { Loader2, Sparkles, Save, Send, Plus, X, ArrowLeft, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import {
   GTM_SCORECARD_DIMENSIONS,
@@ -85,6 +85,8 @@ export default function GtmAssessmentReviewPage() {
   const [report, setReport] = useState<GtmAssessmentReport | null>(null)
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sentUrl, setSentUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -161,6 +163,35 @@ export default function GtmAssessmentReviewPage() {
     }
   }
 
+  async function previewPdf() {
+    if (!id || !report) return
+    // Open the tab synchronously (avoids popup blocking), then persist and load.
+    const w = window.open('', '_blank')
+    await save()
+    const url = `/api/admin/gtm-assessment/${id}/report?inline=1`
+    if (w) w.location.href = url
+    else window.open(url, '_blank')
+  }
+
+  async function sendReport() {
+    if (!id || !report) return
+    if (!window.confirm(`Send this report to ${assessment?.email ?? 'the prospect'}? This emails it to them.`)) return
+    setSending(true); setError(null); setNotice(null)
+    try {
+      await save() // lock the on-screen version before sending
+      const res = await fetch(`/api/admin/gtm-assessment/${id}/send`, { method: 'POST' })
+      const body = (await res.json()) as { ok?: boolean; url?: string; error?: string }
+      if (!res.ok || !body.ok) throw new Error(body.error ?? 'Send failed')
+      setSentUrl(body.url ?? null)
+      setNotice(`Sent to ${assessment?.email ?? 'the prospect'}.`)
+      void load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSending(false)
+    }
+  }
+
   // Report field mutators
   const patch = (p: Partial<GtmAssessmentReport>) => setReport((r) => (r ? { ...r, ...p } : r))
   const setScore = (i: number, p: Partial<GtmScorecardItem>) =>
@@ -196,6 +227,11 @@ export default function GtmAssessmentReviewPage() {
         {notice && (
           <div style={{ ...CARD, borderColor: 'rgba(34,197,94,0.4)', backgroundColor: 'rgba(34,197,94,0.1)', color: '#86EFAC' }}>
             {notice}
+            {sentUrl && (
+              <div style={{ marginTop: '8px', fontSize: '13px' }}>
+                Report link: <a href={sentUrl} target="_blank" rel="noopener" style={{ color: '#7DD3FC' }}>{sentUrl}</a>
+              </div>
+            )}
           </div>
         )}
 
@@ -225,8 +261,11 @@ export default function GtmAssessmentReviewPage() {
           <button onClick={save} disabled={saving || !report} style={{ ...btn('rgba(34,197,94,0.16)', 'rgba(34,197,94,0.5)', '#86EFAC'), opacity: report ? 1 : 0.5 }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save edits
           </button>
-          <button disabled title="Delivery is the next build step" style={{ ...btn('rgba(255,255,255,0.06)', 'rgba(255,255,255,0.16)', 'rgba(255,255,255,0.4)'), cursor: 'not-allowed' }}>
-            <Send size={14} /> Send (coming next)
+          <button onClick={previewPdf} disabled={!report || saving} style={{ ...btn('rgba(255,255,255,0.08)', 'rgba(255,255,255,0.22)', '#E5EAF2'), opacity: report ? 1 : 0.5 }}>
+            <FileText size={14} /> Preview PDF
+          </button>
+          <button onClick={sendReport} disabled={sending || !report} style={{ ...btn('#0EA5E9', '#0EA5E9', '#FFFFFF'), opacity: report ? 1 : 0.5 }}>
+            {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send to prospect
           </button>
         </div>
 
