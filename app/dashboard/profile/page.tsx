@@ -400,6 +400,27 @@ export default function ProfilePage() {
               <p style={HINT}>Contact your admin to change your role.</p>
             </div>
 
+            {profile.isSuperAdmin && (
+              <div>
+                <label style={LABEL}>Super Admin</label>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <Link
+                    href="/admin"
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: '8px', backgroundColor: 'rgba(232,82,10,0.12)', color: '#E8520A', border: '1px solid rgba(232,82,10,0.35)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    Control Panel →
+                  </Link>
+                  <Link
+                    href="/admin/gtm-assessments"
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: '8px', backgroundColor: 'rgba(14,165,233,0.12)', color: '#0EA5E9', border: '1px solid rgba(14,165,233,0.35)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    GTM Gap Reports →
+                  </Link>
+                </div>
+                <p style={HINT}>Platform-level tools. A dedicated control panel is coming.</p>
+              </div>
+            )}
+
             <div>
               <label style={LABEL}>Organization</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
