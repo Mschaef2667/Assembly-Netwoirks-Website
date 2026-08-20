@@ -98,7 +98,7 @@ export async function POST(
           <p style="margin:22px 0;">
             <a href="${escapeHtml(url)}" style="background:#0EA5E9;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;">Read your report</a>
           </p>
-          <p>If you'd like to talk it through, you can <a href="https://www.assemblynetworks.net/contact.html">book a consultation here</a>.</p>
+          <p>Want to talk it through? You can <a href="https://calendar.app.google/umNEpz7oxQAZYkzv6">book your free 30-minute GTM review here</a>.</p>
           <p>Best,<br>The Assembly Networks team</p>
         </div>`
       try {

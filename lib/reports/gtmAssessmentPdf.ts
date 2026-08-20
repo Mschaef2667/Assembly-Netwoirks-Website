@@ -195,13 +195,19 @@ export async function buildGtmAssessmentPdf(report: GtmAssessmentReport, meta: G
 
   // Next step
   if (report.next_step) {
-    y = ensure(y, 70)
-    fill(NAVY); doc.roundedRect(margin, y, contentW, 74, 8, 8, 'F')
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5)
+    const nsLines = doc.splitTextToSize(report.next_step, contentW - 36)
+    const boxH = 40 + nsLines.length * 14 + 34
+    y = ensure(y, boxH + 4)
+    fill(NAVY); doc.roundedRect(margin, y, contentW, boxH, 8, 8, 'F')
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(BLUE)
-    doc.text('YOUR NEXT STEP', margin + 18, y + 24, { charSpace: 1 })
+    doc.text('YOUR NEXT STEP', margin + 18, y + 22, { charSpace: 1 })
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); ink('#FFFFFF')
-    wrap(report.next_step, margin + 18, y + 42, contentW - 36, 14)
-    y += 90
+    let ny = y + 40
+    for (const line of nsLines) { doc.text(line, margin + 18, ny); ny += 14 }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); ink(BLUE)
+    doc.text('Book your free 30-minute review:  calendar.app.google/umNEpz7oxQAZYkzv6', margin + 18, ny + 12)
+    y += boxH + 16
   }
 
   // ── Disclaimer (fixed boilerplate, never model-generated) ─────────────────

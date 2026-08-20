@@ -74,7 +74,7 @@ export default function PublicReportPage() {
       <div style={{ ...wrap, marginTop: '8px' }}>
         <div style={{ display: 'flex', gap: '10px', margin: '22px 0 4px', flexWrap: 'wrap' }}>
           <a href={`/api/r/${token}/pdf`} target="_blank" rel="noopener" style={{ background: NAVY, color: '#fff', textDecoration: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 600, fontSize: '14px' }}>Download PDF</a>
-          <a href="https://www.assemblynetworks.net/contact.html" style={{ background: CYAN, color: '#fff', textDecoration: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 600, fontSize: '14px' }}>Book a consultation</a>
+          <a href="https://calendar.app.google/umNEpz7oxQAZYkzv6" style={{ background: CYAN, color: '#fff', textDecoration: 'none', padding: '10px 18px', borderRadius: '8px', fontWeight: 600, fontSize: '14px' }}>Book your 30-minute review</a>
         </div>
 
         {r.snapshot && (<><h2 style={h2}>What we heard</h2><p style={body}>{r.snapshot}</p></>)}
@@ -125,7 +125,7 @@ export default function PublicReportPage() {
           <div style={{ background: NAVY, borderRadius: '10px', padding: '22px 24px', margin: '28px 0 0' }}>
             <p style={{ color: CYAN, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Your next step</p>
             <p style={{ color: '#fff', fontSize: '16px', lineHeight: 1.6, margin: '0 0 16px' }}>{r.next_step}</p>
-            <a href="https://www.assemblynetworks.net/contact.html" style={{ background: CYAN, color: '#fff', textDecoration: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '14px', display: 'inline-block' }}>Book a consultation</a>
+            <a href="https://calendar.app.google/umNEpz7oxQAZYkzv6" style={{ background: CYAN, color: '#fff', textDecoration: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '14px', display: 'inline-block' }}>Book your 30-minute review</a>
           </div>
         )}
 
