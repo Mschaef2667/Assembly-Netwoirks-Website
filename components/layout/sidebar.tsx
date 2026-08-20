@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   { label: 'Journeys',       href: '/dashboard/journeys',        icon: Route,    id: 'nav-report', indent: true },
   { label: 'ICP Calibrator', href: '/dashboard/target-markets',  icon: Target,   id: 'nav-markets' },
   { label: 'Opportunities',  href: '/dashboard/lead-generation', icon: Search    },
-  { label: 'Assets Studio',  href: '/dashboard/assets',          icon: Layers    },
+  { label: 'Idea Center',    href: '/dashboard/assets',          icon: Layers    },
   { label: 'Integrations',   href: '/dashboard/integrations',    icon: Plug      },
   { label: 'Performance',    href: '/dashboard/performance',     icon: BarChart2 },
   { label: 'Administration', href: '/dashboard/administration',  icon: Settings  },
