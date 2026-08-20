@@ -1,5 +1,5 @@
 import ComingSoon from '@/components/ui/ComingSoon'
 
-export default function IdeaCenterPage() {
-  return <ComingSoon title="Idea Center" />
+export default function IdeaFilterPage() {
+  return <ComingSoon title="Idea Filter" />
 }
