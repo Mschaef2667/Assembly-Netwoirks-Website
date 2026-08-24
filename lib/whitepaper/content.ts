@@ -31,7 +31,7 @@ export const WHITEPAPER: WhitepaperDocument = {
 
   executiveSummary: [
     'B2B leaders spend millions every year on go-to-market planning that never reaches the field intact. Positioning gets rewritten quarterly, sales teams reach for their own decks, and revenue targets slip while leadership debates whose theory of the customer is correct. The root cause is not effort or talent — it is a process problem. Most strategies are built from internal opinion and competitor noise, not from the people whose decisions actually drive revenue: the buyers.',
-    'This paper introduces the C3 Method — a structured approach that requires GTM teams to earn their strategy from buyer research before they execute it. It explains why assumption-led strategy keeps failing, walks through the seven-stage Decision Clarity Profile that grounds the method, and shows how a disciplined sequence (Intelligence → Strategy → Plan) produces messaging, competitive positioning, and a 38-step Strategic Plan that the field can actually use.',
+    'This paper introduces the C3 Method — a structured approach that requires GTM teams to earn their strategy from buyer research before they execute it. It explains why assumption-led strategy keeps failing, walks through the seven-stage Decision Clarity Profile that grounds the method, and shows how a disciplined sequence (Intelligence → Strategy → Plan) produces messaging, competitive positioning, and a 38-step Engagement Plan that the field can actually use.',
     'Readers will leave with a clear framework, a checklist to audit their current GTM motion, and a path to operationalizing a buyer-led strategy inside their own organization.',
   ],
 
@@ -100,17 +100,17 @@ export const WHITEPAPER: WhitepaperDocument = {
     },
     {
       number: 7,
-      title: 'The 38-Step Strategic Plan',
+      title: 'The 38-Step Engagement Plan',
       paragraphs: [
-        'The C3 Method produces a 38-step Strategic Plan that compiles everything into a single, executable document. Steps cover endemic problems, compelling value propositions, key selling points, competitive analysis, strategic messages, engagement plans, and a deal scorecard. Each step is dependent on the one before it, so a weakness early in the chain cannot hide.',
-        'The point of the Strategic Plan is not to be impressive. It is to be defensible. When a rep is in a deal and a buyer pushes back on a differentiator, the answer should not be a marketing claim — it should be a citation back to a piece of buyer research the rep can trust.',
+        'The C3 Method produces a 38-step Engagement Plan that compiles everything into a single, executable document. Steps cover endemic problems, compelling value propositions, key selling points, competitive analysis, strategic messages, engagement plans, and a deal scorecard. Each step is dependent on the one before it, so a weakness early in the chain cannot hide.',
+        'The point of the Engagement Plan is not to be impressive. It is to be defensible. When a rep is in a deal and a buyer pushes back on a differentiator, the answer should not be a marketing claim — it should be a citation back to a piece of buyer research the rep can trust.',
       ],
     },
     {
       number: 8,
       title: 'Operationalizing the Method: People, Cadence, and Tools',
       paragraphs: [
-        'A method is only as good as the cadence that sustains it. Assembly Networks recommends a quarterly review of the Decision Clarity Profile (refreshed with at least 8 to 12 new buyer conversations) and a monthly working session on the four messaging beats. Tooling matters: trying to run this in slide decks and shared docs guarantees drift. A purpose-built operating system — like Assembly AI — keeps the dependencies visible, the buyer research connected to the messaging, and the Strategic Plan updated as the market moves.',
+        'A method is only as good as the cadence that sustains it. Assembly Networks recommends a quarterly review of the Decision Clarity Profile (refreshed with at least 8 to 12 new buyer conversations) and a monthly working session on the four messaging beats. Tooling matters: trying to run this in slide decks and shared docs guarantees drift. A purpose-built operating system — like Assembly AI — keeps the dependencies visible, the buyer research connected to the messaging, and the Engagement Plan updated as the market moves.',
         'The teams that get the most out of the C3 Method treat it as a discipline, not a one-time project. They make buyer research a quarterly habit, they hold the line on the dependency chain, and they refuse to ship messaging that cannot point back to a buyer source.',
         'Assembly AI stays deliberately in the strategy layer. Rather than compete with the tools that execute campaigns, it clarifies which moves are worth making — grounded in buyer evidence — and hands execution to trusted implementation partners. The forthcoming Idea Filter extends this: it scores marketing ideas against a company\'s buyer intelligence and calibrated ICP, so teams know what to pursue and what to skip, while the doing happens through partners.',
       ],
