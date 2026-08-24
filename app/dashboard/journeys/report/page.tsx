@@ -51,6 +51,20 @@ interface DcpStageSummary {
   recommended_actions?: string[]
 }
 
+// Engagement Plan — per-stage nurturing framework. The "job" and "touch" are the
+// proven, stage-level framework; the buyer-evidence column is filled live from the
+// approved DCP at render time.
+interface NurtureStage { stage: number; name: string; question: string; job: string; touch: string }
+const NURTURE_FRAMEWORK: NurtureStage[] = [
+  { stage: 1, name: 'Need',         question: 'Do we have a problem?',        job: 'Make the latent problem visible and name it in their language.',        touch: 'Educational content that frames the problem; benchmarks that help them realize they are exposed.' },
+  { stage: 2, name: 'Motivation',   question: 'What happens if we do nothing?', job: 'Raise the cost of inaction and turn a latent need into urgency.',       touch: 'Cost-of-status-quo content; trigger-based outreach tied to a recent event or miss.' },
+  { stage: 3, name: 'Search',       question: 'Who can we trust?',            job: 'Show up where they look and become a credible, trusted source.',        touch: 'Thought leadership, third-party citations, referrals, presence in the channels they actually search.' },
+  { stage: 4, name: 'Evaluation',   question: 'What should we compare?',      job: 'Shape the criteria toward the dimensions where you are strong.',        touch: 'Buyer guides and comparison frameworks that foreground your real differentiators.' },
+  { stage: 5, name: 'Select Set',   question: 'Who makes the short list?',    job: 'Clear the table-stakes bar and avoid being screened out.',              touch: 'Proof that you meet the must-haves: case studies, social proof, relevant references.' },
+  { stage: 6, name: 'Decision',     question: 'Why this vendor?',             job: 'Arm the champion and de-risk the final choice for the committee.',      touch: 'ROI and business-case materials; tailored proof for finance and other veto-holders; references.' },
+  { stage: 7, name: 'Confirmation', question: 'Did this work?',               job: 'Reinforce the decision, drive adoption, and open expansion and advocacy.', touch: 'Onboarding, success check-ins, results reviews, and timed referral or expansion asks.' },
+]
+
 interface InsightCategory {
   insights: string[]
   confidence: number
@@ -1062,41 +1076,26 @@ function ReportPageInner() {
         blank()
       })
 
-      // Section 5 — 30/60/90 Day Engagement Plan
-      children.push(new Paragraph({ text: '5. 30/60/90 Day Engagement Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
-      ;([
-        { label: 'First 30 Days', stepIds: ['31', '32'] as const },
-        { label: 'Days 31-60', stepIds: ['33', '34'] as const },
-        { label: 'Days 61-90', stepIds: ['35', '36'] as const },
-      ]).forEach((bucket) => {
-        children.push(subheading(lib, bucket.label))
-        const entries = bucket.stepIds.map((sid) => {
-          const o = getOutput(sid); const s = getStep(sid)
-          const title = s?.title ?? `Step ${sid}`
-          if (!o || !hasContent(sid)) return { id: sid, title, text: '' }
-          const ap = extractActionPlan(o.content)
-          if (ap.summary.trim().length > 0) return { id: sid, title, text: ap.summary }
-          const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
-          return { id: sid, title, text: firstEntry?.content ?? '' }
+      // Section 5 — Nurturing by Decision Stage
+      children.push(new Paragraph({ text: '5. Nurturing by Decision Stage', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 120 } }))
+      children.push(para(lib, 'How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not to a fixed calendar, so the same path works whether a cycle closes in weeks or months. Grounded in your approved Decision Clarity Profile.'))
+      if (dcpStageSummaries.length === 0) {
+        children.push(new Paragraph({ children: [new TextRun({ text: 'Complete and approve your DCP Map to generate your nurturing plan.', italics: true, color: '9CA3AF' })] }))
+      } else {
+        NURTURE_FRAMEWORK.forEach((row) => {
+          const dcp = dcpStageSummaries.find((s) => s.stage_number === row.stage)
+          const evidence = dcp?.summary?.trim()
+          children.push(subheading(lib, `${row.stage}. ${row.name} — ${row.question}`))
+          children.push(new Paragraph({ children: [
+            new TextRun({ text: 'What your buyers told us: ', bold: true }),
+            new TextRun({ text: evidence || 'Evidence pending — complete this stage of your DCP.', italics: !evidence }),
+          ] }))
+          children.push(new Paragraph({ children: [
+            new TextRun({ text: 'Nurture focus: ', bold: true }),
+            new TextRun({ text: `${row.job} ${row.touch}` }),
+          ], spacing: { after: 120 } }))
         })
-        const allEmpty = entries.every(e => e.text.length === 0)
-        if (allEmpty) {
-          children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
-        } else {
-          entries.forEach((e) => {
-            children.push(new Paragraph({
-              children: [new TextRun({ text: e.title, bold: true, size: 22 })],
-              spacing: { before: 140, after: 60 },
-            }))
-            if (e.text) {
-              children.push(para(lib, e.text, false, true))
-            } else {
-              children.push(new Paragraph({ children: [new TextRun({ text: 'Not yet completed', italics: true, color: '9CA3AF' })] }))
-            }
-          })
-        }
-        blank()
-      })
+      }
 
       sections.push({ children })
 
@@ -2193,56 +2192,12 @@ function ReportPageInner() {
     )
   }
 
-  function TimeBucketContent({ stepIds }: { stepIds: string[] }) {
-    const entries = stepIds.map(id => {
-      const o = getOutput(id)
-      const s = getStep(id)
-      const title = s?.title ?? `Step ${id}`
-      if (!o || !hasContent(id)) return { id, title, text: '' }
-      const ap = extractActionPlan(o.content)
-      if (ap.summary.trim().length > 0) return { id, title, text: ap.summary }
-      const firstEntry = ap.entries.find(e => e.content.trim().length > 0)
-      return { id, title, text: firstEntry?.content ?? '' }
-    })
-    const allEmpty = entries.every(e => e.text.length === 0)
-    if (allEmpty) {
-      return (
-        <p style={{ color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic', margin: '4px 0 0' }}>
-          Not yet completed
-          <span className="screen-only">
-            {' — '}
-            <Link
-              href={`/dashboard/journeys/step/${entries[0]?.id ?? '31'}`}
-              style={{ color: '#0EA5E9', textDecoration: 'underline' }}
-            >
-              Go to {entries[0]?.title ?? 'Engagement Plan'}
-            </Link>
-          </span>
-        </p>
-      )
-    }
-    return (
-      <div style={{ marginTop: '4px' }}>
-        {entries.map(e => (
-          <div key={e.id} style={{ marginBottom: '12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' }}>
-              {e.title}
-            </p>
-            {e.text
-              ? <p style={bodyStyle}>{e.text}</p>
-              : <NotCompleted stepId={e.id} title={e.title} />}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   // Section emptiness — used to set data-empty for PDF onclone hiding
   const COMP_STEP_IDS = ['17','18','20'] as const
   const sec2Empty = COMP_STEP_IDS.every(id => !hasContent(id))
   const sec3Empty = !hasContent('27') && !hasContent('28') && !hasContent('29') && !hasContent('30')
   const sec4Empty = ['31','32','33','34','35','36','37'].every(id => !hasContent(id))
-  const sec5Empty = ['31','32','33','34','35','36'].every(id => !hasContent(id))
+  const sec5Empty = dcpStageSummaries.length === 0
 
   const sectionHeadStyle: React.CSSProperties = {
     fontSize: '18px',
@@ -2273,6 +2228,22 @@ function ReportPageInner() {
   const dividerStyle: React.CSSProperties = {
     borderTop: '1px solid #E5E7EB',
     margin: '24px 0',
+  }
+
+  const nthStyle: React.CSSProperties = {
+    textAlign: 'left',
+    backgroundColor: '#0A1628',
+    color: '#FFFFFF',
+    padding: '8px 10px',
+    fontSize: '11px',
+    fontWeight: 700,
+  }
+  const ntdStyle: React.CSSProperties = {
+    padding: '8px 10px',
+    borderBottom: '1px solid #E5E7EB',
+    color: '#1F2937',
+    lineHeight: 1.5,
+    verticalAlign: 'top',
   }
 
   return (
@@ -2409,7 +2380,7 @@ function ReportPageInner() {
                 Engagement Plan
               </h2>
               <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
-                Compiles Phase 1 foundation, competitive environment, strategic messages, and the 30/60/90 day engagement plan based on what is true today.
+                Compiles Phase 1 foundation, competitive environment, strategic messages, and a nurturing plan mapped to your buyers&apos; decision journey.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -2630,29 +2601,55 @@ function ReportPageInner() {
                     ))}
                   </div>
 
-                  {/* ── Section 5: 30/60/90 Day Engagement Plan ── */}
+                  {/* ── Section 5: Nurturing by Decision Stage ── */}
                   <div data-empty={sec5Empty ? 'true' : undefined}>
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                    <h2 style={sectionHeadStyle}>5. 30/60/90 Day Engagement Plan</h2>
-
-                    <div className="report-subsection">
-                      <p style={subheadStyle}>First 30 Days</p>
-                      <TimeBucketContent stepIds={['31', '32']} />
-                    </div>
-
-                    <div style={dividerStyle} />
-
-                    <div className="report-subsection">
-                      <p style={subheadStyle}>Days 31-60</p>
-                      <TimeBucketContent stepIds={['33', '34']} />
-                    </div>
-
-                    <div style={dividerStyle} />
-
-                    <div className="report-subsection">
-                      <p style={subheadStyle}>Days 61-90</p>
-                      <TimeBucketContent stepIds={['35', '36']} />
-                    </div>
+                    <h2 style={sectionHeadStyle}>5. Nurturing by Decision Stage</h2>
+                    <p style={{ ...bodyStyle, margin: '0 0 16px' }}>
+                      How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not to a fixed calendar, so the same path works whether a cycle closes in weeks or months. Grounded in your approved Decision Clarity Profile.
+                    </p>
+                    {sec5Empty ? (
+                      <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
+                        Complete and approve your DCP Map to generate your nurturing plan.
+                      </p>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                        <thead>
+                          <tr>
+                            <th style={nthStyle}>Stage</th>
+                            <th style={nthStyle}>The buyer is asking</th>
+                            <th style={nthStyle}>What your buyers told us</th>
+                            <th style={nthStyle}>Nurture focus</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {NURTURE_FRAMEWORK.map((row) => {
+                            const dcp = dcpStageSummaries.find((s) => s.stage_number === row.stage)
+                            const conf = dcp?.confidence ?? dcp?.confidence_score
+                            const evidenceRaw = dcp?.summary?.trim() ?? ''
+                            const evidence = evidenceRaw.length > 240 ? `${evidenceRaw.slice(0, 240)}…` : evidenceRaw
+                            return (
+                              <tr key={row.stage} className="report-subsection">
+                                <td style={{ ...ntdStyle, whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontWeight: 700, color: '#0A1628' }}>{row.stage}. {row.name}</span>
+                                </td>
+                                <td style={{ ...ntdStyle, fontStyle: 'italic', color: '#0EA5E9' }}>{row.question}</td>
+                                <td style={ntdStyle}>
+                                  {evidence
+                                    ? <>{evidence}{typeof conf === 'number' && conf < 40 ? <span style={{ color: '#B45309' }}> (limited evidence)</span> : null}</>
+                                    : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Evidence pending</span>}
+                                </td>
+                                <td style={ntdStyle}>
+                                  <span style={{ fontWeight: 600, color: '#0A1628' }}>{row.job}</span>
+                                  <br />
+                                  <span style={{ color: '#4B5563' }}>{row.touch}</span>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
 
                   {/* Footer */}
