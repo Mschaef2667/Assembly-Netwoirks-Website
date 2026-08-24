@@ -335,7 +335,7 @@
 
     @page {
       size: letter;
-      margin: 0.7in 0.75in 0.8in;
+      margin: 0.55in 0.7in 0.6in;
       @bottom-center {
         content: counter(page);
         font-size: 8pt;
@@ -360,14 +360,14 @@
 
     html, body {
       background: #fff;
-      font-size: 10.5pt;
-      line-height: 1.5;
+      font-size: 10pt;
+      line-height: 1.42;
     }
 
     /* --- Cover: light, ink-friendly, its own page --- */
     .cover {
       background: #fff !important;
-      padding: 1.6in 0 0;
+      padding: 1.05in 0 0;
       break-after: page;
       page-break-after: always;
       border-bottom: 0;
@@ -417,13 +417,13 @@
     .section {
       break-inside: auto;
       page-break-inside: auto;
-      margin: 22px 0 0;
+      margin: 13px 0 0;
     }
     .section:first-of-type { margin-top: 0; }
 
     p, li { orphans: 3; widows: 3; }
-    p { margin-bottom: 11px; }
-    .lead { font-size: 11.5pt; line-height: 1.5; }
+    p { margin-bottom: 7px; }
+    .lead { font-size: 11pt; line-height: 1.42; }
 
     /* Keep a kicker with its heading, and a heading with its text */
     .section-number {
@@ -433,8 +433,8 @@
       font-size: 8pt;
     }
     h2.section-title {
-      font-size: 16pt;
-      margin-bottom: 12px;
+      font-size: 15pt;
+      margin-bottom: 8px;
       break-after: avoid;
       page-break-after: avoid;
       break-inside: avoid;
@@ -445,20 +445,21 @@
       break-inside: avoid;
       page-break-inside: avoid;
       border: 1px solid #D9DDE3;
-      margin: 20px 0;
-      padding: 16px 18px;
+      margin: 13px 0;
+      padding: 12px 14px;
     }
+    .figure svg { max-height: 2.9in; }
     .figure-caption {
       break-before: avoid;
       page-break-before: avoid;
-      margin-top: 12px;
+      margin-top: 8px;
       font-size: 8pt;
     }
     .pullquote {
       break-inside: avoid;
       page-break-inside: avoid;
-      font-size: 13pt;
-      margin: 22px 0;
+      font-size: 12.5pt;
+      margin: 14px 0;
       padding-left: 20px;
     }
     .alt-card, .outputs-grid {
@@ -469,10 +470,11 @@
       break-inside: auto;
       page-break-inside: auto;
     }
-    .alternatives { gap: 12px; margin: 18px 0; }
-    .alt-card { padding: 14px 16px; }
-    .outputs-grid { padding: 16px 18px; margin: 18px 0 10px; }
+    .alternatives { gap: 12px; margin: 12px 0; }
+    .alt-card { padding: 12px 14px; }
+    .outputs-grid { padding: 12px 14px; margin: 12px 0 8px; }
     .grid-intro { break-after: avoid; page-break-after: avoid; }
+    footer { margin-top: 18px; padding-top: 12px; break-before: avoid; page-break-before: avoid; }
     ul.clean { margin: 12px 0; }
     ul.clean li { padding: 3px 0 3px 20px; break-inside: avoid; }
     ul.clean li::before { top: 11px; width: 6px; height: 6px; }
@@ -484,8 +486,8 @@
       background: #fff !important;
       color: var(--navy) !important;
       border: 2px solid var(--orange);
-      padding: 24px 28px;
-      margin: 24px 0 14px;
+      padding: 15px 22px;
+      margin: 14px 0 10px;
     }
     .cta h3 { color: var(--navy) !important; font-size: 17pt; }
     .cta p  { color: #374151 !important; font-size: 10.5pt; }
@@ -1108,10 +1110,10 @@
 
   <!-- CTA -->
   <aside class="cta">
-    <h3>Request a Buyer Truth Audit</h3>
-    <p>In 30 minutes we will assess whether your ICP is evidence-based, where your sales cycle is losing decision momentum, whether your messaging maps to real buyer pain, and how ready your team is to operationalize Assembly AI.</p>
-    <a class="cta-btn" href="https://assemblyai.net/demo">Request a Demo →</a>
-    <div class="cta-secondary">Download the white paper at <strong>assemblyai.net/whitepaper</strong></div>
+    <h3>See your own buyer-truth gap — free</h3>
+    <p>Take our free GTM assessment for a personalized GTM Gap Report showing where your go-to-market breaks down and what to fix first — plus a free 30-minute review.</p>
+    <a class="cta-btn" href="https://www.assemblynetworks.net/consulting.html">Take the free assessment →</a>
+    <div class="cta-secondary">Prefer to talk first? <a href="https://assemblyai.net/demo">Request a demo</a> &nbsp;·&nbsp; <strong>assemblyai.net/whitepaper</strong></div>
   </aside>
 
   <footer>
