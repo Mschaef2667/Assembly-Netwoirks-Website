@@ -27,7 +27,7 @@ export const WHITEPAPER: WhitepaperDocument = {
   subtitle: 'How buyer-led research transforms positioning, messaging, and competitive strategy',
   author: 'Michael Schaefer',
   organization: 'Assembly Networks',
-  publicationDate: 'June 2026',
+  publicationDate: 'June 2026 · Updated August 2026',
 
   executiveSummary: [
     'B2B leaders spend millions every year on go-to-market planning that never reaches the field intact. Positioning gets rewritten quarterly, sales teams reach for their own decks, and revenue targets slip while leadership debates whose theory of the customer is correct. The root cause is not effort or talent — it is a process problem. Most strategies are built from internal opinion and competitor noise, not from the people whose decisions actually drive revenue: the buyers.',
@@ -65,13 +65,13 @@ export const WHITEPAPER: WhitepaperDocument = {
         'The Decision Clarity Profile (DCP) is the structured artifact at the heart of the C3 Method. It maps the buyer\'s journey across seven stages, each one a question the GTM team must be able to answer with evidence rather than opinion.',
       ],
       bullets: [
-        'Stage 1 — Problem Recognition: What conditions make the buyer realize a problem exists?',
-        'Stage 2 — Consequences: What happens if the problem stays unsolved, and what triggers urgency?',
+        'Stage 1 — Need: What conditions make the buyer realize a problem exists?',
+        'Stage 2 — Motivation: What happens if the problem stays unsolved, and what triggers urgency?',
         'Stage 3 — Search: Where do buyers go, and who do they trust, when they start looking?',
-        'Stage 4 — Solution Evaluation: What criteria do they apply, and what signals make a vendor credible?',
-        'Stage 5 — Decision Process: Who is involved, what role do they play, and how is consensus reached?',
-        'Stage 6 — Selection: Why the chosen vendor wins — and why finalists lose.',
-        'Stage 7 — Post-Decision: What does success look like 90 days in, and what would have caused a churn?',
+        'Stage 4 — Evaluation: What criteria do they apply, and what signals make a vendor credible?',
+        'Stage 5 — Select Set: Who makes the short list, and why?',
+        'Stage 6 — Decision: Who has the final say, and why the chosen vendor wins while finalists lose?',
+        'Stage 7 — Confirmation: What does success look like 90 days in, and what would have caused a churn?',
       ],
     },
     {
@@ -112,6 +112,7 @@ export const WHITEPAPER: WhitepaperDocument = {
       paragraphs: [
         'A method is only as good as the cadence that sustains it. Assembly Networks recommends a quarterly review of the Decision Clarity Profile (refreshed with at least 8 to 12 new buyer conversations) and a monthly working session on the four messaging beats. Tooling matters: trying to run this in slide decks and shared docs guarantees drift. A purpose-built operating system — like Assembly AI — keeps the dependencies visible, the buyer research connected to the messaging, and the Strategic Plan updated as the market moves.',
         'The teams that get the most out of the C3 Method treat it as a discipline, not a one-time project. They make buyer research a quarterly habit, they hold the line on the dependency chain, and they refuse to ship messaging that cannot point back to a buyer source.',
+        'Assembly AI stays deliberately in the strategy layer. Rather than compete with the tools that execute campaigns, it clarifies which moves are worth making — grounded in buyer evidence — and hands execution to trusted implementation partners. The forthcoming Idea Filter extends this: it scores marketing ideas against a company\'s buyer intelligence and calibrated ICP, so teams know what to pursue and what to skip, while the doing happens through partners.',
       ],
     },
   ],

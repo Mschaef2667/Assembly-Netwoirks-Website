@@ -461,8 +461,8 @@ type Stage = 'live' | 'building' | 'service'
 const FLYWHEEL = [
   { n: 1, label: 'Strategy',       x: 380, y: 110, lx: 380, ly: 54,  anchor: 'middle' as const, stage: 'live'     as Stage, note: 'Available now' },
   { n: 2, label: 'ICP Calibrator', x: 545, y: 205, lx: 590, ly: 185, anchor: 'start'  as const, stage: 'live'     as Stage, note: 'Available now' },
-  { n: 3, label: 'Lead Generator', x: 545, y: 395, lx: 590, ly: 427, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
-  { n: 4, label: 'Asset Studio',   x: 380, y: 490, lx: 380, ly: 560, anchor: 'middle' as const, stage: 'service'  as Stage, note: '' },
+  { n: 3, label: 'Idea Filter',    x: 545, y: 395, lx: 590, ly: 427, anchor: 'start'  as const, stage: 'building' as Stage, note: 'In development' },
+  { n: 4, label: 'Fit Check',      x: 380, y: 490, lx: 380, ly: 560, anchor: 'middle' as const, stage: 'building' as Stage, note: 'In development' },
   { n: 5, label: 'Integrations',   x: 215, y: 395, lx: 170, ly: 427, anchor: 'end'    as const, stage: 'service'  as Stage, note: '' },
   { n: 6, label: 'Performance',    x: 215, y: 205, lx: 170, ly: 185, anchor: 'end'    as const, stage: 'service'  as Stage, note: '' },
 ]
@@ -502,17 +502,17 @@ const MODULES = [
     stage: 'live' as Stage,
   },
   {
-    title: '3. Lead Generator',
-    body: 'Find and qualify real companies that match the calibrated profile.',
+    title: '3. Idea Filter',
+    body:
+      'Filter and score marketing ideas against your buyer intelligence and calibrated ICP, so you know which to pursue and which to skip.',
     tag: 'In development',
     stage: 'building' as Stage,
   },
   {
-    title: '4. Asset Studio',
-    body:
-      'Turn your strategic messages into the content you actually send. Our team can build these for you today while the module is in progress.',
-    tag: 'Available as a service',
-    stage: 'service' as Stage,
+    title: '4. Fit Check',
+    body: 'Check which opportunities and companies in front of you fit your calibrated profile, so you spend time on the right ones.',
+    tag: 'In development',
+    stage: 'building' as Stage,
   },
   {
     title: '5. Integrations',
@@ -597,7 +597,7 @@ function Flywheel() {
       className="flywheel-svg"
       viewBox="0 0 760 600"
       role="img"
-      aria-label="The Assembly AI loop: Strategy, ICP Calibrator, Lead Generator, Asset Studio, Integrations, Performance, and back to Strategy"
+      aria-label="The Assembly AI loop: Strategy, ICP Calibrator, Idea Filter, Fit Check, Integrations, Performance, and back to Strategy"
       style={{ width: '100%', maxWidth: 720, height: 'auto', display: 'block', margin: '0 auto' }}
     >
       {/* the loop itself */}
