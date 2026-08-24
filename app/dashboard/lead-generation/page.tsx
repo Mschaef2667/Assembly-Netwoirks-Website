@@ -1,5 +1,5 @@
 import ComingSoon from '@/components/ui/ComingSoon'
 
 export default function LeadGenerationPage() {
-  return <ComingSoon title="Opportunity Evaluation" />
+  return <ComingSoon title="Fit Check" />
 }
