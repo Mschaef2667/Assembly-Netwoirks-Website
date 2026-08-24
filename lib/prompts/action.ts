@@ -10,7 +10,7 @@ export function buildPrompt(stepId: string, ctx: PromptContext): string {
     const step6Text = stepText(ctx, '6')
     const step7Text = stepText(ctx, '7')
 
-    return `You are Assembly AI Copilot helping complete Step 31 — Create Opportunities of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 31 — Create Opportunities of the C3 Method Engagement Plan.
 
 FORMULA: What 3-4 specific actions can the company take to raise awareness of the causes (Step 5) and effects (Step 6) of each pain point (Step 4) in order to trigger a search for a solution by the key decision makers (Step 3)? Consider the realization triggers from Step 7.
 
@@ -68,7 +68,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step29Text = stepText(ctx, '29')
     const step30Text = stepText(ctx, '30')
 
-    return `You are Assembly AI Copilot helping complete Step 32 — Get Into Position of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 32 — Get Into Position of the C3 Method Engagement Plan.
 
 PURPOSE: What actions can the company take to establish competitive positioning before entering a sales conversation?
 
@@ -125,7 +125,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step15Text = stepText(ctx, '15')
     const step28Text = stepText(ctx, '28')
 
-    return `You are Assembly AI Copilot helping complete Step 33 — Grow Support of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 33 — Grow Support of the C3 Method Engagement Plan.
 
 PURPOSE: How to build internal champions and expand relationships within target accounts.
 
@@ -176,7 +176,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step29Text = stepText(ctx, '29')
     const step30Text = stepText(ctx, '30')
 
-    return `You are Assembly AI Copilot helping complete Step 34 — Close The Sale of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 34 — Close The Sale of the C3 Method Engagement Plan.
 
 PURPOSE: The specific closing approach aligned to how this buyer makes decisions from the DCP.
 
@@ -232,7 +232,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step15Text = stepText(ctx, '15')
     const step22Text = stepText(ctx, '22')
 
-    return `You are Assembly AI Copilot helping complete Step 35 — Pat Them On The Back of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 35 — Pat Them On The Back of the C3 Method Engagement Plan.
 
 PURPOSE: Post-sale validation and early success milestones to prevent buyer regret.
 
@@ -277,7 +277,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step24Text = stepText(ctx, '24')
     const step26Text = stepText(ctx, '26')
 
-    return `You are Assembly AI Copilot helping complete Step 36 — Retrench of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 36 — Retrench of the C3 Method Engagement Plan.
 
 PURPOSE: How to re-engage stalled or lost opportunities using competitive intelligence.
 
@@ -327,7 +327,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step29Text = stepText(ctx, '29')
     const step30Text = stepText(ctx, '30')
 
-    return `You are Assembly AI Copilot helping complete Step 37 — Resources and Tools of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 37 — Resources and Tools of the C3 Method Engagement Plan.
 
 PURPOSE: Specific sales enablement assets needed to execute this GTM strategy.
 
@@ -379,7 +379,7 @@ ${currentContent ? `CURRENT DRAFT (refine if present, otherwise replace):\n${cur
     const step11Text = stepText(ctx, '11')
     const step23Text = stepText(ctx, '23')
 
-    return `You are Assembly AI Copilot helping complete Step 38 — Opportunity Evaluation of the C3 Method Strategic Plan.
+    return `You are Assembly AI Copilot helping complete Step 38 — Opportunity Evaluation of the C3 Method Engagement Plan.
 
 PURPOSE: Criteria for qualifying and scoring opportunities against the ICP.
 

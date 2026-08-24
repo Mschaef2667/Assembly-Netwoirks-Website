@@ -97,7 +97,7 @@ const TOUR_STEPS: TourStep[] = [
     page: '/dashboard/journeys',
     targetId: 'journey-report-btn',
     title: 'Generate the Strategic Plan',
-    body: 'Every approved step compiles into one complete document. Click Generate Report to build your C3 Method Strategic Plan.',
+    body: 'Every approved step compiles into one complete document. Click Generate Report to build your C3 Method Engagement Plan.',
     position: 'top',
   },
   {
