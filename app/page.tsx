@@ -5,7 +5,7 @@ import Image from 'next/image'
 export const metadata = {
   title: { absolute: 'Assembly AI — Go-to-Market Strategy Built on Buyer Truth' },
   description:
-    'An AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, in the right order, then turn what they say into your positioning, messaging, and action plan.',
+    'An AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, in the right order, then turn what they say into your positioning, messaging, and engagement plan.',
 }
 
 const NAVY = '#0A1628'
@@ -545,7 +545,7 @@ const STEPS = [
   {
     title: 'Get the plan',
     body:
-      'A complete go-to-market playbook in PDF and Word. ICP, positioning, messaging, competitive strategy, and a 30/60/90 day action plan. Board-ready, and more importantly, team-ready.',
+      'A complete go-to-market playbook in PDF and Word. ICP, positioning, messaging, competitive strategy, and a 30/60/90 day engagement plan. Board-ready, and more importantly, team-ready.',
   },
 ]
 
@@ -567,7 +567,7 @@ const FEATURES = [
     body: 'What to say at each stage of the decision, and in what order.',
   },
   {
-    title: 'Action Plan',
+    title: 'Engagement Plan',
     body: 'A 30/60/90 day plan your team can pick up and run.',
   },
   {
@@ -890,7 +890,7 @@ export default function LandingPage() {
           <p style={HERO_SUB}>
             Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask
             your buyers the right questions, in the right order, then turn what they say into your
-            positioning, messaging, and action plan. You do not need a GTM expert on staff. You need
+            positioning, messaging, and engagement plan. You do not need a GTM expert on staff. You need
             the questions answered.
           </p>
           <div style={HERO_CTAS}>

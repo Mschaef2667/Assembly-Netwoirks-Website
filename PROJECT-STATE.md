@@ -66,7 +66,7 @@ to CLAUDE.md in the project folder. Update it as things change.
   7 Confirmation/Validation. (Shared constant: `lib/c3/decisionStages.ts` → `DECISION_STAGES`.)
 - **38 STEPS** = what the Assembly AI *user* works through, organized into **6 PHASES**:
   Company Foundation, Endemic Problems, Company Formulas, Competitive Environments, Strategic Messages,
-  Action Plan.
+  Engagement Plan.
 - **ACID TESTS** (both about KDM *perception/belief*, a mirror pair):
   - **Acid Test 1 (Step 16):** Do the key decision-makers believe OUR CLIENT has the core competencies
     to deliver on their critical success formulas?

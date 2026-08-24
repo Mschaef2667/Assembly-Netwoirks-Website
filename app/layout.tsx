@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s — Assembly AI",
   },
   description:
-    "Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, then turn what they say into your positioning, messaging, and action plan.",
+    "Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask your buyers the right questions, then turn what they say into your positioning, messaging, and engagement plan.",
   applicationName: "Assembly AI",
   openGraph: {
     type: "website",

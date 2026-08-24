@@ -167,7 +167,7 @@ export const STEP_TIPS: Record<string, Tip[]> = {
     { headline: 'A changed circumstance at the buyer is often your best re-entry point', body: 'Leadership change, funding event, or new pain are natural reasons to re-engage.' },
   ],
   '37': [
-    { headline: 'Instruction', body: 'What specific tools and assets does the team need to execute the action plan from Steps 31-36?' },
+    { headline: 'Instruction', body: 'What specific tools and assets does the team need to execute the engagement plan from Steps 31-36?' },
     { headline: 'Each tool should connect to at least one action step', body: 'Map every asset back to a specific Step 31-36 action it enables.' },
     { headline: 'Build assets that sales will actually use in the field', body: 'Ask reps what they would open before you build it.' },
     { headline: 'Prioritize tools that address the most common objections and barriers in your evaluation process', body: 'The highest-leverage assets remove friction at the points where deals stall.' },

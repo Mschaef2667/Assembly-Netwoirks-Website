@@ -1041,8 +1041,8 @@ function ReportPageInner() {
         blank()
       })
 
-      // Section 4 — Action Plan (summary-only, falls back to first action tab)
-      children.push(new Paragraph({ text: '4. Action Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      // Section 4 — Engagement Plan (summary-only, falls back to first action tab)
+      children.push(new Paragraph({ text: '4. Engagement Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
       ;(['31', '32', '33', '34', '35', '36', '37'] as const).forEach((sid) => {
         const o = getOutput(sid); const s = getStep(sid)
         children.push(subheading(lib, s?.title ?? `Step ${sid}`))
@@ -1062,8 +1062,8 @@ function ReportPageInner() {
         blank()
       })
 
-      // Section 5 — 30/60/90 Day Action Plan
-      children.push(new Paragraph({ text: '5. 30/60/90 Day Action Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
+      // Section 5 — 30/60/90 Day Engagement Plan
+      children.push(new Paragraph({ text: '5. 30/60/90 Day Engagement Plan', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }))
       ;([
         { label: 'First 30 Days', stepIds: ['31', '32'] as const },
         { label: 'Days 31-60', stepIds: ['33', '34'] as const },
@@ -2215,7 +2215,7 @@ function ReportPageInner() {
               href={`/dashboard/journeys/step/${entries[0]?.id ?? '31'}`}
               style={{ color: '#0EA5E9', textDecoration: 'underline' }}
             >
-              Go to {entries[0]?.title ?? 'Action Plan'}
+              Go to {entries[0]?.title ?? 'Engagement Plan'}
             </Link>
           </span>
         </p>
@@ -2374,7 +2374,7 @@ function ReportPageInner() {
           </div>
         )}
 
-        {/* Two report sections — Action Plan and Future State Plan */}
+        {/* Two report sections — Engagement Plan and Future State Plan */}
         <div
           className="no-print"
           style={{
@@ -2386,7 +2386,7 @@ function ReportPageInner() {
             margin: '0 auto',
           }}
         >
-          {/* ── Action Plan section ── */}
+          {/* ── Engagement Plan section ── */}
           <div style={{
             backgroundColor: '#0F2140',
             border: '1px solid rgba(255,255,255,0.1)',
@@ -2406,10 +2406,10 @@ function ReportPageInner() {
                 Current State
               </p>
               <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px' }}>
-                Strategic Action Plan
+                Engagement Plan
               </h2>
               <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
-                Compiles Phase 1 foundation, competitive environment, strategic messages, and the 30/60/90 day action plan based on what is true today.
+                Compiles Phase 1 foundation, competitive environment, strategic messages, and the 30/60/90 day engagement plan based on what is true today.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -2509,7 +2509,7 @@ function ReportPageInner() {
                 </button>
               )}
             </div>
-            {/* Document preview — Strategic Action Plan body */}
+            {/* Document preview — Engagement Plan body */}
             <div style={{ padding: '0 32px 40px', display: 'flex', justifyContent: 'center' }}>
               <div
                 ref={reportRef}
@@ -2615,10 +2615,10 @@ function ReportPageInner() {
                     ))}
                   </div>
 
-                  {/* ── Section 4: Action Plan ── */}
+                  {/* ── Section 4: Engagement Plan ── */}
                   <div data-empty={sec4Empty ? 'true' : undefined}>
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                    <h2 style={sectionHeadStyle}>4. Action Plan</h2>
+                    <h2 style={sectionHeadStyle}>4. Engagement Plan</h2>
                     {(['31', '32', '33', '34', '35', '36', '37'] as const).map((sid, i) => (
                       <Fragment key={sid}>
                         <div className="report-subsection">
@@ -2630,10 +2630,10 @@ function ReportPageInner() {
                     ))}
                   </div>
 
-                  {/* ── Section 5: 30/60/90 Day Action Plan ── */}
+                  {/* ── Section 5: 30/60/90 Day Engagement Plan ── */}
                   <div data-empty={sec5Empty ? 'true' : undefined}>
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
-                    <h2 style={sectionHeadStyle}>5. 30/60/90 Day Action Plan</h2>
+                    <h2 style={sectionHeadStyle}>5. 30/60/90 Day Engagement Plan</h2>
 
                     <div className="report-subsection">
                       <p style={subheadStyle}>First 30 Days</p>

@@ -141,7 +141,7 @@ function mapIcp(raw: Record<string, unknown>): IcpRecord {
 // ── Messaging & action-plan synthesis ─────────────────────────────────────────
 //
 // The C3 journey stores Key Selling Points (Step 15), Strategic Messages
-// (Steps 27-30), and the Action Plan (Steps 31-38) at the company / pain-point
+// (Steps 27-30), and the Engagement Plan (Steps 31-38) at the company / pain-point
 // level, not per target market. So rather than duplicate that material, we ask
 // Claude to distill a short, per-ICP block (3 messaging angles + 3 actions)
 // grounded in it. Best-effort: any failure just omits the block.
@@ -178,7 +178,7 @@ function buildPlaybookContext(rows: Array<Record<string, unknown>>): string {
   return [
     section('Key Selling Points', ['15']),
     section('Strategic Messages', ['27', '28', '29', '30']),
-    section('Action Plan', ['31', '32', '33', '34', '35', '36', '37', '38']),
+    section('Engagement Plan', ['31', '32', '33', '34', '35', '36', '37', '38']),
   ].filter(Boolean).join('\n\n').slice(0, 12000)
 }
 
@@ -198,7 +198,7 @@ async function synthesizeMessaging(
     job_titles: i.job_titles,
   }))
 
-  const system = `You are a B2B sales and marketing strategist. Using the company's EXISTING Key Selling Points, Strategic Messages, and Action Plan, produce a SHORT, tailored block for each ICP:
+  const system = `You are a B2B sales and marketing strategist. Using the company's EXISTING Key Selling Points, Strategic Messages, and Engagement Plan, produce a SHORT, tailored block for each ICP:
 - exactly 3 "messages": how to talk to THIS specific buyer (angles, hooks, proof points), each one sentence, directive and specific.
 - exactly 3 "actions": concrete next steps sales/marketing should take to pursue this ICP, each one sentence, directive.
 Ground every item in the provided material; do not invent programs, offers, or claims that are not implied by it. Do not restate the material verbatim — adapt it to the buyer.
@@ -620,15 +620,15 @@ async function buildPdf(data: ReportData): Promise<Uint8Array> {
       }
     }
 
-    // Messaging & action plan — synthesised from the company's Key Selling Points,
-    // Strategic Messages, and Action Plan, tailored to this ICP.
+    // Messaging & engagement plan — synthesised from the company's Key Selling Points,
+    // Strategic Messages, and Engagement Plan, tailored to this ICP.
     const mblock = data.messaging[icpKey(icp)]
     if (mblock && (mblock.messages.length > 0 || mblock.actions.length > 0)) {
       yy = ensure(yy, 56)
       // Tinted panel header bar so this reads as the actionable "so what".
       fill('#FFF3EC'); doc.roundedRect(margin, yy - 12, contentW, 22, 5, 5, 'F')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); ink(ORANGE)
-      doc.text('MESSAGING & ACTION PLAN', margin + 10, yy + 3, { charSpace: 0.8 })
+      doc.text('MESSAGING & ENGAGEMENT PLAN', margin + 10, yy + 3, { charSpace: 0.8 })
       yy += 24
 
       if (mblock.messages.length > 0) {
@@ -851,7 +851,7 @@ async function buildDocx(data: ReportData): Promise<Uint8Array> {
     }
     const mblock = data.messaging[icpKey(icp)]
     if (mblock && (mblock.messages.length > 0 || mblock.actions.length > 0)) {
-      out.push(new Paragraph({ children: [new TextRun({ text: 'MESSAGING & ACTION PLAN', bold: true, color: ORANGE_H, size: 18 })], spacing: { before: 140, after: 60 } }))
+      out.push(new Paragraph({ children: [new TextRun({ text: 'MESSAGING & ENGAGEMENT PLAN', bold: true, color: ORANGE_H, size: 18 })], spacing: { before: 140, after: 60 } }))
       out.push(...labelList('How to message them', mblock.messages))
       out.push(...labelList('Recommended actions', mblock.actions))
     }

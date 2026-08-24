@@ -49,13 +49,13 @@ const PHASES: { phase: number; section: string }[] = [
   { phase: 3, section: 'Company Formulas' },
   { phase: 4, section: 'Competitive Environments' },
   { phase: 5, section: 'Strategic Messages' },
-  { phase: 6, section: 'Action Plan' },
+  { phase: 6, section: 'Engagement Plan' },
 ]
 
 const GATES: { afterPhase: number; label: string; gateStepId: string }[] = [
   { afterPhase: 3, label: 'Gate 2 — Company Formulas Review', gateStepId: '16' },
   { afterPhase: 5, label: 'Gate 3 — Strategic Messages Review', gateStepId: '30' },
-  { afterPhase: 6, label: 'Gate 4 — Action Plan Review', gateStepId: '38' },
+  { afterPhase: 6, label: 'Gate 4 — Engagement Plan Review', gateStepId: '38' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

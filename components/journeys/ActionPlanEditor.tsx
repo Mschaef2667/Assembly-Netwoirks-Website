@@ -448,7 +448,7 @@ export default function ActionPlanEditor({
       }
 
       extraContext = [
-        `ACTION PLAN TYPE: ${stepTitle}`,
+        `ENGAGEMENT PLAN TYPE: ${stepTitle}`,
         '',
         'ALL PAIN POINTS WITH STRATEGIC MESSAGES:',
         ppLines.join('\n\n'),
@@ -461,14 +461,14 @@ export default function ActionPlanEditor({
       ].join('\n')
 
       currentContent = summaryRef.current
-      stepDescription = `Generate a unified summary action plan for "${stepTitle}" that integrates all active pain points.`
+      stepDescription = `Generate a unified summary engagement plan for "${stepTitle}" that integrates all active pain points.`
     } else {
       const tabIdx = activeTab as number
       const pp = painPoints.find(p => p.index === tabIdx)
       const msgs = getBlendMessageForIndex(tabIdx)
 
       extraContext = [
-        `ACTION PLAN TYPE: ${stepTitle}`,
+        `ENGAGEMENT PLAN TYPE: ${stepTitle}`,
         '',
         `PAIN POINT ${tabIdx}: ${pp?.title?.trim() || `Pain Point ${tabIdx}`}`,
         pp?.description?.trim() || 'Not yet defined.',
@@ -484,7 +484,7 @@ export default function ActionPlanEditor({
       ].join('\n')
 
       currentContent = perPPRef.current[tabIdx] ?? ''
-      stepDescription = `Generate an action plan for Pain Point ${tabIdx}: "${pp?.title?.trim() || `Pain Point ${tabIdx}`}" in the context of "${stepTitle}".`
+      stepDescription = `Generate an engagement plan for Pain Point ${tabIdx}: "${pp?.title?.trim() || `Pain Point ${tabIdx}`}" in the context of "${stepTitle}".`
     }
 
     try {
@@ -587,7 +587,7 @@ export default function ActionPlanEditor({
     ? 'Summary'
     : (painPoints.find(pp => pp.index === activeTab)?.title?.trim() || `Pain Point ${activeTab}`)
   const currentValue = activeTab === 'summary' ? summaryContent : (perPPContent[activeTab as number] ?? '')
-  const copilotButtonLabel = activeTab === 'summary' ? 'Generate Summary Action Plan' : `Draft Action ${activeTab}`
+  const copilotButtonLabel = activeTab === 'summary' ? 'Generate Summary Engagement Plan' : `Draft Action ${activeTab}`
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
@@ -654,8 +654,8 @@ export default function ActionPlanEditor({
             onBlur={handleBlur}
             placeholder={
               activeTab === 'summary'
-                ? `Write a unified action plan for ${stepTitle} across all pain points, or use Copilot…`
-                : `Write the action plan for "${currentLabel}" in the context of ${stepTitle}, or use Copilot…`
+                ? `Write a unified engagement plan for ${stepTitle} across all pain points, or use Copilot…`
+                : `Write the engagement plan for "${currentLabel}" in the context of ${stepTitle}, or use Copilot…`
             }
             rows={14}
             style={{
@@ -695,7 +695,7 @@ export default function ActionPlanEditor({
           </button>
           <p style={{ fontSize: '11px', color: '#6B7280', margin: '8px 0 0', lineHeight: '1.5' }}>
             {activeTab === 'summary'
-              ? 'Generates a rolled-up action plan using all pain points and strategic messages.'
+              ? 'Generates a rolled-up engagement plan using all pain points and strategic messages.'
               : 'Uses strategic messages and ICP context for this pain point.'
             }
           </p>

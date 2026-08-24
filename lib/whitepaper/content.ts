@@ -102,7 +102,7 @@ export const WHITEPAPER: WhitepaperDocument = {
       number: 7,
       title: 'The 38-Step Strategic Plan',
       paragraphs: [
-        'The C3 Method produces a 38-step Strategic Plan that compiles everything into a single, executable document. Steps cover endemic problems, compelling value propositions, key selling points, competitive analysis, strategic messages, action plans, and a deal scorecard. Each step is dependent on the one before it, so a weakness early in the chain cannot hide.',
+        'The C3 Method produces a 38-step Strategic Plan that compiles everything into a single, executable document. Steps cover endemic problems, compelling value propositions, key selling points, competitive analysis, strategic messages, engagement plans, and a deal scorecard. Each step is dependent on the one before it, so a weakness early in the chain cannot hide.',
         'The point of the Strategic Plan is not to be impressive. It is to be defensible. When a rep is in a deal and a buyer pushes back on a differentiator, the answer should not be a marketing claim — it should be a citation back to a piece of buyer research the rep can trust.',
       ],
     },

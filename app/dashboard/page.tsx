@@ -59,7 +59,7 @@ const SECTIONS = [
   'Company Formulas',
   'Competitive Environments',
   'Strategic Messages',
-  'Strategic Plan',
+  'Engagement Plan',
 ] as const
 
 const GATE_2_STEPS = ['10', '11', '12', '13', '14', '15', '16']
@@ -101,7 +101,7 @@ const CARD_HDR: React.CSSProperties = {
 function stepOrder(id: string): number { return parseFloat(id) }
 
 function normalizeSection(s: string): string {
-  return s === 'Action Plan' ? 'Strategic Plan' : s
+  return (s === 'Action Plan' || s === 'Strategic Plan') ? 'Engagement Plan' : s
 }
 
 function getGrade(score: number): string {
@@ -1047,7 +1047,7 @@ export default function DashboardPage() {
           const insightsStatusColor = insightsGenerated ? '#10B981' : 'rgba(255,255,255,0.5)'
           const insightsStatusBg = insightsGenerated ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'
 
-          // Action Plan row
+          // Engagement Plan row
           const apStatusLabel = actionPlanApproved
             ? `Approved ${formatDate(actionPlanApproved)}`
             : actionPlanGenerated
@@ -1133,8 +1133,8 @@ export default function DashboardPage() {
                   icon={<FileText size={20} />}
                   iconColor="#E8520A"
                   iconBg="rgba(232,82,10,0.15)"
-                  name="Action Plan"
-                  description="Current state Strategic Action Plan compiled from approved Journey steps."
+                  name="Engagement Plan"
+                  description="Current state Engagement Plan compiled from approved Journey steps."
                   statusLabel={apStatusLabel}
                   statusColor={apStatusColor}
                   statusBg={apStatusBg}
@@ -1183,7 +1183,7 @@ export default function DashboardPage() {
                   iconColor="#E8520A"
                   iconBg="rgba(232,82,10,0.15)"
                   name="ICP Calibration Report"
-                  description="Calibrated ICPs with baseline beliefs, buyer evidence, and per-ICP messaging and action plan."
+                  description="Calibrated ICPs with baseline beliefs, buyer evidence, and per-ICP messaging and engagement plan."
                   statusLabel="Ready"
                   statusColor="#10B981"
                   statusBg="rgba(16,185,129,0.15)"

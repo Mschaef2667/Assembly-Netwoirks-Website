@@ -347,15 +347,15 @@ const tipCategories: TipCategory[] = [
     ],
   },
   {
-    name: 'Action Plan (Steps 31–38)',
+    name: 'Engagement Plan (Steps 31–38)',
     tips: [
       {
         title: 'Use the Strategic Plan PDF as your client deliverable',
         body: 'Generate the Strategic Plan PDF from the Journeys page. It compiles every approved step into one branded document ready for stakeholder review.',
       },
       {
-        title: 'Revisit Steps 13–14 if the Action Plan feels thin',
-        body: 'Steps 31–38 build on Critical Success Formulas (Step 13) and Core Competencies (Step 14). If those are weak, the Action Plan will feel generic no matter how it is written.',
+        title: 'Revisit Steps 13–14 if the Engagement Plan feels thin',
+        body: 'Steps 31–38 build on Critical Success Formulas (Step 13) and Core Competencies (Step 14). If those are weak, the Engagement Plan will feel generic no matter how it is written.',
       },
     ],
   },

@@ -92,7 +92,7 @@ Sidebar background: Assembly Navy. Active item: Signal Orange. Inactive: Logic G
 | Gate 1 | DCP Map Approval (Phase 1) | Phase 2 |
 | Gate 2 | Post-Company Formulas (after Step 16) | Stage 4 |
 | Gate 3 | Sales Leadership Approval (after Step 30) | Stage 6 |
-| Gate 4 | Action Plan Approval (after Step 38) | Phase 3 |
+| Gate 4 | Engagement Plan Approval (after Step 38) | Phase 3 |
 | Gate 5 | Final GTM Strategy Compilation | Export/publish |
 
 **Gate UI rules:**
@@ -117,7 +117,7 @@ Sidebar background: Assembly Navy. Active item: Signal Orange. Inactive: Logic G
 - Stage 3: Company Formulas (Steps 10–16) → **Gate 2**
 - Stage 4: Competitive Environments (Steps 17–26)
 - Stage 5: Strategic Messages (Steps 27–30) → **Gate 3**
-- Stage 6: Action Plan (Steps 31–38) → **Gate 4**
+- Stage 6: Engagement Plan (Steps 31–38) → **Gate 4**
 
 ### Phase 3: Outputs & Operationalization
 - Asset library publishing/versioning

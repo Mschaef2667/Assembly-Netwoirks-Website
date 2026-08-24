@@ -593,7 +593,7 @@ export function buildWarningMessage(
   if (['31', '32', '33', '34', '35', '36', '37', '38'].includes(stepId)) {
     const anyApproved = ['27', '28', '29', '30'].some(id => prereqs[id]?.status === 'approved')
     if (!anyApproved) {
-      return 'Complete your Strategic Messages (Steps 27-30) before building your Action Plan.'
+      return 'Complete your Strategic Messages (Steps 27-30) before building your Engagement Plan.'
     }
     return null
   }

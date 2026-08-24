@@ -174,7 +174,7 @@ function IcpCard({ icp, mblock }: { icp: IcpRecord; mblock?: MessagingBlock }) {
 
         {mblock && (mblock.messages.length > 0 || mblock.actions.length > 0) && (
           <div style={{ marginTop: '2px', padding: '16px', borderRadius: '10px', backgroundColor: 'rgba(232,82,10,0.08)', border: '1px solid rgba(232,82,10,0.25)' }}>
-            <p style={{ ...LABEL, color: '#E8520A' }}>Messaging & action plan</p>
+            <p style={{ ...LABEL, color: '#E8520A' }}>Messaging & engagement plan</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <BulletList label="How to message them" items={mblock.messages} color="#0EA5E9" />
               <BulletList label="Recommended actions" items={mblock.actions} color="#E8520A" />

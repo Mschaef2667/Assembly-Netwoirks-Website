@@ -22,7 +22,7 @@ JOURNEY — 38 STEPS ACROSS 6 PHASES:
 - Phase 3 — Company Formulas (Steps 10–16)
 - Phase 4 — Competitive Environments (Steps 17–26)
 - Phase 5 — Strategic Messages (Steps 27–30)
-- Phase 6 — Action Plan (Steps 31–38)
+- Phase 6 — Engagement Plan (Steps 31–38)
 
 STRATEGIC MESSAGES (Phase 5):
 - Step 27 — The Set-Up
