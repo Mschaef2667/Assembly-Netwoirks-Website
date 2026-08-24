@@ -54,15 +54,15 @@ interface DcpStageSummary {
 // Engagement Plan — per-stage nurturing framework. The "job" and "touch" are the
 // proven, stage-level framework; the buyer-evidence column is filled live from the
 // approved DCP at render time.
-interface NurtureStage { stage: number; name: string; question: string; job: string; touch: string }
+interface NurtureStage { stage: number; name: string; question: string; funnel: string; beat: string; step: string; job: string; touch: string }
 const NURTURE_FRAMEWORK: NurtureStage[] = [
-  { stage: 1, name: 'Need',         question: 'Do we have a problem?',        job: 'Make the latent problem visible and name it in their language.',        touch: 'Educational content that frames the problem; benchmarks that help them realize they are exposed.' },
-  { stage: 2, name: 'Motivation',   question: 'What happens if we do nothing?', job: 'Raise the cost of inaction and turn a latent need into urgency.',       touch: 'Cost-of-status-quo content; trigger-based outreach tied to a recent event or miss.' },
-  { stage: 3, name: 'Search',       question: 'Who can we trust?',            job: 'Show up where they look and become a credible, trusted source.',        touch: 'Thought leadership, third-party citations, referrals, presence in the channels they actually search.' },
-  { stage: 4, name: 'Evaluation',   question: 'What should we compare?',      job: 'Shape the criteria toward the dimensions where you are strong.',        touch: 'Buyer guides and comparison frameworks that foreground your real differentiators.' },
-  { stage: 5, name: 'Select Set',   question: 'Who makes the short list?',    job: 'Clear the table-stakes bar and avoid being screened out.',              touch: 'Proof that you meet the must-haves: case studies, social proof, relevant references.' },
-  { stage: 6, name: 'Decision',     question: 'Why this vendor?',             job: 'Arm the champion and de-risk the final choice for the committee.',      touch: 'ROI and business-case materials; tailored proof for finance and other veto-holders; references.' },
-  { stage: 7, name: 'Confirmation', question: 'Did this work?',               job: 'Reinforce the decision, drive adoption, and open expansion and advocacy.', touch: 'Onboarding, success check-ins, results reviews, and timed referral or expansion asks.' },
+  { stage: 1, name: 'Need',         question: 'Do we have a problem?',        funnel: 'Awareness',     beat: 'Set-Up',    step: 'Create Opportunities', job: 'Make the latent problem visible and name it in their language.',        touch: 'Educational content that frames the problem; benchmarks that help them realize they are exposed.' },
+  { stage: 2, name: 'Motivation',   question: 'What happens if we do nothing?', funnel: 'Awareness',   beat: 'Set-Up',    step: 'Create Opportunities', job: 'Raise the cost of inaction and turn a latent need into urgency.',       touch: 'Cost-of-status-quo content; trigger-based outreach tied to a recent event or miss.' },
+  { stage: 3, name: 'Search',       question: 'Who can we trust?',            funnel: 'Interest',      beat: 'Jab',       step: 'Get Into Position',    job: 'Show up where they look and become a credible, trusted source.',        touch: 'Thought leadership, third-party citations, referrals, presence in the channels they actually search.' },
+  { stage: 4, name: 'Evaluation',   question: 'What should we compare?',      funnel: 'Consideration', beat: 'Knock-Out', step: 'Grow Support',         job: 'Shape the criteria toward the dimensions where you are strong.',        touch: 'Buyer guides and comparison frameworks that foreground your real differentiators.' },
+  { stage: 5, name: 'Select Set',   question: 'Who makes the short list?',    funnel: 'Consideration', beat: 'Knock-Out', step: 'Grow Support',         job: 'Clear the table-stakes bar and avoid being screened out.',              touch: 'Proof that you meet the must-haves: case studies, social proof, relevant references.' },
+  { stage: 6, name: 'Decision',     question: 'Why this vendor?',             funnel: 'Close',         beat: 'Clean-Up',  step: 'Close The Sale',       job: 'Arm the champion and de-risk the final choice for the committee.',      touch: 'ROI and business-case materials; tailored proof for finance and other veto-holders; references.' },
+  { stage: 7, name: 'Confirmation', question: 'Did this work?',               funnel: 'Reassurance',   beat: 'Clean-Up',  step: 'Pat Them On The Back', job: 'Reinforce the decision, drive adoption, and open expansion and advocacy.', touch: 'Onboarding, success check-ins, results reviews, and timed referral or expansion asks.' },
 ]
 
 interface InsightCategory {
@@ -1078,7 +1078,7 @@ function ReportPageInner() {
 
       // Section 5 — Nurturing by Decision Stage
       children.push(new Paragraph({ text: '5. Nurturing by Decision Stage', heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 120 } }))
-      children.push(para(lib, 'How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not to a fixed calendar, so the same path works whether a cycle closes in weeks or months. Grounded in your approved Decision Clarity Profile.'))
+      children.push(para(lib, 'How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not a fixed calendar, and maps to a level of the funnel, the strategic message beat that moves them there, and the play that advances them. Grounded in your approved Decision Clarity Profile.'))
       if (dcpStageSummaries.length === 0) {
         children.push(new Paragraph({ children: [new TextRun({ text: 'Complete and approve your DCP Map to generate your nurturing plan.', italics: true, color: '9CA3AF' })] }))
       } else {
@@ -1086,6 +1086,9 @@ function ReportPageInner() {
           const dcp = dcpStageSummaries.find((s) => s.stage_number === row.stage)
           const evidence = dcp?.summary?.trim()
           children.push(subheading(lib, `${row.stage}. ${row.name} — ${row.question}`))
+          children.push(new Paragraph({ children: [
+            new TextRun({ text: `Funnel: ${row.funnel}  ·  Message: ${row.beat}  ·  Play: ${row.step}`, italics: true, color: '6B7280' }),
+          ] }))
           children.push(new Paragraph({ children: [
             new TextRun({ text: 'What your buyers told us: ', bold: true }),
             new TextRun({ text: evidence || 'Evidence pending — complete this stage of your DCP.', italics: !evidence }),
@@ -2607,7 +2610,7 @@ function ReportPageInner() {
                     <div style={{ ...dividerStyle, margin: '40px 0' }} />
                     <h2 style={sectionHeadStyle}>5. Nurturing by Decision Stage</h2>
                     <p style={{ ...bodyStyle, margin: '0 0 16px' }}>
-                      How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not to a fixed calendar, so the same path works whether a cycle closes in weeks or months. Grounded in your approved Decision Clarity Profile.
+                      How to move buyers through their decision journey. Each stage is keyed to where the buyer is, not a fixed calendar, and maps to a level of the funnel, the strategic message beat that moves them there, and the play that advances them. Grounded in your approved Decision Clarity Profile.
                     </p>
                     {sec5Empty ? (
                       <p style={{ ...bodyStyle, fontStyle: 'italic', color: '#9CA3AF' }}>
@@ -2617,10 +2620,11 @@ function ReportPageInner() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'fixed' }}>
                         <thead>
                           <tr>
-                            <th style={{ ...nthStyle, width: '11%' }}>Stage</th>
-                            <th style={{ ...nthStyle, width: '15%' }}>The buyer is asking</th>
-                            <th style={{ ...nthStyle, width: '40%' }}>What your buyers told us</th>
-                            <th style={{ ...nthStyle, width: '34%' }}>Nurture focus</th>
+                            <th style={{ ...nthStyle, width: '10%' }}>Stage</th>
+                            <th style={{ ...nthStyle, width: '16%' }}>Funnel &amp; message</th>
+                            <th style={{ ...nthStyle, width: '13%' }}>The buyer is asking</th>
+                            <th style={{ ...nthStyle, width: '35%' }}>What your buyers told us</th>
+                            <th style={{ ...nthStyle, width: '26%' }}>Nurture focus</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2633,6 +2637,11 @@ function ReportPageInner() {
                               <tr key={row.stage}>
                                 <td style={ntdStyle}>
                                   <span style={{ fontWeight: 700, color: '#0A1628' }}>{row.stage}. {row.name}</span>
+                                </td>
+                                <td style={ntdStyle}>
+                                  <span style={{ fontWeight: 700, color: '#0A1628' }}>{row.funnel}</span>
+                                  <br />
+                                  <span style={{ color: '#4B5563', fontSize: '11px' }}>{row.beat} · {row.step}</span>
                                 </td>
                                 <td style={{ ...ntdStyle, fontStyle: 'italic', color: '#0EA5E9' }}>{row.question}</td>
                                 <td style={ntdStyle}>
