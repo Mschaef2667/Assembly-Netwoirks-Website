@@ -2244,6 +2244,7 @@ function ReportPageInner() {
     color: '#1F2937',
     lineHeight: 1.5,
     verticalAlign: 'top',
+    overflowWrap: 'break-word',
   }
 
   return (
@@ -2613,13 +2614,13 @@ function ReportPageInner() {
                         Complete and approve your DCP Map to generate your nurturing plan.
                       </p>
                     ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'fixed' }}>
                         <thead>
                           <tr>
-                            <th style={nthStyle}>Stage</th>
-                            <th style={nthStyle}>The buyer is asking</th>
-                            <th style={nthStyle}>What your buyers told us</th>
-                            <th style={nthStyle}>Nurture focus</th>
+                            <th style={{ ...nthStyle, width: '11%' }}>Stage</th>
+                            <th style={{ ...nthStyle, width: '15%' }}>The buyer is asking</th>
+                            <th style={{ ...nthStyle, width: '40%' }}>What your buyers told us</th>
+                            <th style={{ ...nthStyle, width: '34%' }}>Nurture focus</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2629,8 +2630,8 @@ function ReportPageInner() {
                             const evidenceRaw = dcp?.summary?.trim() ?? ''
                             const evidence = evidenceRaw.length > 240 ? `${evidenceRaw.slice(0, 240)}…` : evidenceRaw
                             return (
-                              <tr key={row.stage} className="report-subsection">
-                                <td style={{ ...ntdStyle, whiteSpace: 'nowrap' }}>
+                              <tr key={row.stage}>
+                                <td style={ntdStyle}>
                                   <span style={{ fontWeight: 700, color: '#0A1628' }}>{row.stage}. {row.name}</span>
                                 </td>
                                 <td style={{ ...ntdStyle, fontStyle: 'italic', color: '#0EA5E9' }}>{row.question}</td>
