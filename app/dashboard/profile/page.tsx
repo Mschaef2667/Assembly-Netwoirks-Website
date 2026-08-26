@@ -405,10 +405,10 @@ export default function ProfilePage() {
                 <label style={LABEL}>Super Admin</label>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <Link
-                    href="/admin"
+                    href="/admin/control"
                     style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: '8px', backgroundColor: 'rgba(232,82,10,0.12)', color: '#E8520A', border: '1px solid rgba(232,82,10,0.35)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
                   >
-                    Control Panel →
+                    Master Control Panel →
                   </Link>
                   <Link
                     href="/admin/gtm-assessments"
@@ -416,8 +416,14 @@ export default function ProfilePage() {
                   >
                     GTM Gap Reports →
                   </Link>
+                  <Link
+                    href="/admin"
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    Admin console →
+                  </Link>
                 </div>
-                <p style={HINT}>Platform-level tools. A dedicated control panel is coming.</p>
+                <p style={HINT}>Platform-level tools. The Master Control Panel is the new home; the admin console remains available.</p>
               </div>
             )}
 

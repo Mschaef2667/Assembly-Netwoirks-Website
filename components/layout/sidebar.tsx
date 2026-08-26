@@ -144,7 +144,7 @@ export default function Sidebar() {
         {[
           ...navItems,
           ...(isSuperAdmin
-            ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck, id: 'nav-admin' } as NavItem]
+            ? [{ label: 'Admin', href: '/admin/control', icon: ShieldCheck, id: 'nav-admin' } as NavItem]
             : []),
         ].map((item) => {
           const { label, href, icon: Icon, id, header, indent } = item
