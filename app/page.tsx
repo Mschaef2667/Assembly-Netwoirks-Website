@@ -887,6 +887,7 @@ export default function LandingPage() {
         <div style={HERO_INNER}>
           <span style={EYEBROW}>Now in Beta · Limited Seats</span>
           <h1 style={H1}>Your buyers already know why you win. Now it is time to ask them.</h1>
+          <p style={{ color: BLUE, fontWeight: 700, fontSize: 18, letterSpacing: 0.2, margin: '0 0 20px' }}>Get aligned. Stay aligned.</p>
           <p style={HERO_SUB}>
             Assembly AI is an AI-native go-to-market operating system built on the C3 Method. We ask
             your buyers the right questions, in the right order, then turn what they say into your
@@ -1132,7 +1133,10 @@ export default function LandingPage() {
 
       <footer style={FOOTER}>
         <div style={FOOTER_INNER}>
-          <Logo size={180} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Logo size={180} />
+            <span style={{ color: BLUE, fontSize: 13, fontWeight: 600, letterSpacing: 0.2 }}>Get aligned. Stay aligned.</span>
+          </div>
           <div style={FOOTER_LINKS}>
             <Link href="/tos" style={FOOTER_LINK}>
               Terms of Service
