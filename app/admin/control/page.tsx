@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AccountSummary, AccountsResponse } from '@/app/api/admin/accounts/route'
+import type { AccountActivityRow, AccountActivityResponse } from '@/app/api/admin/account-activity/route'
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const NAVY = '#0A1628'
@@ -677,67 +678,104 @@ function SetupAccountModal({ onClose, onCreated }: { onClose: () => void; onCrea
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3) ACCOUNT ACTIVITY — PLACEHOLDER — sample data
+// 3) ACCOUNT ACTIVITY — LIVE (reads /api/admin/account-activity, read-only)
 // ─────────────────────────────────────────────────────────────────────────────
 function AccountActivitySection() {
-  const sorted = [...SAMPLE_ACCOUNTS].sort((a, b) => {
+  const [rows, setRows] = useState<AccountActivityRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true); setError(null)
+      try {
+        const res = await fetch('/api/admin/account-activity')
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load account activity')
+        const data = (await res.json()) as AccountActivityResponse
+        setRows(data.rows)
+      } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load account activity') }
+      finally { setLoading(false) }
+    }
+    void load()
+  }, [])
+
+  const activeCount  = rows.filter(r => r.health === 'active').length
+  const slowingCount = rows.filter(r => r.health === 'slowing').length
+  const stalledCount = rows.filter(r => r.health === 'stalled').length
+
+  // Sort: worst-first within the table (stalled → slowing → active),
+  // then by longest-since-active within each health bucket.
+  const sorted = [...rows].sort((a, b) => {
     const order: Record<HealthFlag, number> = { stalled: 0, slowing: 1, active: 2 }
     if (order[a.health] !== order[b.health]) return order[a.health] - order[b.health]
-    return b.lastActiveMinutes - a.lastActiveMinutes
+    const at = a.last_active_at ? new Date(a.last_active_at).getTime() : 0
+    const bt = b.last_active_at ? new Date(b.last_active_at).getTime() : 0
+    return at - bt
   })
 
   return (
     <div>
-      <SectionHeader title="Account Activity" subtitle="Per-account beta health. Sorted by attention needed." placeholder />
+      <SectionHeader title="Account Activity" subtitle="Per-account beta health. Sorted by attention needed." />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Active"  value={fmtNum(SAMPLE_ACCOUNTS.filter(a => a.health === 'active').length)}  hint="engaged in last 3 days" icon={<Circle size={14} style={{ fill: '#22C55E', color: '#22C55E' }} />} accent="#86EFAC" />
-        <Kpi label="Slowing" value={fmtNum(SAMPLE_ACCOUNTS.filter(a => a.health === 'slowing').length)} hint="3–7 days quiet"          icon={<Circle size={14} style={{ fill: '#E8520A', color: '#E8520A' }} />} accent="#FDBA74" />
-        <Kpi label="Stalled" value={fmtNum(SAMPLE_ACCOUNTS.filter(a => a.health === 'stalled').length)} hint="> 14 days quiet"         icon={<Circle size={14} style={{ fill: '#EF4444', color: '#EF4444' }} />} accent="#FCA5A5" />
+        <Kpi label="Active"  value={fmtNum(activeCount)}  hint="active in last 7 days"     icon={<Circle size={14} style={{ fill: '#22C55E', color: '#22C55E' }} />} accent="#86EFAC" />
+        <Kpi label="Slowing" value={fmtNum(slowingCount)} hint="8–21 days quiet"           icon={<Circle size={14} style={{ fill: '#E8520A', color: '#E8520A' }} />} accent="#FDBA74" />
+        <Kpi label="Stalled" value={fmtNum(stalledCount)} hint="22+ days or no activity"   icon={<Circle size={14} style={{ fill: '#EF4444', color: '#EF4444' }} />} accent="#FCA5A5" />
       </div>
 
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Account</th>
-              <th style={th}>Journey</th>
-              <th style={th}>Progress</th>
-              <th style={th}>Last active</th>
-              <th style={th}>Health</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map(a => {
-              const hc = healthColor(a.health)
-              const pct = Math.round((a.stepsApproved / a.stepsTotal) * 100)
-              return (
-                <tr key={a.id}>
-                  <td style={td}>
-                    <div style={{ fontWeight: 700 }}>{a.name}</div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{a.industry}</div>
-                  </td>
-                  <td style={td}>{a.stepsApproved}/{a.stepsTotal}</td>
-                  <td style={{ ...td, minWidth: 220 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: 6, background: ORANGE }} />
+        {loading ? (
+          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
+            <Loader2 size={22} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+          </div>
+        ) : error ? (
+          <div style={{ padding: 24, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
+        ) : rows.length === 0 ? (
+          <div style={{ padding: 24, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>No accounts yet.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>Account</th>
+                <th style={th}>Journey</th>
+                <th style={th}>Progress</th>
+                <th style={th}>Last active</th>
+                <th style={th}>Health</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(r => {
+                const hc = healthColor(r.health)
+                const pct = r.steps_total > 0 ? Math.round((r.steps_approved / r.steps_total) * 100) : 0
+                const exactDate = r.last_active_at ? new Date(r.last_active_at).toLocaleString() : ''
+                return (
+                  <tr key={r.id}>
+                    <td style={td}>
+                      <div style={{ fontWeight: 700 }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{r.industry || r.slug}</div>
+                    </td>
+                    <td style={td}>{r.steps_approved}/{r.steps_total}</td>
+                    <td style={{ ...td, minWidth: 220 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: 6, background: ORANGE }} />
+                        </div>
+                        <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', minWidth: 34, textAlign: 'right' }}>{pct}%</span>
                       </div>
-                      <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', minWidth: 34, textAlign: 'right' }}>{pct}%</span>
-                    </div>
-                  </td>
-                  <td style={td}>{a.lastActive}</td>
-                  <td style={td}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: hc.bg, color: hc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: hc.dot }} />
-                      {hc.label}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td style={td} title={exactDate}>{timeAgo(r.last_active_at)}</td>
+                    <td style={td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: hc.bg, color: hc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: hc.dot }} />
+                        {hc.label}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
