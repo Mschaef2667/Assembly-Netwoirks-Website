@@ -140,6 +140,31 @@ const WEEKLY_ACTIVE: { week: string; activeAccounts: number }[] = [
   { week: 'Wk 37', activeAccounts: 5 },
 ]
 
+// Monthly account growth (Dashboard) — 6 months
+const MONTHLY_GROWTH: { month: string; accounts: number }[] = [
+  { month: 'Mar', accounts: 1 },
+  { month: 'Apr', accounts: 2 },
+  { month: 'May', accounts: 3 },
+  { month: 'Jun', accounts: 4 },
+  { month: 'Jul', accounts: 5 },
+  { month: 'Aug', accounts: 7 },
+]
+const NEW_ACCOUNTS_THIS_MONTH = 2
+
+// Gate approvals awaiting review
+const GATE_APPROVALS_PENDING: { account: string; gate: string; submitted: string }[] = [
+  { account: 'Northgate Partners',      gate: 'Gate 2 (Company Formulas)',  submitted: '2h ago' },
+  { account: 'River Valley Architects', gate: 'Gate 1 (DCP Map)',           submitted: '1d ago' },
+  { account: 'Apex Solutions',          gate: 'Gate 3 (Competitive Env.)',  submitted: '3d ago' },
+]
+
+// Errors/failures in last 24h (from copilot_run failures)
+const ERRORS_LAST_24H: { account: string; step: string; error: string; when: string }[] = [
+  { account: 'BluePeak Advisory',    step: 'Step 22 (Comp Evaluation)', error: 'JSON parse failed',        when: '3h ago' },
+  { account: 'Apex Solutions',       step: 'Step 22 (Comp Evaluation)', error: 'JSON parse failed',        when: '11h ago' },
+  { account: 'Silverline Studios',   step: 'DCP Map',                    error: '502 upstream (Anthropic)', when: '18h ago' },
+]
+
 // Common drop-off points
 const DROP_OFFS: { step: string; note: string; count: number }[] = [
   { step: 'Step 10 (Formula)',        note: 'Requires Steps 4, 6, 8', count: 3 },
@@ -268,56 +293,78 @@ export default function MasterControlPanelMockup() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1) DASHBOARD (home)
+// 1) DASHBOARD (home) — default landing view
 // ─────────────────────────────────────────────────────────────────────────────
 function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
-  const activeBetaAccounts = ACCOUNTS.filter(a => a.status === 'trial' || a.status === 'active').length
+  const totalAccounts = ACCOUNTS.length
   const totalUsers = USERS.length
-  const stalled = ACCOUNTS.filter(a => a.health === 'stalled')
-  const slowing = ACCOUNTS.filter(a => a.health === 'slowing')
-  const totalTokens = ACCOUNTS.reduce((s, a) => s + a.tokensThisMonth, 0)
+  const activeAccounts7d = ACCOUNTS.filter(a => a.lastActiveMinutes <= 60 * 24 * 7).length
   const totalInput = USAGE_BY_STEP.reduce((s, u) => s + u.inputTokens, 0)
   const totalOutput = USAGE_BY_STEP.reduce((s, u) => s + u.outputTokens, 0)
+  const totalTokens = totalInput + totalOutput
   const monthCost = estCost(totalInput, totalOutput)
+
+  const stalled = ACCOUNTS.filter(a => a.health === 'stalled')
+  const maxGrowth = Math.max(...MONTHLY_GROWTH.map(m => m.accounts))
 
   return (
     <div>
       <SectionHeader title="Dashboard" subtitle="At-a-glance summary across all beta accounts." />
 
-      {/* Top KPI cards */}
+      {/* TOP ROW — 4 big stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Active beta accounts" value={fmtNum(activeBetaAccounts)}  hint={`of ${ACCOUNTS.length} total`}  icon={<Building2 size={16} />} accent="#7DD3FC" />
-        <Kpi label="Total users"          value={fmtNum(totalUsers)}         hint={`${USERS.filter(u => u.isActive).length} active`} icon={<Users size={16} />} accent="#86EFAC" />
-        <Kpi label="Needs attention"      value={fmtNum(stalled.length + slowing.length)} hint={`${stalled.length} stalled · ${slowing.length} slowing`} icon={<AlertCircle size={16} />} accent="#FDBA74" />
-        <Kpi label="AI usage — this month" value={fmtCost(monthCost)}         hint={`${fmtNum(totalTokens)} tokens`} icon={<Sparkles size={16} />} accent="#F0ABFC" />
+        <Kpi
+          label="Total accounts"
+          value={fmtNum(totalAccounts)}
+          hint={<span style={{ color: '#86EFAC', fontWeight: 700 }}>+{NEW_ACCOUNTS_THIS_MONTH} this month</span>}
+          icon={<Building2 size={16} />}
+          accent="#7DD3FC"
+        />
+        <Kpi
+          label="Total users"
+          value={fmtNum(totalUsers)}
+          hint={`${USERS.filter(u => u.isActive).length} active`}
+          icon={<Users size={16} />}
+          accent="#86EFAC"
+        />
+        <Kpi
+          label="Active accounts (7d)"
+          value={fmtNum(activeAccounts7d)}
+          hint={`of ${totalAccounts} total`}
+          icon={<Activity size={16} />}
+          accent="#F0ABFC"
+        />
+        <Kpi
+          label="AI usage — this month"
+          value={fmtCost(monthCost)}
+          hint={`${fmtNum(totalTokens)} tokens`}
+          icon={<Sparkles size={16} />}
+          accent="#FDBA74"
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
-        {/* Needs attention */}
+      {/* GROWTH CHART + RECENT ACTIVITY */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Account growth */}
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Needs attention</h3>
-            <button onClick={() => onGo('account-activity')} style={linkBtn}>View all <ExternalLink size={12} /></button>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Account growth</h3>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>Cumulative accounts, last 6 months</p>
+            </div>
+            <span style={{ fontSize: 12, color: '#86EFAC', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+              <TrendingUp size={12} /> +{NEW_ACCOUNTS_THIS_MONTH} MoM
+            </span>
           </div>
-          {[...stalled, ...slowing].map(a => {
-            const hc = healthColor(a.health)
-            const pct = Math.round((a.stepsApproved / a.stepsTotal) * 100)
-            return (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${BORDER}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: hc.dot, flexShrink: 0 }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
-                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{a.industry} · last active {a.lastActive}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)' }}>{a.stepsApproved}/{a.stepsTotal} · {pct}%</span>
-                  <span style={{ backgroundColor: hc.bg, color: hc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>{hc.label}</span>
-                </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, height: 160, paddingTop: 4 }}>
+            {MONTHLY_GROWTH.map(m => (
+              <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(255,255,255,0.75)' }}>{m.accounts}</div>
+                <div style={{ width: '100%', height: `${(m.accounts / maxGrowth) * 125}px`, backgroundColor: ORANGE, borderRadius: 4, opacity: 0.9 }} />
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)' }}>{m.month}</div>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
 
         {/* Recent activity */}
@@ -341,8 +388,85 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
         </div>
       </div>
 
+      {/* NEEDS ATTENTION — 3-part panel */}
+      <div style={{ ...card, borderLeft: `3px solid ${ORANGE}`, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={16} style={{ color: ORANGE }} />
+            <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Needs attention</h3>
+          </div>
+          <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)' }}>
+            {stalled.length + GATE_APPROVALS_PENDING.length + ERRORS_LAST_24H.length} items today
+          </span>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.55)', margin: '4px 0 16px' }}>What needs you today, across all accounts.</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          {/* Stalled */}
+          <AttentionPanel
+            title="Stalled accounts"
+            count={stalled.length}
+            countColor="#FCA5A5"
+            countBg="rgba(239,68,68,0.15)"
+            desc="No activity in 14+ days"
+            onFooterClick={() => onGo('account-activity')}
+            footerLabel="View all in Account Activity"
+          >
+            {stalled.map(a => (
+              <AttentionRow
+                key={a.id}
+                primary={a.name}
+                secondary={`Last active ${a.lastActive} · ${a.stepsApproved}/${a.stepsTotal} steps`}
+                accent="#EF4444"
+              />
+            ))}
+            {stalled.length === 0 && <EmptyLine label="Nothing stalled." />}
+          </AttentionPanel>
+
+          {/* Awaiting gate approval */}
+          <AttentionPanel
+            title="Awaiting gate approval"
+            count={GATE_APPROVALS_PENDING.length}
+            countColor="#FDBA74"
+            countBg="rgba(232,82,10,0.18)"
+            desc="Submitted for review"
+            onFooterClick={() => onGo('accounts')}
+            footerLabel="Review in Accounts"
+          >
+            {GATE_APPROVALS_PENDING.map((g, i) => (
+              <AttentionRow
+                key={i}
+                primary={g.account}
+                secondary={`${g.gate} · submitted ${g.submitted}`}
+                accent="#E8520A"
+              />
+            ))}
+          </AttentionPanel>
+
+          {/* Errors / failures */}
+          <AttentionPanel
+            title="Errors (last 24h)"
+            count={ERRORS_LAST_24H.length}
+            countColor="#FCA5A5"
+            countBg="rgba(239,68,68,0.15)"
+            desc="Copilot / API failures"
+            onFooterClick={() => onGo('usage')}
+            footerLabel="See usage details"
+          >
+            {ERRORS_LAST_24H.map((e, i) => (
+              <AttentionRow
+                key={i}
+                primary={e.account}
+                secondary={`${e.step} · ${e.error} · ${e.when}`}
+                accent="#EF4444"
+              />
+            ))}
+          </AttentionPanel>
+        </div>
+      </div>
+
       {/* Quick jumps */}
-      <div style={{ ...card, marginTop: 16 }}>
+      <div style={card}>
         <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 10px' }}>Jump to</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {(['accounts','account-activity','activity-summary','usage','crm','users'] as SectionKey[]).map(k => {
@@ -358,6 +482,41 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
       </div>
     </div>
   )
+}
+
+function AttentionPanel({
+  title, count, countColor, countBg, desc, children, onFooterClick, footerLabel,
+}: {
+  title: string; count: number; countColor: string; countBg: string; desc: string;
+  children: React.ReactNode; onFooterClick: () => void; footerLabel: string;
+}) {
+  return (
+    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', minHeight: 180 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <h4 style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.7)', margin: 0 }}>{title}</h4>
+        <span style={{ backgroundColor: countBg, color: countColor, borderRadius: 999, padding: '2px 10px', fontSize: 11.5, fontWeight: 700, minWidth: 26, textAlign: 'center' }}>{count}</span>
+      </div>
+      <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)', margin: '0 0 10px' }}>{desc}</p>
+      <div style={{ flex: 1 }}>{children}</div>
+      <button onClick={onFooterClick} style={{ ...linkBtn, marginTop: 10, alignSelf: 'flex-start' }}>{footerLabel} <ExternalLink size={11} /></button>
+    </div>
+  )
+}
+
+function AttentionRow({ primary, secondary, accent }: { primary: string; secondary: string; accent: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', borderTop: `1px solid ${BORDER}` }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: accent, flexShrink: 0, marginTop: 6 }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis' }}>{primary}</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2, lineHeight: 1.4 }}>{secondary}</div>
+      </div>
+    </div>
+  )
+}
+
+function EmptyLine({ label }: { label: string }) {
+  return <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', padding: '8px 0' }}>{label}</div>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -772,7 +931,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle: string })
   )
 }
 
-function Kpi({ label, value, hint, icon, accent }: { label: string; value: string; hint?: string; icon?: React.ReactNode; accent: string }) {
+function Kpi({ label, value, hint, icon, accent }: { label: string; value: string; hint?: React.ReactNode; icon?: React.ReactNode; accent: string }) {
   return (
     <div style={{ ...card, padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'rgba(255,255,255,0.55)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
