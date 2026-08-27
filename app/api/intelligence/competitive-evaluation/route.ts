@@ -221,6 +221,8 @@ ${dcpStage6}`
 
   let rawText = ''
   let errorCode: string | null = null
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
 
   try {
     const response = await anthropic.messages.create({
@@ -229,6 +231,8 @@ ${dcpStage6}`
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Generate the JSON now.' }],
     })
+    inputTokens = response.usage?.input_tokens ?? null
+    outputTokens = response.usage?.output_tokens ?? null
     for (const block of response.content) {
       if (block.type === 'text') rawText += block.text
     }
@@ -248,6 +252,8 @@ ${dcpStage6}`
         model,
         status: 'error',
         error_code: errorCode,
+        input_tokens: null,
+        output_tokens: null,
       })
     } catch (insertErr) {
       const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)
@@ -269,6 +275,8 @@ ${dcpStage6}`
       model,
       status: sections ? 'success' : 'error',
       error_code: sections ? null : 'parse_failed',
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
     })
   } catch (insertErr) {
     const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)

@@ -234,6 +234,8 @@ Generate the 6-category insights now. Be specific and quote/paraphrase real patt
   const startMs = Date.now()
   let rawText = ''
   let claudeError: string | null = null
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
 
   try {
     const message = await anthropic.messages.create({
@@ -242,6 +244,8 @@ Generate the 6-category insights now. Be specific and quote/paraphrase real patt
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     })
+    inputTokens = message.usage?.input_tokens ?? null
+    outputTokens = message.usage?.output_tokens ?? null
     rawText = message.content
       .filter(b => b.type === 'text')
       .map(b => (b as { type: 'text'; text: string }).text)
@@ -260,6 +264,8 @@ Generate the 6-category insights now. Be specific and quote/paraphrase real patt
       status: claudeError ? 'error' : 'success',
       error_code: claudeError ?? null,
       latency_ms: latencyMs,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
     })
   } catch { /* non-fatal */ }
 

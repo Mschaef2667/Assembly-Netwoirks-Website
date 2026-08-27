@@ -126,6 +126,8 @@ ${journeyContext || 'Not yet available.'}`
   const anthropic = new Anthropic({ apiKey })
   let fullText = ''
   let claudeError: string | null = null
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
 
   try {
     const response = await anthropic.messages.create({
@@ -134,6 +136,9 @@ ${journeyContext || 'Not yet available.'}`
       messages: [{ role: 'user', content: 'Generate the ICP now.' }],
       system: systemPrompt,
     })
+
+    inputTokens = response.usage?.input_tokens ?? null
+    outputTokens = response.usage?.output_tokens ?? null
 
     for (const block of response.content) {
       if (block.type === 'text') {
@@ -155,6 +160,8 @@ ${journeyContext || 'Not yet available.'}`
       model,
       status: claudeError ? 'error' : 'success',
       error_code: claudeError ?? null,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
     })
   } catch (insertErr) {
     console.error('[copilot/icp-generate] copilot_run insert failed:', insertErr)

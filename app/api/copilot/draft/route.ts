@@ -368,6 +368,8 @@ async function handleDraft(req: NextRequest): Promise<Response> {
   let fullText = ''
   let streamError: string | null = null
   let streamErrorCode = 'unknown'
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
   const maxAttempts = 3
 
   const stream = new ReadableStream({
@@ -375,6 +377,9 @@ async function handleDraft(req: NextRequest): Promise<Response> {
       const encoder = new TextEncoder()
 
       outer: for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Reset per attempt so a failed attempt's partial usage doesn't leak into a later successful one.
+        inputTokens = null
+        outputTokens = null
         try {
           const claudeStream = anthropic.messages.stream({
             model,
@@ -390,6 +395,10 @@ async function handleDraft(req: NextRequest): Promise<Response> {
             ) {
               const text = chunk.delta.text
               fullText += text
+            } else if (chunk.type === 'message_start') {
+              inputTokens = chunk.message.usage?.input_tokens ?? null
+            } else if (chunk.type === 'message_delta') {
+              outputTokens = chunk.usage?.output_tokens ?? outputTokens
             }
           }
           if (fullText.length > 0) {
@@ -457,6 +466,8 @@ async function handleDraft(req: NextRequest): Promise<Response> {
           model,
           status: streamError ? 'error' : 'success',
           error_code: streamError ?? null,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
         })
       } catch (insertErr) {
         const msg = insertErr instanceof Error ? insertErr.message : String(insertErr)
