@@ -33,6 +33,23 @@ async function logReportGeneration(
   }
 }
 
+// Resolve the caller's org_id fresh at click time. The state `orgId` in this
+// page has been observed to be null in the closure of some download handlers
+// (pre-existing bug); sourcing it on-demand from Supabase auth + users lookup
+// bypasses that. Returns null on any failure so callers can no-op cleanly.
+async function getOrgIdNow(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data: row } = await supabase.from('users').select('org_id').eq('id', user.id).single()
+    if (!row) return null
+    const orgId = (row as { org_id?: string | null }).org_id
+    return typeof orgId === 'string' && orgId.length > 0 ? orgId : null
+  } catch {
+    return null
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface StepDef {
@@ -582,10 +599,13 @@ function ReportPageInner() {
         if (builtData) {
           setFutureStateData(builtData)
           if (typeof window !== 'undefined') {
-            const ts = new Date().toISOString()
-            localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
-            setFutureStateLastGenerated(ts)
-            void logReportGeneration(orgId, 'future_state', { trigger: 'auto_preview' })
+            const freshOrgId = await getOrgIdNow()
+            if (freshOrgId) {
+              const ts = new Date().toISOString()
+              localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${freshOrgId}`, ts)
+              setFutureStateLastGenerated(ts)
+              void logReportGeneration(freshOrgId, 'future_state', { trigger: 'auto_preview' })
+            }
           }
         }
 
@@ -870,9 +890,10 @@ function ReportPageInner() {
           }
         }) as unknown as { save: () => Promise<void> }
       await worker.save()
-      if (orgId) {
-        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
-        void logReportGeneration(orgId, 'engagement_plan', { trigger: 'pdf_download' })
+      const freshOrgId = await getOrgIdNow()
+      if (freshOrgId) {
+        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${freshOrgId}`, new Date().toISOString())
+        void logReportGeneration(freshOrgId, 'engagement_plan', { trigger: 'pdf_download' })
       }
     } catch (e) {
       console.error('PDF export failed:', e)
@@ -1149,9 +1170,10 @@ function ReportPageInner() {
       a.download = `${(org?.name ?? 'strategic-plan').replace(/\s+/g, '-')}-c3-report.docx`
       a.click()
       URL.revokeObjectURL(url)
-      if (orgId) {
-        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
-        void logReportGeneration(orgId, 'engagement_plan', { trigger: 'docx_download' })
+      const freshOrgId = await getOrgIdNow()
+      if (freshOrgId) {
+        localStorage.setItem(`c3.report.actionPlan.lastGenerated:${freshOrgId}`, new Date().toISOString())
+        void logReportGeneration(freshOrgId, 'engagement_plan', { trigger: 'docx_download' })
       }
     } catch (e) {
       console.error('DOCX export failed:', e)
@@ -1255,11 +1277,14 @@ function ReportPageInner() {
     setFutureStateData(null)
     try {
       await loadData()
-      if (orgId && typeof window !== 'undefined') {
-        const ts = new Date().toISOString()
-        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
-        setFutureStateLastGenerated(ts)
-        void logReportGeneration(orgId, 'future_state', { trigger: 'user_generate' })
+      if (typeof window !== 'undefined') {
+        const freshOrgId = await getOrgIdNow()
+        if (freshOrgId) {
+          const ts = new Date().toISOString()
+          localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${freshOrgId}`, ts)
+          setFutureStateLastGenerated(ts)
+          void logReportGeneration(freshOrgId, 'future_state', { trigger: 'user_generate' })
+        }
       }
     } finally {
       setGeneratingFutureState(false)
@@ -1737,11 +1762,12 @@ function ReportPageInner() {
 
       const slug = company.toLowerCase().replace(/\s+/g, '-')
       doc.save(`${slug}-future-state-strategic-plan.pdf`)
-      if (orgId) {
+      const freshOrgId = await getOrgIdNow()
+      if (freshOrgId) {
         const ts = new Date().toISOString()
-        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${freshOrgId}`, ts)
         setFutureStateLastGenerated(ts)
-        void logReportGeneration(orgId, 'future_state', { trigger: 'pdf_download' })
+        void logReportGeneration(freshOrgId, 'future_state', { trigger: 'pdf_download' })
       }
     } catch (e) {
       console.error('Future State PDF export failed:', e)
@@ -1966,11 +1992,12 @@ function ReportPageInner() {
       a.download = `${company.toLowerCase().replace(/\s+/g, '-')}-future-state-strategic-plan.docx`
       a.click()
       URL.revokeObjectURL(url)
-      if (orgId) {
+      const freshOrgId = await getOrgIdNow()
+      if (freshOrgId) {
         const ts = new Date().toISOString()
-        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
+        localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${freshOrgId}`, ts)
         setFutureStateLastGenerated(ts)
-        void logReportGeneration(orgId, 'future_state', { trigger: 'docx_download' })
+        void logReportGeneration(freshOrgId, 'future_state', { trigger: 'docx_download' })
       }
     } catch (e) {
       console.error('Future State DOCX export failed:', e)
