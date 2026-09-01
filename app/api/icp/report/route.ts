@@ -343,13 +343,31 @@ async function handle(req: NextRequest): Promise<Response> {
   const safeName = orgName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'Company'
   const date = new Date().toISOString().slice(0, 10)
 
-  // JSON powers the on-screen HTML report view.
+  // JSON powers the on-screen HTML report view — not a downloadable deliverable, so not logged.
   if (format === 'json') {
     return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
   }
 
+  // Non-fatal audit log: record that the ICP Calibration report was generated.
+  // Wrapped so a logging failure never breaks the download for the user.
+  const generatedBy = user.id
+  async function logIcpGeneration(fmt: 'pdf' | 'docx'): Promise<void> {
+    try {
+      const { error: logErr } = await supabase.from('report_generation_log').insert({
+        org_id: orgId,
+        report_type: 'icp_calibration',
+        generated_by: generatedBy,
+        metadata: { format: fmt },
+      })
+      if (logErr) console.warn('[icp/report] log insert error:', logErr.message)
+    } catch (logCatch) {
+      console.warn('[icp/report] log insert failed:', logCatch instanceof Error ? logCatch.message : String(logCatch))
+    }
+  }
+
   if (format === 'docx') {
     const docxBuf = await buildDocx(data)
+    await logIcpGeneration('docx')
     return new NextResponse(Buffer.from(docxBuf), {
       status: 200,
       headers: {
@@ -361,6 +379,7 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   const pdf = await buildPdf(data)
+  await logIcpGeneration('pdf')
   return new NextResponse(Buffer.from(pdf), {
     status: 200,
     headers: {

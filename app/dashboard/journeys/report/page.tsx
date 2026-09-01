@@ -11,6 +11,28 @@ import { supabase } from '@/lib/supabase/client'
 //             before Gate 4 unlocks. Flip to true once a Gate 4 review UI exists.
 const STEP_38_REQUIRE_APPROVAL = false
 
+// Non-fatal audit log: record that a client-facing deliverable was generated
+// so the admin panel can see per-account deliverable status server-side.
+// Failures are swallowed so a broken log write never breaks report generation.
+async function logReportGeneration(
+  orgId: string,
+  reportType: 'engagement_plan' | 'future_state' | 'icp_calibration',
+  metadata?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('report_generation_log').insert({
+      org_id: orgId,
+      report_type: reportType,
+      generated_by: user?.id ?? null,
+      metadata: metadata ?? null,
+    })
+    if (error) console.warn('[report-log] insert error:', error.message)
+  } catch (err) {
+    console.warn('[report-log] insert failed:', err instanceof Error ? err.message : String(err))
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface StepDef {
@@ -563,6 +585,7 @@ function ReportPageInner() {
             const ts = new Date().toISOString()
             localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
             setFutureStateLastGenerated(ts)
+            void logReportGeneration(orgId, 'future_state', { trigger: 'auto_preview' })
           }
         }
 
@@ -849,6 +872,7 @@ function ReportPageInner() {
       await worker.save()
       if (orgId) {
         localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
+        void logReportGeneration(orgId, 'engagement_plan', { trigger: 'pdf_download' })
       }
     } catch (e) {
       console.error('PDF export failed:', e)
@@ -1127,6 +1151,7 @@ function ReportPageInner() {
       URL.revokeObjectURL(url)
       if (orgId) {
         localStorage.setItem(`c3.report.actionPlan.lastGenerated:${orgId}`, new Date().toISOString())
+        void logReportGeneration(orgId, 'engagement_plan', { trigger: 'docx_download' })
       }
     } catch (e) {
       console.error('DOCX export failed:', e)
@@ -1234,6 +1259,7 @@ function ReportPageInner() {
         const ts = new Date().toISOString()
         localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
         setFutureStateLastGenerated(ts)
+        void logReportGeneration(orgId, 'future_state', { trigger: 'user_generate' })
       }
     } finally {
       setGeneratingFutureState(false)
@@ -1715,6 +1741,7 @@ function ReportPageInner() {
         const ts = new Date().toISOString()
         localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
         setFutureStateLastGenerated(ts)
+        void logReportGeneration(orgId, 'future_state', { trigger: 'pdf_download' })
       }
     } catch (e) {
       console.error('Future State PDF export failed:', e)
@@ -1943,6 +1970,7 @@ function ReportPageInner() {
         const ts = new Date().toISOString()
         localStorage.setItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`, ts)
         setFutureStateLastGenerated(ts)
+        void logReportGeneration(orgId, 'future_state', { trigger: 'docx_download' })
       }
     } catch (e) {
       console.error('Future State DOCX export failed:', e)
