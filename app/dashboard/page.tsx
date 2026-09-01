@@ -227,8 +227,11 @@ export default function DashboardPage() {
   const [orgName, setOrgName] = useState<string | null>(null)
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
+  // Generation timestamps sourced from report_generation_log (DB). Approval
+  // flags below still come from localStorage until they're migrated too.
   const [actionPlanGeneratedAt, setActionPlanGeneratedAt] = useState<string | null>(null)
   const [futureStateGeneratedAt, setFutureStateGeneratedAt] = useState<string | null>(null)
+  const [icpCalibrationGeneratedAt, setIcpCalibrationGeneratedAt] = useState<string | null>(null)
   const [actionPlanApproved, setActionPlanApproved] = useState<string | null>(null)
   const [futureStateApproved, setFutureStateApproved] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -280,7 +283,7 @@ export default function DashboardPage() {
         if (!userRow) throw new Error('User not found')
         const orgId = (userRow as Record<string, unknown>)['org_id'] as string
 
-        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes, capRes, orgRes] = await Promise.all([
+        const [defsRes, outputsRes, depsRes, dcpRes, icpRes, surveyRes, capRes, orgRes, reportLogRes] = await Promise.all([
           supabase.from('step_definition').select('id,title,section,phase'),
           supabase.from('step_output')
             .select('step_id,version,status,original_confidence')
@@ -297,6 +300,11 @@ export default function DashboardPage() {
             .eq('workspace_id', orgId)
             .in('step_id', ['13', '14']),
           supabase.from('organizations').select('name, logo_url').eq('id', orgId).single(),
+          supabase.from('report_generation_log')
+            .select('report_type,generated_at,metadata')
+            .eq('org_id', orgId)
+            .in('report_type', ['engagement_plan', 'future_state', 'icp_calibration'])
+            .order('generated_at', { ascending: false }),
         ])
 
         // Latest version per step_id
@@ -356,6 +364,27 @@ export default function DashboardPage() {
         setAudienceCounts(counts)
         setCapabilityGaps(gaps)
 
+        // Deliverable generation timestamps from report_generation_log.
+        // engagement_plan / future_state: exclude 'auto_preview' triggers (preview-only, not a real generation).
+        // icp_calibration: any row counts.
+        let engagementMax: string | null = null
+        let futureStateMax: string | null = null
+        let icpMax: string | null = null
+        for (const raw of (reportLogRes.data ?? []) as Array<Record<string, unknown>>) {
+          const reportType = typeof raw['report_type'] === 'string' ? (raw['report_type'] as string) : ''
+          const generatedAt = typeof raw['generated_at'] === 'string' ? (raw['generated_at'] as string) : null
+          if (!generatedAt) continue
+          const meta = raw['metadata'] as Record<string, unknown> | null
+          const trigger = meta && typeof meta['trigger'] === 'string' ? (meta['trigger'] as string) : null
+          if ((reportType === 'engagement_plan' || reportType === 'future_state') && trigger === 'auto_preview') continue
+          if (reportType === 'engagement_plan' && (!engagementMax || generatedAt > engagementMax)) engagementMax = generatedAt
+          else if (reportType === 'future_state' && (!futureStateMax || generatedAt > futureStateMax)) futureStateMax = generatedAt
+          else if (reportType === 'icp_calibration' && (!icpMax || generatedAt > icpMax)) icpMax = generatedAt
+        }
+        setActionPlanGeneratedAt(engagementMax)
+        setFutureStateGeneratedAt(futureStateMax)
+        setIcpCalibrationGeneratedAt(icpMax)
+
         if (orgRes.data) {
           const orgRow = orgRes.data as Record<string, unknown>
           const name = typeof orgRow['name'] === 'string' ? (orgRow['name'] as string) : null
@@ -399,9 +428,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!orgId) return
+    // Generation timestamps for engagement_plan / future_state / icp_calibration
+    // are sourced from report_generation_log via the load effect above.
+    // Approval flags still live in localStorage until they're migrated.
     function readReportStatus() {
-      setActionPlanGeneratedAt(localStorage.getItem(`c3.report.actionPlan.lastGenerated:${orgId}`))
-      setFutureStateGeneratedAt(localStorage.getItem(`c3.report.futureStatePlan.lastGenerated:${orgId}`))
       setActionPlanApproved(localStorage.getItem('report_action_plan_approved'))
       setFutureStateApproved(localStorage.getItem('report_future_state_approved'))
     }
@@ -1184,7 +1214,7 @@ export default function DashboardPage() {
                   iconBg="rgba(232,82,10,0.15)"
                   name="ICP Calibration Report"
                   description="Calibrated ICPs with baseline beliefs, buyer evidence, and per-ICP messaging and engagement plan."
-                  statusLabel="Ready"
+                  statusLabel={icpCalibrationGeneratedAt ? `Generated ${formatDate(icpCalibrationGeneratedAt)}` : 'Ready'}
                   statusColor="#10B981"
                   statusBg="rgba(16,185,129,0.15)"
                   actions={
