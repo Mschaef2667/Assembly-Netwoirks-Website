@@ -20,11 +20,11 @@ import { useRouter } from 'next/navigation'
 import {
   Loader2, LayoutDashboard, Building2, Activity, Users, BarChart3, Inbox, Gauge,
   Plus, Copy, Check, ExternalLink, ArrowLeft, ShieldCheck, X, AlertCircle,
-  TrendingUp, TrendingDown, Sparkles, FileText, MailQuestion, Download, Circle,
+  TrendingUp, TrendingDown, Sparkles, FileText, MailQuestion, Download,
+  PauseCircle, PlayCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AccountSummary, AccountsResponse } from '@/app/api/admin/accounts/route'
-import type { AccountActivityRow, AccountActivityResponse } from '@/app/api/admin/account-activity/route'
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const NAVY = '#0A1628'
@@ -37,12 +37,11 @@ const th: CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'upper
 const td: CSSProperties = { fontSize: 13, color: '#fff', padding: '12px', borderTop: `1px solid ${BORDER}`, verticalAlign: 'top' }
 
 // ── Section registry ─────────────────────────────────────────────────────────
-type SectionKey = 'dashboard' | 'accounts' | 'account-activity' | 'activity-summary' | 'usage' | 'crm' | 'users'
+type SectionKey = 'dashboard' | 'accounts' | 'activity-summary' | 'usage' | 'crm' | 'users'
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof Building2 }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'accounts', label: 'Accounts', icon: Building2 },
-  { key: 'account-activity', label: 'Account Activity', icon: Activity },
   { key: 'users', label: 'Users', icon: Users },
   { key: 'activity-summary', label: 'Activity Summary', icon: BarChart3 },
   { key: 'crm', label: 'CRM', icon: Inbox },
@@ -294,7 +293,6 @@ export default function MasterControlPanel() {
         <main style={{ flex: 1, minWidth: 0 }}>
           {section === 'dashboard'         && <DashboardSection onGo={setSection} />}
           {section === 'accounts'          && <AccountsSection />}
-          {section === 'account-activity'  && <AccountActivitySection />}
           {section === 'activity-summary'  && <ActivitySummarySection />}
           {section === 'usage'             && <UsageSection />}
           {section === 'crm'               && <CrmSection />}
@@ -423,8 +421,8 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
             countColor="#FCA5A5"
             countBg="rgba(239,68,68,0.15)"
             desc="No activity in 14+ days"
-            onFooterClick={() => onGo('account-activity')}
-            footerLabel="View all in Account Activity"
+            onFooterClick={() => onGo('accounts')}
+            footerLabel="View all in Accounts"
           >
             {stalled.map(a => (
               <AttentionRow
@@ -481,7 +479,7 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
       <div style={card}>
         <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 10px' }}>Jump to</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {(['accounts','account-activity','activity-summary','usage','crm','users'] as SectionKey[]).map(k => {
+          {(['accounts','activity-summary','usage','crm','users'] as SectionKey[]).map(k => {
             const s = SECTIONS.find(x => x.key === k)!
             const Icon = s.icon
             return (
@@ -501,10 +499,12 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
 // This block is preserved from the previous /admin/control implementation.
 // ─────────────────────────────────────────────────────────────────────────────
 function AccountsSection() {
+  const router = useRouter()
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSetup, setShowSetup] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState<Set<string>>(new Set())
 
   async function load() {
     setLoading(true); setError(null)
@@ -519,12 +519,44 @@ function AccountsSection() {
 
   useEffect(() => { queueMicrotask(() => { void load() }) }, [])
 
+  async function handleStatusChange(account: AccountSummary, nextStatus: 'suspended' | 'active') {
+    // Only suspending is confirmed — significant enough to warrant a prompt.
+    if (nextStatus === 'suspended') {
+      const ok = typeof window !== 'undefined' && window.confirm(
+        `Suspend "${account.name}"?\n\nThey will remain in the database, but this marks the workspace as suspended.`,
+      )
+      if (!ok) return
+    }
+    setStatusUpdating(prev => { const next = new Set(prev); next.add(account.id); return next })
+    try {
+      const res = await fetch(`/api/admin/accounts/${account.id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? 'Failed to update status')
+      }
+      // Optimistically update the row so the UI flips instantly.
+      setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, status: nextStatus } : a))
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        window.alert(err instanceof Error ? err.message : 'Failed to update status')
+      }
+    } finally {
+      setStatusUpdating(prev => { const next = new Set(prev); next.delete(account.id); return next })
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Accounts</h2>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '4px 0 0' }}>{accounts.length} workspace{accounts.length === 1 ? '' : 's'}</p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '4px 0 0' }}>
+            {accounts.length} workspace{accounts.length === 1 ? '' : 's'} · click a row for account detail
+          </p>
         </div>
         <button
           onClick={() => setShowSetup(true)}
@@ -547,8 +579,6 @@ function AccountsSection() {
               <tr>
                 <th style={th}>Account</th>
                 <th style={th}>Status</th>
-                <th style={th}>Plan</th>
-                <th style={th}>Users</th>
                 <th style={th}>Journey</th>
                 <th style={th}>Last active</th>
                 <th style={th}></th>
@@ -558,28 +588,59 @@ function AccountsSection() {
               {accounts.map((a) => {
                 const sc = statusColor(a.status)
                 const pct = a.steps_total > 0 ? Math.round((a.steps_approved / a.steps_total) * 100) : 0
+                const isSuspended = a.status === 'suspended'
+                const updating = statusUpdating.has(a.id)
+                const exactDate = a.last_active_at ? new Date(a.last_active_at).toLocaleString() : ''
                 return (
-                  <tr key={a.id}>
+                  <tr
+                    key={a.id}
+                    onClick={() => router.push(`/admin/control/accounts/${a.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td style={td}>
                       <div style={{ fontWeight: 700 }}>{a.name}</div>
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{a.industry || a.slug}</div>
                     </td>
-                    <td style={td}><span style={{ backgroundColor: sc.bg, color: sc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>{a.status ?? '—'}</span></td>
-                    <td style={td}>{a.plan ?? '—'}</td>
-                    <td style={td}>{a.active_user_count}/{a.user_count}</td>
-                    <td style={{ ...td, minWidth: 120 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <td style={td}>
+                      <span style={{ backgroundColor: sc.bg, color: sc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, textTransform: 'capitalize' }}>
+                        {a.status ?? '—'}
+                      </span>
+                    </td>
+                    <td style={{ ...td, minWidth: 200 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
                           <div style={{ width: `${pct}%`, height: 6, background: ORANGE }} />
                         </div>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{a.steps_approved}/{a.steps_total}</span>
+                        <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', minWidth: 60, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {a.steps_approved}/{a.steps_total} · {pct}%
+                        </span>
                       </div>
                     </td>
-                    <td style={td}>{timeAgo(a.last_active_at)}</td>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                      <Link href={`/dashboard/journeys?org=${a.id}`} style={{ color: '#7DD3FC', fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        Open journey <ExternalLink size={12} />
-                      </Link>
+                    <td style={td} title={exactDate}>{timeAgo(a.last_active_at)}</td>
+                    <td
+                      style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => { void handleStatusChange(a, isSuspended ? 'active' : 'suspended') }}
+                        disabled={updating}
+                        title={isSuspended ? 'Reactivate this account' : 'Suspend this account'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: 'rgba(255,255,255,0.04)',
+                          color: isSuspended ? '#86EFAC' : '#FDBA74',
+                          border: `1px solid ${isSuspended ? 'rgba(34,197,94,0.35)' : 'rgba(232,82,10,0.35)'}`,
+                          borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                          cursor: updating ? 'not-allowed' : 'pointer',
+                          opacity: updating ? 0.6 : 1,
+                        }}
+                      >
+                        {updating
+                          ? <><Loader2 size={12} className="animate-spin" /> Updating…</>
+                          : isSuspended
+                            ? <><PlayCircle size={12} /> Reactivate</>
+                            : <><PauseCircle size={12} /> Suspend</>}
+                      </button>
                     </td>
                   </tr>
                 )
@@ -678,111 +739,7 @@ function SetupAccountModal({ onClose, onCreated }: { onClose: () => void; onCrea
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3) ACCOUNT ACTIVITY — LIVE (reads /api/admin/account-activity, read-only)
-// ─────────────────────────────────────────────────────────────────────────────
-function AccountActivitySection() {
-  const [rows, setRows] = useState<AccountActivityRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true); setError(null)
-      try {
-        const res = await fetch('/api/admin/account-activity')
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load account activity')
-        const data = (await res.json()) as AccountActivityResponse
-        setRows(data.rows)
-      } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load account activity') }
-      finally { setLoading(false) }
-    }
-    void load()
-  }, [])
-
-  const activeCount  = rows.filter(r => r.health === 'active').length
-  const slowingCount = rows.filter(r => r.health === 'slowing').length
-  const stalledCount = rows.filter(r => r.health === 'stalled').length
-
-  // Sort: worst-first within the table (stalled → slowing → active),
-  // then by longest-since-active within each health bucket.
-  const sorted = [...rows].sort((a, b) => {
-    const order: Record<HealthFlag, number> = { stalled: 0, slowing: 1, active: 2 }
-    if (order[a.health] !== order[b.health]) return order[a.health] - order[b.health]
-    const at = a.last_active_at ? new Date(a.last_active_at).getTime() : 0
-    const bt = b.last_active_at ? new Date(b.last_active_at).getTime() : 0
-    return at - bt
-  })
-
-  return (
-    <div>
-      <SectionHeader title="Account Activity" subtitle="Per-account beta health. Sorted by attention needed." />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Active"  value={fmtNum(activeCount)}  hint="active in last 7 days"     icon={<Circle size={14} style={{ fill: '#22C55E', color: '#22C55E' }} />} accent="#86EFAC" />
-        <Kpi label="Slowing" value={fmtNum(slowingCount)} hint="8–21 days quiet"           icon={<Circle size={14} style={{ fill: '#E8520A', color: '#E8520A' }} />} accent="#FDBA74" />
-        <Kpi label="Stalled" value={fmtNum(stalledCount)} hint="22+ days or no activity"   icon={<Circle size={14} style={{ fill: '#EF4444', color: '#EF4444' }} />} accent="#FCA5A5" />
-      </div>
-
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-            <Loader2 size={22} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
-          </div>
-        ) : error ? (
-          <div style={{ padding: 24, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
-        ) : rows.length === 0 ? (
-          <div style={{ padding: 24, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>No accounts yet.</div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={th}>Account</th>
-                <th style={th}>Journey</th>
-                <th style={th}>Progress</th>
-                <th style={th}>Last active</th>
-                <th style={th}>Health</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map(r => {
-                const hc = healthColor(r.health)
-                const pct = r.steps_total > 0 ? Math.round((r.steps_approved / r.steps_total) * 100) : 0
-                const exactDate = r.last_active_at ? new Date(r.last_active_at).toLocaleString() : ''
-                return (
-                  <tr key={r.id}>
-                    <td style={td}>
-                      <div style={{ fontWeight: 700 }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{r.industry || r.slug}</div>
-                    </td>
-                    <td style={td}>{r.steps_approved}/{r.steps_total}</td>
-                    <td style={{ ...td, minWidth: 220 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: 6, background: ORANGE }} />
-                        </div>
-                        <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', minWidth: 34, textAlign: 'right' }}>{pct}%</span>
-                      </div>
-                    </td>
-                    <td style={td} title={exactDate}>{timeAgo(r.last_active_at)}</td>
-                    <td style={td}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: hc.bg, color: hc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: hc.dot }} />
-                        {hc.label}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4) ACTIVITY SUMMARY — PLACEHOLDER — sample data
+// 3) ACTIVITY SUMMARY — PLACEHOLDER — sample data
 // ─────────────────────────────────────────────────────────────────────────────
 function ActivitySummarySection() {
   const avgPct = Math.round(

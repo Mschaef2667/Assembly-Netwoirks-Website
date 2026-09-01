@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/superAdmin'
+import { isJourneyStep, JOURNEY_TOTAL } from '@/lib/journey/canonicalSteps'
 
 export const runtime = 'nodejs'
-
-const STEP_TOTAL = 38 + 4 // 38 journey + 4 onboarding, matching the admin console
 
 export interface AccountSummary {
   id: string
@@ -32,13 +31,13 @@ export async function GET(): Promise<NextResponse> {
   const [orgsRes, usersRes, stepsRes] = await Promise.all([
     svc.from('organizations').select('id,name,slug,status,plan,industry,website,created_at').order('created_at', { ascending: false }),
     svc.from('users').select('org_id,is_active'),
-    svc.from('step_output').select('workspace_id,status,last_updated_at,last_saved_at'),
+    svc.from('step_output').select('workspace_id,step_id,status,last_updated_at,last_saved_at'),
   ])
   if (orgsRes.error) return NextResponse.json({ error: orgsRes.error.message }, { status: 500 })
 
   type OrgRow = { id: string; name: string; slug: string; status: string | null; plan: string | null; industry: string | null; website: string | null; created_at: string }
   type UserRow = { org_id: string; is_active: boolean | null }
-  type StepRow = { workspace_id: string; status: string | null; last_updated_at: string | null; last_saved_at: string | null }
+  type StepRow = { workspace_id: string; step_id: string; status: string | null; last_updated_at: string | null; last_saved_at: string | null }
 
   const orgs = (orgsRes.data ?? []) as OrgRow[]
   const users = (usersRes.data ?? []) as UserRow[]
@@ -51,10 +50,15 @@ export async function GET(): Promise<NextResponse> {
     if (u.is_active) activeCount.set(u.org_id, (activeCount.get(u.org_id) ?? 0) + 1)
   }
 
+  // Journey progress = approved canonical journey steps (1..38, excluding 3.5) per workspace.
+  // Uses the same isJourneyStep + JOURNEY_TOTAL logic the client dashboard uses so numerator
+  // and denominator line up. See lib/journey/canonicalSteps.ts.
   const approved = new Map<string, number>()
   const lastActive = new Map<string, string>()
   for (const s of steps) {
-    if (s.status === 'approved') approved.set(s.workspace_id, (approved.get(s.workspace_id) ?? 0) + 1)
+    if (s.status === 'approved' && isJourneyStep(s.step_id)) {
+      approved.set(s.workspace_id, (approved.get(s.workspace_id) ?? 0) + 1)
+    }
     const ts = s.last_updated_at ?? s.last_saved_at
     if (ts) {
       const prev = lastActive.get(s.workspace_id)
@@ -74,7 +78,7 @@ export async function GET(): Promise<NextResponse> {
     user_count: userCount.get(o.id) ?? 0,
     active_user_count: activeCount.get(o.id) ?? 0,
     steps_approved: approved.get(o.id) ?? 0,
-    steps_total: STEP_TOTAL,
+    steps_total: JOURNEY_TOTAL,
     last_active_at: lastActive.get(o.id) ?? null,
   }))
 
