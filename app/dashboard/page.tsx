@@ -5,6 +5,7 @@ import { ShieldCheck, Lock, Clock, ChevronRight, X, Brain, Lightbulb, FileText, 
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { isJourneyStep, JOURNEY_TOTAL } from '@/lib/journey/canonicalSteps'
+import { computeScore, type ScoreBreakdown } from '@/lib/scoring/computeScore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,13 +42,7 @@ interface CapabilityGap {
   gapLevel: Extract<GapLevel, 'critical' | 'high'>
 }
 
-interface ScoreBreakdown {
-  total: number
-  stepPts: number
-  icpPts: number
-  dcpPts: number
-  qualityPts: number
-}
+// ScoreBreakdown is imported from lib/scoring/computeScore.
 
 type GateStatus = 'approved' | 'pending' | 'locked'
 
@@ -66,16 +61,7 @@ const GATE_2_STEPS = ['10', '11', '12', '13', '14', '15', '16']
 const GATE_3_STEPS = ['17', '18', '19', '20', '21', '22', '23', '24', '25', '26']
 const GATE_4_STEPS = ['27', '28', '29', '30']
 
-const ICP_TEXT_FIELDS = [
-  'company_size_range', 'decision_making_power', 'budget_range', 'buying_motion',
-  'buying_urgency_trigger', 'the_big_win', 'preferred_communication', 'buyer_values',
-  'risk_sensitivities', 'tech_stack',
-]
-const ICP_ARR_FIELDS = [
-  'job_titles', 'industry_verticals', 'primary_challenges', 'barriers_to_success',
-  'success_metrics', 'buying_triggers', 'information_sources', 'purchase_criteria',
-  'common_objections',
-]
+// ICP_TEXT_FIELDS and ICP_ARR_FIELDS are imported from lib/scoring/computeScore.
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -112,46 +98,8 @@ function getGrade(score: number): string {
   return 'F'
 }
 
-function computeScore(
-  outputs: Map<string, StepOut>,
-  icpRows: Array<Record<string, unknown>>,
-  dcpRow: DcpRow | null,
-): ScoreBreakdown {
-  // Only canonical Journey steps (1..38) count toward step completion.
-  // Non-canonical artefacts (insights, dcp-map, survey-builder-*, sub-steps)
-  // are filtered out so they can never inflate the count past 38.
-  const approved = Array.from(outputs.values()).filter(
-    s => s.status === 'approved' && isJourneyStep(s.step_id),
-  )
-
-  // Step completion: approved / JOURNEY_TOTAL * 40, clamped to the 40-pt band.
-  const stepPts = Math.min(40, Math.round((approved.length / JOURNEY_TOTAL) * 40))
-
-  // ICP completeness: filled fields / (19 fields × 3 ICPs) * 20
-  const totalIcpFields = (ICP_TEXT_FIELDS.length + ICP_ARR_FIELDS.length) * 3
-  let filled = 0
-  for (const icp of icpRows) {
-    for (const f of ICP_TEXT_FIELDS) {
-      if (typeof icp[f] === 'string' && (icp[f] as string).trim().length > 0) filled++
-    }
-    for (const f of ICP_ARR_FIELDS) {
-      if (Array.isArray(icp[f]) && (icp[f] as unknown[]).length > 0) filled++
-    }
-  }
-  const icpPts = totalIcpFields > 0 ? Math.round((filled / totalIcpFields) * 20) : 0
-
-  // DCP confidence: overall_confidence / 100 * 20
-  const dcpPts = Math.round(((dcpRow?.overall_confidence ?? 0) / 100) * 20)
-
-  // Content quality: avg original_confidence of approved steps / 100 * 20
-  const withConf = approved.filter(s => s.original_confidence !== null)
-  const avgConf = withConf.length > 0
-    ? withConf.reduce((sum, s) => sum + (s.original_confidence ?? 0), 0) / withConf.length
-    : 0
-  const qualityPts = Math.round((avgConf / 100) * 20)
-
-  return { total: Math.min(100, stepPts + icpPts + dcpPts + qualityPts), stepPts, icpPts, dcpPts, qualityPts }
-}
+// computeScore is imported from lib/scoring/computeScore (shared with the admin
+// account-detail view so both surfaces produce the same 0-100 number).
 
 function deriveGateStatus(approvedSet: Set<string>, stepIds: string[]): GateStatus {
   if (stepIds.every(id => approvedSet.has(id))) return 'approved'
