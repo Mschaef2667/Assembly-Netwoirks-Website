@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AccountSummary, AccountsResponse } from '@/app/api/admin/accounts/route'
+import type { AdminUserRow, AdminUsersResponse } from '@/app/api/admin/users/route'
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const NAVY = '#0A1628'
@@ -952,56 +953,157 @@ function CrmSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7) USERS — PLACEHOLDER — sample data
+// 7) USERS — LIVE (reads /api/admin/users, groups by account, row-click detail)
 // ─────────────────────────────────────────────────────────────────────────────
 function UsersSection() {
+  const router = useRouter()
+  const [users, setUsers] = useState<AdminUserRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true); setError(null)
+      try {
+        const res = await fetch('/api/admin/users')
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load users')
+        const data = (await res.json()) as AdminUsersResponse
+        setUsers(data.users)
+      } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load users') }
+      finally { setLoading(false) }
+    }
+    void load()
+  }, [])
+
+  // Group by org, preserving org.name alpha order via a Map that keeps insertion order.
+  const groups: Array<{ org: AdminUserRow['org']; users: AdminUserRow[] }> = (() => {
+    const byOrg = new Map<string, { org: AdminUserRow['org']; users: AdminUserRow[] }>()
+    for (const u of [...users].sort((a, b) => (a.org.name || '').localeCompare(b.org.name || ''))) {
+      const existing = byOrg.get(u.org.id)
+      if (existing) existing.users.push(u)
+      else byOrg.set(u.org.id, { org: u.org, users: [u] })
+    }
+    // Sort users within each org by displayName
+    for (const g of byOrg.values()) {
+      g.users.sort((a, b) => displayName(a).localeCompare(displayName(b)))
+    }
+    return Array.from(byOrg.values())
+  })()
+
+  const activeCount = users.filter(u => u.is_active).length
+  const orgCount = new Set(users.map(u => u.org.id)).size
+
   return (
     <div>
       <SectionHeader
         title="Users"
-        subtitle={`${SAMPLE_USERS.length} users across ${new Set(SAMPLE_USERS.map(u => u.org)).size} workspaces.`}
-        placeholder
+        subtitle={loading
+          ? 'Loading…'
+          : `${users.length} user${users.length === 1 ? '' : 's'} across ${orgCount} workspace${orgCount === 1 ? '' : 's'} · ${activeCount} active · click a row for detail`}
       />
 
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>User</th>
-              <th style={th}>Workspace</th>
-              <th style={th}>Role</th>
-              <th style={th}>Super admin</th>
-              <th style={th}>Status</th>
-              <th style={th}>Last login</th>
-            </tr>
-          </thead>
-          <tbody>
-            {SAMPLE_USERS.map(u => (
-              <tr key={u.id}>
-                <td style={td}>
-                  <div style={{ fontWeight: 700 }}>{u.name}</div>
-                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{u.email}</div>
-                </td>
-                <td style={td}>{u.org}</td>
-                <td style={td}><span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', textTransform: 'lowercase' }}>{u.role.replaceAll('_', ' ')}</span></td>
-                <td style={td}>
-                  {u.isSuperAdmin
-                    ? <span style={{ backgroundColor: 'rgba(232,82,10,0.18)', color: '#FDBA74', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Yes</span>
-                    : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>—</span>}
-                </td>
-                <td style={td}>
-                  {u.isActive
-                    ? <span style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#86EFAC', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Active</span>
-                    : <span style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Inactive</span>}
-                </td>
-                <td style={td}>{u.lastLogin}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <div style={{ ...card, padding: 40, display: 'flex', justifyContent: 'center' }}>
+          <Loader2 size={22} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+        </div>
+      ) : error ? (
+        <div style={{ ...card, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
+      ) : users.length === 0 ? (
+        <div style={{ ...card, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>No users yet.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {groups.map(({ org, users: gUsers }) => {
+            const sc = statusColor(org.status)
+            return (
+              <div key={org.id} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+                {/* Org header */}
+                <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Building2 size={15} style={{ color: 'rgba(255,255,255,0.55)' }} />
+                    <Link
+                      href={`/admin/control/accounts/${org.id}`}
+                      style={{ fontSize: 14, fontWeight: 700, color: '#fff', textDecoration: 'none' }}
+                    >
+                      {org.name}
+                    </Link>
+                    <span style={{ backgroundColor: sc.bg, color: sc.fg, borderRadius: 999, padding: '2px 10px', fontSize: 10.5, fontWeight: 700, textTransform: 'capitalize' }}>
+                      {org.status ?? '—'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)' }}>
+                    {gUsers.length} user{gUsers.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+
+                {/* Users table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Name</th>
+                      <th style={th}>Email</th>
+                      <th style={th}>Role</th>
+                      <th style={th}>Super admin</th>
+                      <th style={th}>Status</th>
+                      <th style={th}>Joined</th>
+                      <th style={th}>Last login</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gUsers.map(u => {
+                      const name = displayName(u)
+                      const exact = u.last_login_at ? new Date(u.last_login_at).toLocaleString() : ''
+                      return (
+                        <tr
+                          key={u.id}
+                          onClick={() => router.push(`/admin/control/users/${u.id}`)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <td style={td}>
+                            <div style={{ fontWeight: 700 }}>{name}</div>
+                          </td>
+                          <td style={td}>
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{u.email}</span>
+                          </td>
+                          <td style={td}>
+                            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>{formatRole(u.role)}</span>
+                          </td>
+                          <td style={td}>
+                            {u.is_super_admin
+                              ? <span style={{ backgroundColor: 'rgba(232,82,10,0.18)', color: '#FDBA74', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Yes</span>
+                              : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>—</span>}
+                          </td>
+                          <td style={td}>
+                            {u.is_active
+                              ? <span style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#86EFAC', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Active</span>
+                              : <span style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>Inactive</span>}
+                          </td>
+                          <td style={td}>{fmtShort(u.created_at)}</td>
+                          <td style={td} title={exact}>{u.last_login_at ? timeAgo(u.last_login_at) : <span style={{ color: 'rgba(255,255,255,0.35)' }}>Never</span>}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
+}
+
+// Users-section local helpers.
+function displayName(u: { first_name: string | null; last_name: string | null; email: string }): string {
+  const combined = [u.first_name, u.last_name].filter(Boolean).join(' ').trim()
+  return combined.length > 0 ? combined : u.email
+}
+function formatRole(role: string): string {
+  return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+function fmtShort(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
