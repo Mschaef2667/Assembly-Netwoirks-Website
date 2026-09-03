@@ -863,12 +863,10 @@ function UsageSection() {
 // ─────────────────────────────────────────────────────────────────────────────
 // 6) SUPPORT — LIVE (unified inbox reading /api/admin/support-inbox)
 //
-// One triage queue for all inbound support items. Today only Beta Feedback is
-// wired — the Contact and Feature Request sources appear in the source filter
-// but return zero items until their loaders are added on the server. Actions
-// (Mark resolved / Reopen / Delete) currently apply to Feedback rows only and
-// reuse the existing /api/admin/resolve-feedback and /api/admin/delete-record
-// endpoints — no new write paths.
+// One triage queue for all inbound support items across Beta Feedback, Contact,
+// and Feature Requests. Mark resolved / Reopen: Feedback → /resolve-feedback,
+// Contact + Feature → /handle-contact (both share handled_at; endpoint routes
+// on `table`). Delete currently applies to Feedback rows only.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SOURCE_FILTERS: ('All' | SupportSource)[] = ['All', 'Feedback', 'Contact', 'Feature']
@@ -941,12 +939,13 @@ function SupportSection() {
   useEffect(() => { queueMicrotask(() => { void load() }) }, [])
 
   async function toggleResolved(item: SupportInboxItem) {
-    // Feedback → /api/admin/resolve-feedback (updates resolved_at)
-    // Contact  → /api/admin/handle-contact  (updates handled_at)
-    // Both endpoints share the same shape: { id, resolved|handled }.
+    // Feedback           → /api/admin/resolve-feedback (updates resolved_at)
+    // Contact + Feature  → /api/admin/handle-contact   (updates handled_at,
+    //                       routes on `table` in the body)
     const endpoint =
-      item.raw_table === 'beta_feedback'      ? '/api/admin/resolve-feedback' :
+      item.raw_table === 'beta_feedback'       ? '/api/admin/resolve-feedback' :
       item.raw_table === 'contact_submissions' ? '/api/admin/handle-contact'   :
+      item.raw_table === 'feature_requests'    ? '/api/admin/handle-contact'   :
       null
     if (!endpoint) return
     const key = item.id
@@ -954,10 +953,12 @@ function SupportSection() {
     setActing(prev => new Set(prev).add(key))
     const nextResolved = item.status !== 'resolved'
     const payloadKey = item.raw_table === 'beta_feedback' ? 'resolved' : 'handled'
+    const payload: Record<string, unknown> = { id: item.raw_id, [payloadKey]: nextResolved }
+    if (item.raw_table !== 'beta_feedback') payload['table'] = item.raw_table
     try {
       const res = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.raw_id, [payloadKey]: nextResolved }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update')
       setItems(prev => prev.map(x => x.id === item.id ? { ...x, status: nextResolved ? 'resolved' : 'open' } : x))
@@ -1020,12 +1021,11 @@ function SupportSection() {
         }
       />
 
-      {/* KPIs by source — the Contact and Feature counters stay visible so it's
-          obvious what's coming online next, without pretending they're wired. */}
+      {/* KPIs by source */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Beta Feedback"    value={fmtNum(counts?.by_source.Feedback ?? 0)}                                    icon={<MessageSquare size={16} />} accent="#7DD3FC" />
-        <Kpi label="Contact"          value={fmtNum(counts?.by_source.Contact ?? 0)}                                     icon={<Mail size={16} />}           accent="#F0ABFC" />
-        <Kpi label="Feature Requests" value={fmtNum(counts?.by_source.Feature ?? 0)}  hint="Not yet wired"               icon={<Lightbulb size={16} />}      accent="#FDBA74" />
+        <Kpi label="Beta Feedback"    value={fmtNum(counts?.by_source.Feedback ?? 0)} icon={<MessageSquare size={16} />} accent="#7DD3FC" />
+        <Kpi label="Contact"          value={fmtNum(counts?.by_source.Contact ?? 0)}  icon={<Mail size={16} />}           accent="#F0ABFC" />
+        <Kpi label="Feature Requests" value={fmtNum(counts?.by_source.Feature ?? 0)}  icon={<Lightbulb size={16} />}      accent="#FDBA74" />
       </div>
 
       {/* Filters */}
@@ -1077,11 +1077,9 @@ function SupportSection() {
         <div style={{ ...card, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
       ) : visible.length === 0 ? (
         <div style={{ ...card, color: 'rgba(255,255,255,0.55)', fontSize: 13, padding: 24, textAlign: 'center' }}>
-          {sourceFilter === 'Feature'
-            ? 'No Feature Requests yet — this source is not wired to a data table yet.'
-            : items.length === 0
-              ? 'Inbox is empty.'
-              : 'No items match the current filters.'}
+          {items.length === 0
+            ? 'Inbox is empty.'
+            : 'No items match the current filters.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1089,9 +1087,9 @@ function SupportSection() {
             const isOpen = item.status === 'open'
             const sbc = sourceBadgeColor(item.source)
             const ftMeta = item.source === 'Feedback' ? feedbackTypeMeta(item.context.kind) : null
-            const canToggle  = item.raw_table === 'beta_feedback' || item.raw_table === 'contact_submissions'
+            const canToggle  = item.raw_table === 'beta_feedback' || item.raw_table === 'contact_submissions' || item.raw_table === 'feature_requests'
             const canDelete  = item.raw_table === 'beta_feedback'
-            const toggleOpen = item.raw_table === 'contact_submissions' ? 'Mark handled' : 'Mark resolved'
+            const toggleOpen = item.raw_table === 'beta_feedback' ? 'Mark resolved' : 'Mark handled'
             const respondHref = buildRespondHref(item)
             const busy = acting.has(item.id)
             return (

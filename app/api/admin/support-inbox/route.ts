@@ -8,11 +8,10 @@ export const runtime = 'nodejs'
 // GET /api/admin/support-inbox
 //
 // Unified triage queue for the Support section of the master control panel.
-// Reads from THREE eventual sources — beta_feedback, contact_submissions, and
-// (future) feature_requests — and returns them as one normalized, newest-first
-// list. Only beta_feedback is wired today; the other two are recognized shapes
-// so the UI can render source filters against a stable contract before the data
-// is there. Add them by extending loadContactItems / loadFeatureItems below.
+// Reads from THREE sources — beta_feedback, contact_submissions, and
+// feature_requests — and returns them as one normalized, newest-first list.
+// Contact and Feature both flow in through the in-app dashboard Support page
+// (/api/support/contact, /api/support/feature), Feedback from the beta widget.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SupportSource = 'Feedback' | 'Contact' | 'Feature'
@@ -161,9 +160,42 @@ async function loadContactItems(service: SupabaseClient): Promise<SupportInboxIt
   }))
 }
 
-// Reserved for a future feature_requests table (Suggest a Feature persistence).
-async function loadFeatureItems(): Promise<SupportInboxItem[]> {
-  return []
+interface FeatureRow {
+  id: string
+  user_id: string | null
+  org_id: string | null
+  name: string | null
+  email: string | null
+  company: string | null
+  message: string | null
+  ip_address: string | null
+  handled_at: string | null
+  created_at: string
+}
+
+async function loadFeatureItems(service: SupabaseClient): Promise<SupportInboxItem[]> {
+  const { data: rows, error } = await service
+    .from('feature_requests')
+    .select('id, user_id, org_id, name, email, company, message, ip_address, handled_at, created_at')
+    .order('created_at', { ascending: false })
+  if (error || !rows) return []
+
+  const features = rows as unknown as FeatureRow[]
+  return features.map((r): SupportInboxItem => ({
+    id: `feature_requests:${r.id}`,
+    source: 'Feature',
+    from_name: r.name,
+    from_email: r.email,
+    // company holds the caller's org name (resolved server-side at write time),
+    // matching contact_submissions.
+    from_org: r.company,
+    message: r.message,
+    context: { kind: null, page_url: null, step_id: null },
+    date: r.created_at,
+    status: r.handled_at ? 'resolved' : 'open',
+    raw_id: r.id,
+    raw_table: 'feature_requests',
+  }))
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -173,7 +205,7 @@ export async function GET(): Promise<NextResponse> {
   const [feedback, contact, feature] = await Promise.all([
     loadFeedbackItems(auth.service),
     loadContactItems(auth.service),
-    loadFeatureItems(),
+    loadFeatureItems(auth.service),
   ])
 
   const items = [...feedback, ...contact, ...feature].sort(

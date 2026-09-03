@@ -445,58 +445,106 @@ function TipsCard() {
 }
 
 // ── 3. Suggest a Feature ─────────────────────────────────────────────────────
+// In-app Suggest a Feature — an authenticated form. Submits to
+// /api/support/feature, which reads identity from the session (not the request
+// body) and writes to feature_requests via the service-role client. The same
+// row shows up in the Support inbox under /admin/control immediately, with a
+// support@ notification email in parallel. Mirrors the Contact Us card exactly.
 function SuggestFeatureCard() {
   const [suggestion, setSuggestion] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
 
-  function handleSubmit() {
-    if (!suggestion.trim()) return
-    const subject = encodeURIComponent('Assembly AI Feature Suggestion')
-    const body = encodeURIComponent(suggestion.trim())
-    window.location.href = `mailto:info@assemblynetworks.net?subject=${subject}&body=${body}`
+  async function handleSubmit() {
+    const trimmed = suggestion.trim()
+    if (!trimmed) { setError('Please describe your feature idea.'); return }
+    if (submitting) return
+    setError(null); setSubmitting(true)
+    try {
+      const res = await fetch('/api/support/feature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed }),
+      })
+      if (!res.ok) {
+        const msg = (await res.json().catch(() => ({}))).error as string | undefined
+        throw new Error(msg || 'Failed to send your suggestion.')
+      }
+      setSent(true)
+      setSuggestion('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to send your suggestion.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div style={cardStyle}>
       <CardHeader icon={Lightbulb} title="Suggest a Feature" badge={<LiveBadge />} />
-      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '16px' }}>
-        Have an idea that would make Assembly AI better? We&apos;d love to hear it.
-      </p>
-      <textarea
-        value={suggestion}
-        onChange={e => setSuggestion(e.target.value)}
-        placeholder="Describe your feature idea…"
-        rows={4}
-        style={{
-          width: '100%',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: '8px',
-          padding: '10px 14px',
-          color: '#0D0D0D',
-          fontSize: '13px',
-          outline: 'none',
-          resize: 'vertical',
-          marginBottom: '12px',
-          boxSizing: 'border-box',
-        } as React.CSSProperties}
-      />
-      <button
-        onClick={handleSubmit}
-        style={{
-          backgroundColor: '#E8520A',
-          color: '#FFFFFF',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '10px 20px',
-          fontSize: '13px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          minHeight: '44px',
-          minWidth: '44px',
-        }}
-      >
-        Send Suggestion
-      </button>
+      {sent ? (
+        <p style={{ color: '#86EFAC', fontSize: '13.5px', lineHeight: 1.6, margin: 0 }}>
+          Thanks — your suggestion is in. We read every one.{' '}
+          <button
+            onClick={() => setSent(false)}
+            style={{ background: 'none', border: 'none', color: '#7DD3FC', fontSize: '12.5px', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+          >
+            Suggest another
+          </button>
+        </p>
+      ) : (
+        <>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '12px' }}>
+            Have an idea that would make Assembly AI better? We&apos;d love to hear it.
+          </p>
+          <textarea
+            value={suggestion}
+            onChange={e => setSuggestion(e.target.value)}
+            placeholder="Describe your feature idea…"
+            rows={4}
+            style={{
+              width: '100%',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              color: '#0D0D0D',
+              fontSize: '13px',
+              outline: 'none',
+              resize: 'vertical',
+              marginBottom: '12px',
+              boxSizing: 'border-box',
+            } as React.CSSProperties}
+          />
+          {error && (
+            <p style={{ color: '#FCA5A5', fontSize: '12.5px', margin: '0 0 10px' }}>{error}</p>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={{
+              backgroundColor: '#E8520A',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: submitting ? 'default' : 'pointer',
+              minHeight: '44px',
+              minWidth: '44px',
+              opacity: submitting ? 0.7 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Send size={15} strokeWidth={2} />
+            {submitting ? 'Sending…' : 'Send Suggestion'}
+          </button>
+        </>
+      )}
     </div>
   )
 }
