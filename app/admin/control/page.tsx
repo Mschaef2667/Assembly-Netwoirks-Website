@@ -26,7 +26,7 @@ import {
   Plus, Copy, Check, ExternalLink, ArrowLeft, ShieldCheck, X, AlertCircle,
   TrendingUp, TrendingDown, Sparkles,
   PauseCircle, PlayCircle,
-  MessageSquare, Mail, Lightbulb, ThumbsUp, ThumbsDown, Trash2, CheckCircle2, RotateCcw,
+  MessageSquare, Mail, Lightbulb, ThumbsUp, ThumbsDown, Trash2, CheckCircle2, RotateCcw, Reply,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AccountSummary, AccountsResponse } from '@/app/api/admin/accounts/route'
@@ -888,6 +888,25 @@ function sourceIcon(source: SupportSource) {
   return <Lightbulb size={12} />
 }
 
+// Build a mailto: href that pre-fills the admin's default email client with a
+// reply to the item's submitter. mailto can only set to / subject / body — it
+// cannot force the From address, so the admin composes from whatever account
+// their client is set up with (usually the admin's own inbox). That's the
+// expected UX; support@ replies still need to be sent from a client signed in
+// to support@.
+function buildRespondHref(item: SupportInboxItem): string | null {
+  if (!item.from_email) return null
+  const subject =
+    item.source === 'Contact'  ? 'Re: Your message to Assembly Networks' :
+    item.source === 'Feedback' ? 'Re: Your feedback on Assembly AI'      :
+                                 'Re: Your feature request on Assembly AI'
+  const original = item.message?.trim()
+  const body = original
+    ? `\n\n---\nYou wrote:\n${original}\n`
+    : ''
+  return `mailto:${item.from_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
 function feedbackTypeMeta(type: FeedbackType | string | null): { label: string; icon: React.ReactNode; fg: string } {
   switch (type) {
     case 'thumbs_up':   return { label: 'Thumbs up',   icon: <ThumbsUp size={11} />,   fg: '#86EFAC' }
@@ -1073,6 +1092,7 @@ function SupportSection() {
             const canToggle  = item.raw_table === 'beta_feedback' || item.raw_table === 'contact_submissions'
             const canDelete  = item.raw_table === 'beta_feedback'
             const toggleOpen = item.raw_table === 'contact_submissions' ? 'Mark handled' : 'Mark resolved'
+            const respondHref = buildRespondHref(item)
             const busy = acting.has(item.id)
             return (
               <div
@@ -1129,8 +1149,21 @@ function SupportSection() {
                   </div>
                 )}
 
-                {(canToggle || canDelete) && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                {(canToggle || canDelete || respondHref) && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    {respondHref && (
+                      <a
+                        href={respondHref}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '6px 12px', borderRadius: 8, border: `1px solid rgba(14,165,233,0.3)`,
+                          backgroundColor: 'rgba(14,165,233,0.08)', color: '#7DD3FC',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none',
+                        }}
+                      >
+                        <Reply size={12} /> Respond
+                      </a>
+                    )}
                     {canToggle && (
                       <button
                         onClick={() => void toggleResolved(item)}
