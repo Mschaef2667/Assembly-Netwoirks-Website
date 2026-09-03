@@ -6,7 +6,13 @@ Full specs and architecture are in CONTEXT.md.
 
 ## Project
 Multi-tenant C3 Method Operating System for Assembly Networks.
-Repo: Mschaef2667/Assembly-AI
+Repo: Mschaef2667/Assembly-Netwoirks-Website (yes — the repo name has a typo "Netwoirks")
+
+**Before any environment, workflow, schema, or role question, read the Working Agreement at `~/Desktop/Assembly Networks/CLAUDE.md` — it has:**
+- **Environments** (prod `tiqznqmfivtgttmdiqrn` vs dev `acykwkvnrqbfnaazinhg`) and how to tell them apart
+- **Workflow** (dev branch → dev site → promote to main)
+- **Roles & Collaboration Model** — Michael (accountable operator, runs prod changes), Claude (designs + verifies, does NOT execute prod DB changes), Rocky (CISO, security review only — not runbook execution)
+- **Known warts** — including that local `.env.local` currently points at PRODUCTION
 Stack: Next.js 14 App Router, TypeScript strict, Supabase, Tailwind, shadcn/ui, Claude API
 
 ## C3 Method Sequence
@@ -246,6 +252,52 @@ Step 3.5: Buying Center Evaluation
 - Sales cycle length (default 3-9 months)
 - ACV range (default $10k-$100k)
 
+## Forms & Lead Capture — where each form's data goes
+Verified 2026-09-03.
+
+### Marketing site (assemblynetworks.net — separate repo, edited via Cowork)
+Inbound lead forms. All feed the Notion CRM; app tables + Resend notifications are secondary.
+- **Request a Demo** → Notion "Leads & Inquiries (CRM)" + `demo_requests` (via /api/demo) + Resend
+- **Download White Paper** → Notion CRM + `whitepaper_leads` (via /api/whitepaper/download) + Resend
+- **Contact Us (marketing)** → Notion CRM. General inquiries with department routing.
+- **Let's Talk (marketing)** → Notion CRM. Sales/consulting qualifying form.
+- **Free GTM Assessment** → Notion CRM + `gtm_assessments` (via /api/gtm-assessment/intake, shared-secret gated) + Resend. Has its own super-admin editor at /admin/gtm-assessments.
+
+### In-app (assemblyai.net — this repo), from app/dashboard/support/page.tsx
+Support inputs from authenticated users. All feed the Support inbox in /admin/control.
+- **Contact Us (in-app)** → `contact_submissions` + Resend to support@assemblynetworks.net + Support inbox. (Was mailto-only before 2026-09-03.)
+- **Suggest a Feature (in-app)** → `feature_requests` + Resend to support@ + Support inbox. (Was mailto-only before 2026-09-03.)
+- **Beta feedback** (floating beta-bubble widget, `BetaFeedbackWidget.tsx`) → `beta_feedback` + Support inbox.
+
+## CRM = Notion (not the app)
+Assembly Networks' own lead/inquiry CRM is a **Notion database** ("Leads & Inquiries (CRM)"), fed by the marketing-site forms above. The app does **not** have its own lead CRM and **should not** build one — that would duplicate Notion. An app-side CRM section was planned inside /admin/control, then dropped 2026-09-03 once we confirmed Notion already covers it (the Support section replaced it). Notion may later expand to cover sales/onboarding project management — future decision. (The "CRM: HubSpot" default elsewhere in this file refers to what we assume the CLIENT uses for their own sales data on the Acid Test 3 upload — a different CRM concept.)
+
+## Support Section (master control panel at /admin/control)
+The operator/admin counterpart to the user-facing dashboard Support page. Replaced the never-built CRM section. Unified inbox — source filter (All / Feedback / Contact / Feature Requests) and status filter (All / Open / Resolved). Reads via `/api/admin/support-inbox` (super-admin gated via `requireSuperAdmin`, service-role client), normalizing all three sources into a common `SupportInboxItem` shape.
+- **Sources wired**: Beta Feedback (`beta_feedback`), Contact Us (`contact_submissions`), Suggest a Feature (`feature_requests`).
+- **Per-item actions**:
+  - **Respond** — mailto: to the submitter, pre-filled subject + quoted original message. Rendered whenever the item has a `from_email` (all three sources do).
+  - **Mark resolved / Mark handled** — Feedback → `/api/admin/resolve-feedback` sets `resolved_at`; Contact + Feature → `/api/admin/handle-contact` sets `handled_at` (endpoint routes on `table`).
+  - **Delete** — Feedback only.
+- Both in-app Contact Us and Suggest a Feature notify support@assemblynetworks.net on submit (Resend, awaited `Promise.allSettled`, non-fatal — the DB save is the safety net).
+- **Phase 2 (not built)**: What's New / Announcements publishing.
+- **Phase 3 (not built)**: Video Tutorials.
+
+## Support-related tables (service-role-only pattern: RLS enabled + forced, no policies)
+Verified in catalog 2026-09-03.
+
+| table                     | dev | prod | notes                                                                                    |
+|---------------------------|-----|------|------------------------------------------------------------------------------------------|
+| `contact_submissions`     |  ✓  |  ✓   | Public /contact + in-app Contact Us.                                                     |
+| `feature_requests`        |  ✓  |  —   | In-app Suggest a Feature. Prod pending Rocky's review (scripts/add-feature-requests.ts). |
+| `beta_feedback`           |  ✓  |  ✓   | Pre-existing, from BetaFeedbackWidget.                                                   |
+| `consult_clicks`          |  ✓  |  ✓   | Service-role-only.                                                                       |
+| `report_generation_log`   |  ✓  |  ✓   | Has real RLS policies (super-admin-or-own-org), not service-role-only.                   |
+
+## Retire / cleanup (noted, not yet done)
+- **Public /contact page + /api/contact route** — Redundant with the Notion-fed marketing-site contact form; to be retired. Keep the `contact_submissions` table — it's still used by the in-app Contact Us.
+- **Old /admin console** — Still works; to be retired once everything's migrated to /admin/control.
+
 ## Supabase Tables (must exist)
 organizations, users, step_definition, step_dependency, step_output,
 approval_gate, copilot_run, validation_check, upstream_change_flag,
@@ -411,7 +463,7 @@ create policy "<table>_update_own_org"
 - journey.ttfaj_started (first dashboard load post-onboarding)
 
 ## Default Assumptions
-- CRM: HubSpot
+- Client CRM (for Acid Test 3 upload): HubSpot   *(Assembly's own CRM is Notion — see "CRM = Notion")*
 - Stakeholders: 6-10, consensus decisioning
 - ACV: $10k-$100k
 - Sales cycle: 3-9 months
