@@ -922,15 +922,23 @@ function SupportSection() {
   useEffect(() => { queueMicrotask(() => { void load() }) }, [])
 
   async function toggleResolved(item: SupportInboxItem) {
-    if (item.raw_table !== 'beta_feedback') return  // only Feedback has a resolve endpoint today
+    // Feedback → /api/admin/resolve-feedback (updates resolved_at)
+    // Contact  → /api/admin/handle-contact  (updates handled_at)
+    // Both endpoints share the same shape: { id, resolved|handled }.
+    const endpoint =
+      item.raw_table === 'beta_feedback'      ? '/api/admin/resolve-feedback' :
+      item.raw_table === 'contact_submissions' ? '/api/admin/handle-contact'   :
+      null
+    if (!endpoint) return
     const key = item.id
     if (acting.has(key)) return
     setActing(prev => new Set(prev).add(key))
     const nextResolved = item.status !== 'resolved'
+    const payloadKey = item.raw_table === 'beta_feedback' ? 'resolved' : 'handled'
     try {
-      const res = await fetch('/api/admin/resolve-feedback', {
+      const res = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.raw_id, resolved: nextResolved }),
+        body: JSON.stringify({ id: item.raw_id, [payloadKey]: nextResolved }),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update')
       setItems(prev => prev.map(x => x.id === item.id ? { ...x, status: nextResolved ? 'resolved' : 'open' } : x))
@@ -996,8 +1004,8 @@ function SupportSection() {
       {/* KPIs by source — the Contact and Feature counters stay visible so it's
           obvious what's coming online next, without pretending they're wired. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Beta Feedback"    value={fmtNum(counts?.by_source.Feedback ?? 0)} icon={<MessageSquare size={16} />} accent="#7DD3FC" />
-        <Kpi label="Contact"          value={fmtNum(counts?.by_source.Contact ?? 0)}  hint="Not yet wired"               icon={<Mail size={16} />}           accent="#F0ABFC" />
+        <Kpi label="Beta Feedback"    value={fmtNum(counts?.by_source.Feedback ?? 0)}                                    icon={<MessageSquare size={16} />} accent="#7DD3FC" />
+        <Kpi label="Contact"          value={fmtNum(counts?.by_source.Contact ?? 0)}                                     icon={<Mail size={16} />}           accent="#F0ABFC" />
         <Kpi label="Feature Requests" value={fmtNum(counts?.by_source.Feature ?? 0)}  hint="Not yet wired"               icon={<Lightbulb size={16} />}      accent="#FDBA74" />
       </div>
 
@@ -1050,8 +1058,8 @@ function SupportSection() {
         <div style={{ ...card, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
       ) : visible.length === 0 ? (
         <div style={{ ...card, color: 'rgba(255,255,255,0.55)', fontSize: 13, padding: 24, textAlign: 'center' }}>
-          {sourceFilter === 'Contact' || sourceFilter === 'Feature'
-            ? `No ${sourceFilter} items yet — this source is not wired to a data table yet.`
+          {sourceFilter === 'Feature'
+            ? 'No Feature Requests yet — this source is not wired to a data table yet.'
             : items.length === 0
               ? 'Inbox is empty.'
               : 'No items match the current filters.'}
@@ -1062,7 +1070,9 @@ function SupportSection() {
             const isOpen = item.status === 'open'
             const sbc = sourceBadgeColor(item.source)
             const ftMeta = item.source === 'Feedback' ? feedbackTypeMeta(item.context.kind) : null
-            const actionable = item.raw_table === 'beta_feedback'
+            const canToggle  = item.raw_table === 'beta_feedback' || item.raw_table === 'contact_submissions'
+            const canDelete  = item.raw_table === 'beta_feedback'
+            const toggleOpen = item.raw_table === 'contact_submissions' ? 'Mark handled' : 'Mark resolved'
             const busy = acting.has(item.id)
             return (
               <div
@@ -1119,35 +1129,39 @@ function SupportSection() {
                   </div>
                 )}
 
-                {actionable && (
+                {(canToggle || canDelete) && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <button
-                      onClick={() => void toggleResolved(item)}
-                      disabled={busy}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`,
-                        backgroundColor: 'rgba(255,255,255,0.04)', color: '#fff',
-                        fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-                      }}
-                    >
-                      {busy
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : isOpen ? <CheckCircle2 size={12} /> : <RotateCcw size={12} />}
-                      {isOpen ? 'Mark resolved' : 'Reopen'}
-                    </button>
-                    <button
-                      onClick={() => void removeItem(item)}
-                      disabled={busy}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '6px 12px', borderRadius: 8, border: `1px solid rgba(239,68,68,0.3)`,
-                        backgroundColor: 'rgba(239,68,68,0.08)', color: '#FCA5A5',
-                        fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-                      }}
-                    >
-                      <Trash2 size={12} /> Delete
-                    </button>
+                    {canToggle && (
+                      <button
+                        onClick={() => void toggleResolved(item)}
+                        disabled={busy}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`,
+                          backgroundColor: 'rgba(255,255,255,0.04)', color: '#fff',
+                          fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        {busy
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : isOpen ? <CheckCircle2 size={12} /> : <RotateCcw size={12} />}
+                        {isOpen ? toggleOpen : 'Reopen'}
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => void removeItem(item)}
+                        disabled={busy}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '6px 12px', borderRadius: 8, border: `1px solid rgba(239,68,68,0.3)`,
+                          backgroundColor: 'rgba(239,68,68,0.08)', color: '#FCA5A5',
+                          fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

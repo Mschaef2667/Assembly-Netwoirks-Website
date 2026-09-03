@@ -502,32 +502,109 @@ function SuggestFeatureCard() {
 }
 
 // ── 4. Contact Us ────────────────────────────────────────────────────────────
+// In-app Contact Us — an authenticated form. Submits to /api/support/contact,
+// which reads identity from the session (not the request body) and writes to
+// contact_submissions via the service-role client. Same row shows up in the
+// Support inbox under /admin/control immediately, with a support@ notification
+// email in parallel. This intentionally does NOT go through the public
+// /api/contact endpoint — that one exists for anonymous marketing visitors and
+// requires Turnstile, which we don't need for signed-in users.
 function ContactUsCard() {
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+
+  async function handleSubmit() {
+    const trimmed = message.trim()
+    if (!trimmed) { setError('Please write a message.'); return }
+    if (submitting) return
+    setError(null); setSubmitting(true)
+    try {
+      const res = await fetch('/api/support/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed }),
+      })
+      if (!res.ok) {
+        const msg = (await res.json().catch(() => ({}))).error as string | undefined
+        throw new Error(msg || 'Failed to send your message.')
+      }
+      setSent(true)
+      setMessage('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to send your message.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div style={cardStyle}>
       <CardHeader icon={Mail} title="Contact Us" badge={<LiveBadge />} />
-      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
-        Have a question or need help? We respond within 24 hours.
-      </p>
-      <a
-        href="mailto:info@assemblynetworks.net"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: '#E8520A',
-          color: '#FFFFFF',
-          textDecoration: 'none',
-          borderRadius: '8px',
-          padding: '10px 20px',
-          fontSize: '13px',
-          fontWeight: 600,
-          minHeight: '44px',
-        }}
-      >
-        <Mail size={15} strokeWidth={2} />
-        Email Us
-      </a>
+      {sent ? (
+        <p style={{ color: '#86EFAC', fontSize: '13.5px', lineHeight: 1.6, margin: 0 }}>
+          Thanks — your message is in. We&apos;ll be in touch within 1 business day.{' '}
+          <button
+            onClick={() => setSent(false)}
+            style={{ background: 'none', border: 'none', color: '#7DD3FC', fontSize: '12.5px', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+          >
+            Send another
+          </button>
+        </p>
+      ) : (
+        <>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px', lineHeight: 1.6, marginBottom: '12px' }}>
+            Have a question or need help? Write us a note — we respond within 1 business day.
+            We already know who you are and which workspace you&apos;re in, so just tell us what you need.
+          </p>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="What do you need help with?"
+            rows={4}
+            style={{
+              width: '100%',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              color: '#0D0D0D',
+              fontSize: '13px',
+              outline: 'none',
+              resize: 'vertical',
+              marginBottom: '12px',
+              boxSizing: 'border-box',
+            } as React.CSSProperties}
+          />
+          {error && (
+            <p style={{ color: '#FCA5A5', fontSize: '12.5px', margin: '0 0 10px' }}>{error}</p>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={{
+              backgroundColor: '#E8520A',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: submitting ? 'default' : 'pointer',
+              minHeight: '44px',
+              minWidth: '44px',
+              opacity: submitting ? 0.7 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Send size={15} strokeWidth={2} />
+            {submitting ? 'Sending…' : 'Send Message'}
+          </button>
+        </>
+      )}
     </div>
   )
 }

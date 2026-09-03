@@ -124,11 +124,41 @@ async function loadFeedbackItems(service: SupabaseClient): Promise<SupportInboxI
   })
 }
 
-// Reserved for the next milestone — the shape is fixed so the UI can render
-// against the same contract. When contact_submissions is wired, replace this
-// with the real query.
-async function loadContactItems(): Promise<SupportInboxItem[]> {
-  return []
+interface ContactRow {
+  id: string
+  name: string | null
+  email: string
+  company: string | null
+  message: string | null
+  ip_address: string | null
+  handled_at: string | null
+  created_at: string
+}
+
+async function loadContactItems(service: SupabaseClient): Promise<SupportInboxItem[]> {
+  const { data: rows, error } = await service
+    .from('contact_submissions')
+    .select('id, name, email, company, message, ip_address, handled_at, created_at')
+    .order('created_at', { ascending: false })
+  if (error || !rows) return []
+
+  const contacts = rows as unknown as ContactRow[]
+  return contacts.map((r): SupportInboxItem => ({
+    id: `contact_submissions:${r.id}`,
+    source: 'Contact',
+    from_name: r.name,
+    from_email: r.email,
+    // contact_submissions has no org FK — the public form's `company` is a
+    // free-text field, and the in-app route stores the caller's org name here.
+    // Either way it's the right thing to surface as "from_org" in the inbox.
+    from_org: r.company,
+    message: r.message,
+    context: { kind: null, page_url: null, step_id: null },
+    date: r.created_at,
+    status: r.handled_at ? 'resolved' : 'open',
+    raw_id: r.id,
+    raw_table: 'contact_submissions',
+  }))
 }
 
 // Reserved for a future feature_requests table (Suggest a Feature persistence).
@@ -142,7 +172,7 @@ export async function GET(): Promise<NextResponse> {
 
   const [feedback, contact, feature] = await Promise.all([
     loadFeedbackItems(auth.service),
-    loadContactItems(),
+    loadContactItems(auth.service),
     loadFeatureItems(),
   ])
 
