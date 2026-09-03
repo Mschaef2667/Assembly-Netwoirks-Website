@@ -6,9 +6,13 @@
 // Layout + design adopted from /admin/control/mockup.
 //
 // - Sections marked "PLACEHOLDER — sample data" are not yet wired to live data
-//   (Dashboard, Account Activity, Users, Activity Summary, CRM, Usage).
+//   (Dashboard, Account Activity, Activity Summary, Usage).
 // - The Accounts section is LIVE (fetches /api/admin/accounts, uses the real
 //   SetupAccountModal to provision new client workspaces).
+// - The Support section is LIVE (unified inbox reading /api/admin/support-inbox;
+//   Beta Feedback source is wired; Contact / Feature Requests are recognized
+//   filters that return zero items until those sources are wired). Replaces the
+//   previous CRM placeholder — the product pivoted away from CRM.
 // - Super-admin auth guard is preserved unchanged — non-super-admins get
 //   redirected before any UI renders.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,12 +24,16 @@ import { useRouter } from 'next/navigation'
 import {
   Loader2, LayoutDashboard, Building2, Activity, Users, BarChart3, Inbox, Gauge,
   Plus, Copy, Check, ExternalLink, ArrowLeft, ShieldCheck, X, AlertCircle,
-  TrendingUp, TrendingDown, Sparkles, FileText, MailQuestion, Download,
+  TrendingUp, TrendingDown, Sparkles,
   PauseCircle, PlayCircle,
+  MessageSquare, Mail, Lightbulb, ThumbsUp, ThumbsDown, Trash2, CheckCircle2, RotateCcw,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import type { AccountSummary, AccountsResponse } from '@/app/api/admin/accounts/route'
 import type { AdminUserRow, AdminUsersResponse } from '@/app/api/admin/users/route'
+import type {
+  SupportInboxItem, SupportInboxResponse, SupportSource, FeedbackType,
+} from '@/app/api/admin/support-inbox/route'
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const NAVY = '#0A1628'
@@ -38,14 +46,14 @@ const th: CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'upper
 const td: CSSProperties = { fontSize: 13, color: '#fff', padding: '12px', borderTop: `1px solid ${BORDER}`, verticalAlign: 'top' }
 
 // ── Section registry ─────────────────────────────────────────────────────────
-type SectionKey = 'dashboard' | 'accounts' | 'activity-summary' | 'usage' | 'crm' | 'users'
+type SectionKey = 'dashboard' | 'accounts' | 'activity-summary' | 'usage' | 'support' | 'users'
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof Building2 }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'accounts', label: 'Accounts', icon: Building2 },
   { key: 'users', label: 'Users', icon: Users },
   { key: 'activity-summary', label: 'Activity Summary', icon: BarChart3 },
-  { key: 'crm', label: 'CRM', icon: Inbox },
+  { key: 'support', label: 'Support', icon: Inbox },
   { key: 'usage', label: 'Usage', icon: Gauge },
 ]
 
@@ -104,27 +112,6 @@ const SAMPLE_USERS: SampleUser[] = [
   { id: 'u7', name: 'Tom Miller',       email: 'tom@silverline.studio',   org: 'Silverline Studios',      role: 'sales_rep',   isSuperAdmin: false, isActive: true,  lastLogin: '9d ago' },
   { id: 'u8', name: 'Emma Watson',      email: 'emma@frontrangemc.com',   org: 'Front Range Marketing Coll.', role: 'org_admin', isSuperAdmin: false, isActive: false, lastLogin: '21d ago' },
   { id: 'u9', name: 'Priya Nair',       email: 'priya@apexsolutions.io',  org: 'Apex Solutions',          role: 'marketing_leadership', isSuperAdmin: false, isActive: true, lastLogin: '4d ago' },
-]
-
-interface CrmItem {
-  id: string
-  source: 'Demo' | 'Whitepaper' | 'Contact' | 'GTM Assessment'
-  name: string
-  company: string
-  email: string
-  date: string
-  status: 'new' | 'contacted' | 'qualified' | 'drafted' | 'sent' | 'closed'
-}
-
-const SAMPLE_CRM: CrmItem[] = [
-  { id: 'c1', source: 'GTM Assessment', name: 'Rachel Kim',      company: 'Kim Ventures',     email: 'rachel@kimventures.io',    date: 'Today',      status: 'new' },
-  { id: 'c2', source: 'Demo',           name: 'Mark Weaver',     company: 'Weaver & Co',      email: 'mark@weaverco.com',        date: 'Today',      status: 'new' },
-  { id: 'c3', source: 'Whitepaper',     name: 'Priya Nair',      company: 'Apex Solutions',   email: 'priya@apexsolutions.io',   date: 'Yesterday',  status: 'contacted' },
-  { id: 'c4', source: 'GTM Assessment', name: 'Owen Bradford',   company: 'Bradford Group',   email: 'owen@bradfordgroup.com',   date: '2d ago',     status: 'drafted' },
-  { id: 'c5', source: 'Contact',        name: 'Sofia Alvarez',   company: 'Alvarez Media',    email: 'sofia@alvarezmedia.co',    date: '3d ago',     status: 'qualified' },
-  { id: 'c6', source: 'Whitepaper',     name: 'Ben Hollis',      company: 'Hollis Advisors',  email: 'ben@hollisadvisors.com',   date: '4d ago',     status: 'contacted' },
-  { id: 'c7', source: 'Demo',           name: 'Dana Yoo',        company: 'YooLabs',          email: 'dana@yoolabs.ai',          date: '5d ago',     status: 'qualified' },
-  { id: 'c8', source: 'GTM Assessment', name: 'Chris Patel',     company: 'Patel Ventures',   email: 'chris@patelventures.co',   date: '1w ago',     status: 'sent' },
 ]
 
 const SAMPLE_USAGE_BY_STEP: { step: string; runs: number; inputTokens: number; outputTokens: number }[] = [
@@ -192,17 +179,6 @@ function healthColor(h: HealthFlag): { bg: string; fg: string; dot: string; labe
     case 'active':  return { bg: 'rgba(34,197,94,0.15)',  fg: '#86EFAC', dot: '#22C55E', label: 'Active' }
     case 'slowing': return { bg: 'rgba(232,82,10,0.18)',  fg: '#FDBA74', dot: '#E8520A', label: 'Slowing' }
     case 'stalled': return { bg: 'rgba(239,68,68,0.15)',  fg: '#FCA5A5', dot: '#EF4444', label: 'Stalled' }
-  }
-}
-
-function crmStatusColor(s: CrmItem['status']): { bg: string; fg: string } {
-  switch (s) {
-    case 'new':       return { bg: 'rgba(232,82,10,0.18)', fg: '#FDBA74' }
-    case 'contacted': return { bg: 'rgba(14,165,233,0.15)', fg: '#7DD3FC' }
-    case 'qualified': return { bg: 'rgba(34,197,94,0.15)', fg: '#86EFAC' }
-    case 'drafted':   return { bg: 'rgba(255,255,255,0.08)', fg: 'rgba(255,255,255,0.7)' }
-    case 'sent':      return { bg: 'rgba(34,197,94,0.15)', fg: '#86EFAC' }
-    case 'closed':    return { bg: 'rgba(255,255,255,0.06)', fg: 'rgba(255,255,255,0.45)' }
   }
 }
 
@@ -296,7 +272,7 @@ export default function MasterControlPanel() {
           {section === 'accounts'          && <AccountsSection />}
           {section === 'activity-summary'  && <ActivitySummarySection />}
           {section === 'usage'             && <UsageSection />}
-          {section === 'crm'               && <CrmSection />}
+          {section === 'support'           && <SupportSection />}
           {section === 'users'             && <UsersSection />}
         </main>
       </div>
@@ -480,7 +456,7 @@ function DashboardSection({ onGo }: { onGo: (s: SectionKey) => void }) {
       <div style={card}>
         <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 10px' }}>Jump to</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {(['accounts','activity-summary','usage','crm','users'] as SectionKey[]).map(k => {
+          {(['accounts','activity-summary','usage','support','users'] as SectionKey[]).map(k => {
             const s = SECTIONS.find(x => x.key === k)!
             const Icon = s.icon
             return (
@@ -885,69 +861,300 @@ function UsageSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6) CRM — PLACEHOLDER — sample data
+// 6) SUPPORT — LIVE (unified inbox reading /api/admin/support-inbox)
+//
+// One triage queue for all inbound support items. Today only Beta Feedback is
+// wired — the Contact and Feature Request sources appear in the source filter
+// but return zero items until their loaders are added on the server. Actions
+// (Mark resolved / Reopen / Delete) currently apply to Feedback rows only and
+// reuse the existing /api/admin/resolve-feedback and /api/admin/delete-record
+// endpoints — no new write paths.
 // ─────────────────────────────────────────────────────────────────────────────
-function CrmSection() {
-  const bySource = {
-    Demo:              SAMPLE_CRM.filter(c => c.source === 'Demo').length,
-    Whitepaper:        SAMPLE_CRM.filter(c => c.source === 'Whitepaper').length,
-    Contact:           SAMPLE_CRM.filter(c => c.source === 'Contact').length,
-    'GTM Assessment':  SAMPLE_CRM.filter(c => c.source === 'GTM Assessment').length,
+
+const SOURCE_FILTERS: ('All' | SupportSource)[] = ['All', 'Feedback', 'Contact', 'Feature']
+const STATUS_FILTERS: ('All' | 'Open' | 'Resolved')[] = ['All', 'Open', 'Resolved']
+
+function sourceBadgeColor(source: SupportSource): { bg: string; fg: string } {
+  switch (source) {
+    case 'Feedback': return { bg: 'rgba(14,165,233,0.15)',  fg: '#7DD3FC' }
+    case 'Contact':  return { bg: 'rgba(240,171,252,0.15)', fg: '#F0ABFC' }
+    case 'Feature':  return { bg: 'rgba(253,186,116,0.18)', fg: '#FDBA74' }
   }
-  const sourceIcon = (s: CrmItem['source']) => {
-    if (s === 'Demo') return <MailQuestion size={13} />
-    if (s === 'Whitepaper') return <Download size={13} />
-    if (s === 'Contact') return <Inbox size={13} />
-    return <FileText size={13} />
+}
+
+function sourceIcon(source: SupportSource) {
+  if (source === 'Feedback') return <MessageSquare size={12} />
+  if (source === 'Contact')  return <Mail size={12} />
+  return <Lightbulb size={12} />
+}
+
+function feedbackTypeMeta(type: FeedbackType | string | null): { label: string; icon: React.ReactNode; fg: string } {
+  switch (type) {
+    case 'thumbs_up':   return { label: 'Thumbs up',   icon: <ThumbsUp size={11} />,   fg: '#86EFAC' }
+    case 'thumbs_down': return { label: 'Thumbs down', icon: <ThumbsDown size={11} />, fg: '#FCA5A5' }
+    case 'issue':       return { label: 'Issue',       icon: <AlertCircle size={11} />, fg: '#FCA5A5' }
+    case 'idea':        return { label: 'Idea',        icon: <Lightbulb size={11} />,  fg: '#FDBA74' }
+    default:            return { label: type ?? '—',   icon: null, fg: 'rgba(255,255,255,0.65)' }
   }
+}
+
+function SupportSection() {
+  const [items, setItems] = useState<SupportInboxItem[]>([])
+  const [counts, setCounts] = useState<SupportInboxResponse['counts'] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [sourceFilter, setSourceFilter] = useState<'All' | SupportSource>('All')
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Open' | 'Resolved'>('All')
+  const [acting, setActing] = useState<Set<string>>(new Set())
+
+  async function load() {
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch('/api/admin/support-inbox')
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load inbox')
+      const data = (await res.json()) as SupportInboxResponse
+      setItems(data.items)
+      setCounts(data.counts)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load inbox') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { queueMicrotask(() => { void load() }) }, [])
+
+  async function toggleResolved(item: SupportInboxItem) {
+    if (item.raw_table !== 'beta_feedback') return  // only Feedback has a resolve endpoint today
+    const key = item.id
+    if (acting.has(key)) return
+    setActing(prev => new Set(prev).add(key))
+    const nextResolved = item.status !== 'resolved'
+    try {
+      const res = await fetch('/api/admin/resolve-feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.raw_id, resolved: nextResolved }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update')
+      setItems(prev => prev.map(x => x.id === item.id ? { ...x, status: nextResolved ? 'resolved' : 'open' } : x))
+      setCounts(prev => prev ? {
+        ...prev,
+        open: prev.open + (nextResolved ? -1 : 1),
+        resolved: prev.resolved + (nextResolved ? 1 : -1),
+      } : prev)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setActing(prev => { const n = new Set(prev); n.delete(key); return n })
+    }
+  }
+
+  async function removeItem(item: SupportInboxItem) {
+    if (item.raw_table !== 'beta_feedback') return
+    const ok = typeof window !== 'undefined' && window.confirm('Delete this feedback item? This cannot be undone.')
+    if (!ok) return
+    const key = item.id
+    setActing(prev => new Set(prev).add(key))
+    try {
+      const res = await fetch('/api/admin/delete-record', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'beta_feedback', id: item.raw_id }),
+      })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to delete')
+      setItems(prev => prev.filter(x => x.id !== item.id))
+      setCounts(prev => prev ? {
+        ...prev,
+        total: prev.total - 1,
+        open: item.status === 'open' ? prev.open - 1 : prev.open,
+        resolved: item.status === 'resolved' ? prev.resolved - 1 : prev.resolved,
+        by_source: { ...prev.by_source, Feedback: Math.max(0, prev.by_source.Feedback - 1) },
+      } : prev)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setActing(prev => { const n = new Set(prev); n.delete(key); return n })
+    }
+  }
+
+  const visible = items.filter(i => {
+    if (sourceFilter !== 'All' && i.source !== sourceFilter) return false
+    if (statusFilter === 'Open' && i.status !== 'open') return false
+    if (statusFilter === 'Resolved' && i.status !== 'resolved') return false
+    return true
+  })
 
   return (
     <div>
-      <SectionHeader title="CRM" subtitle="Unified inbound: demo requests, whitepaper downloads, contact form, GTM assessments." placeholder />
+      <SectionHeader
+        title="Support"
+        subtitle={
+          loading
+            ? 'Loading…'
+            : counts
+              ? `${counts.total} item${counts.total === 1 ? '' : 's'} · ${counts.open} open · ${counts.resolved} resolved`
+              : 'Unified triage queue across Feedback, Contact, and Feature Requests.'
+        }
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
-        <Kpi label="Demo requests"    value={fmtNum(bySource['Demo'])}             icon={<MailQuestion size={16} />} accent="#7DD3FC" />
-        <Kpi label="Whitepapers"       value={fmtNum(bySource['Whitepaper'])}       icon={<Download size={16} />}    accent="#86EFAC" />
-        <Kpi label="Contact form"      value={fmtNum(bySource['Contact'])}          icon={<Inbox size={16} />}       accent="#F0ABFC" />
-        <Kpi label="GTM assessments"   value={fmtNum(bySource['GTM Assessment'])}   icon={<FileText size={16} />}    accent="#FDBA74" />
+      {/* KPIs by source — the Contact and Feature counters stay visible so it's
+          obvious what's coming online next, without pretending they're wired. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
+        <Kpi label="Beta Feedback"    value={fmtNum(counts?.by_source.Feedback ?? 0)} icon={<MessageSquare size={16} />} accent="#7DD3FC" />
+        <Kpi label="Contact"          value={fmtNum(counts?.by_source.Contact ?? 0)}  hint="Not yet wired"               icon={<Mail size={16} />}           accent="#F0ABFC" />
+        <Kpi label="Feature Requests" value={fmtNum(counts?.by_source.Feature ?? 0)}  hint="Not yet wired"               icon={<Lightbulb size={16} />}      accent="#FDBA74" />
       </div>
 
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Source</th>
-              <th style={th}>Contact</th>
-              <th style={th}>Company</th>
-              <th style={th}>Received</th>
-              <th style={th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {SAMPLE_CRM.map(c => {
-              const sc = crmStatusColor(c.status)
-              return (
-                <tr key={c.id}>
-                  <td style={td}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'rgba(255,255,255,0.85)' }}>
-                      {sourceIcon(c.source)} {c.source}
+      {/* Filters */}
+      <div style={{ ...card, padding: 12, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Source</span>
+          {SOURCE_FILTERS.map(s => {
+            const active = s === sourceFilter
+            return (
+              <button
+                key={s}
+                onClick={() => setSourceFilter(s)}
+                style={{
+                  padding: '6px 12px', borderRadius: 999, border: `1px solid ${active ? 'rgba(14,165,233,0.5)' : BORDER}`,
+                  backgroundColor: active ? 'rgba(14,165,233,0.16)' : 'transparent',
+                  color: active ? '#7DD3FC' : 'rgba(255,255,255,0.75)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >{s}</button>
+            )
+          })}
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>Status</span>
+          {STATUS_FILTERS.map(s => {
+            const active = s === statusFilter
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                style={{
+                  padding: '6px 12px', borderRadius: 999, border: `1px solid ${active ? 'rgba(232,82,10,0.5)' : BORDER}`,
+                  backgroundColor: active ? 'rgba(232,82,10,0.18)' : 'transparent',
+                  color: active ? '#FDBA74' : 'rgba(255,255,255,0.75)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >{s}</button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div style={{ ...card, padding: 40, display: 'flex', justifyContent: 'center' }}>
+          <Loader2 size={22} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+        </div>
+      ) : error ? (
+        <div style={{ ...card, color: '#FCA5A5', fontSize: 13 }}>{error}</div>
+      ) : visible.length === 0 ? (
+        <div style={{ ...card, color: 'rgba(255,255,255,0.55)', fontSize: 13, padding: 24, textAlign: 'center' }}>
+          {sourceFilter === 'Contact' || sourceFilter === 'Feature'
+            ? `No ${sourceFilter} items yet — this source is not wired to a data table yet.`
+            : items.length === 0
+              ? 'Inbox is empty.'
+              : 'No items match the current filters.'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {visible.map(item => {
+            const isOpen = item.status === 'open'
+            const sbc = sourceBadgeColor(item.source)
+            const ftMeta = item.source === 'Feedback' ? feedbackTypeMeta(item.context.kind) : null
+            const actionable = item.raw_table === 'beta_feedback'
+            const busy = acting.has(item.id)
+            return (
+              <div
+                key={item.id}
+                style={{
+                  ...card,
+                  padding: 14,
+                  borderLeft: `3px solid ${isOpen ? ORANGE : 'rgba(255,255,255,0.12)'}`,
+                  opacity: isOpen ? 1 : 0.72,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: sbc.bg, color: sbc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                      {sourceIcon(item.source)} {item.source}
                     </span>
-                  </td>
-                  <td style={td}>
-                    <div style={{ fontWeight: 700 }}>{c.name}</div>
-                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>{c.email}</div>
-                  </td>
-                  <td style={td}>{c.company}</td>
-                  <td style={td}>{c.date}</td>
-                  <td style={td}>
-                    <span style={{ backgroundColor: sc.bg, color: sc.fg, borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, textTransform: 'capitalize' }}>{c.status}</span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    {ftMeta && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: ftMeta.fg, fontSize: 11.5, fontWeight: 600 }}>
+                        {ftMeta.icon} {ftMeta.label}
+                      </span>
+                    )}
+                    <span style={{
+                      backgroundColor: isOpen ? 'rgba(232,82,10,0.18)' : 'rgba(34,197,94,0.15)',
+                      color: isOpen ? '#FDBA74' : '#86EFAC',
+                      borderRadius: 999, padding: '2px 10px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
+                    }}>{isOpen ? 'Open' : 'Resolved'}</span>
+                  </div>
+                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>{timeAgo(item.date)}</span>
+                </div>
+
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
+                    {item.from_name || item.from_email || 'Unknown user'}
+                  </span>
+                  {item.from_email && item.from_name && (
+                    <span> · {item.from_email}</span>
+                  )}
+                  {item.from_org && (
+                    <span> · {item.from_org}</span>
+                  )}
+                </div>
+
+                {item.message && (
+                  <div style={{ fontSize: 13.5, color: '#fff', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: '6px 0 8px' }}>
+                    {item.message}
+                  </div>
+                )}
+
+                {(item.context.page_url || item.context.step_id) && (
+                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                    {item.context.step_id && <span>Step {item.context.step_id}</span>}
+                    {item.context.step_id && item.context.page_url && <span> · </span>}
+                    {item.context.page_url && <span style={{ wordBreak: 'break-all' }}>{item.context.page_url}</span>}
+                  </div>
+                )}
+
+                {actionable && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button
+                      onClick={() => void toggleResolved(item)}
+                      disabled={busy}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`,
+                        backgroundColor: 'rgba(255,255,255,0.04)', color: '#fff',
+                        fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                      }}
+                    >
+                      {busy
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : isOpen ? <CheckCircle2 size={12} /> : <RotateCcw size={12} />}
+                      {isOpen ? 'Mark resolved' : 'Reopen'}
+                    </button>
+                    <button
+                      onClick={() => void removeItem(item)}
+                      disabled={busy}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 8, border: `1px solid rgba(239,68,68,0.3)`,
+                        backgroundColor: 'rgba(239,68,68,0.08)', color: '#FCA5A5',
+                        fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                      }}
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
